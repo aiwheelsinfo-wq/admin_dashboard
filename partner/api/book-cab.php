@@ -75,7 +75,7 @@ if (!$stmt) {
     api_error('Booking creation failed: ' . $err, 500);
 }
 
-mysqli_stmt_bind_param($stmt, 'ssssssssssdds s',
+mysqli_stmt_bind_param($stmt, 'ssssssssssddss',
     $booking_id, $from, $to, $trip_type, $car_type,
     $date, $time, $user_name, $user_mobile, $user_email,
     $distance, $amount, $ret_date, $ret_time
