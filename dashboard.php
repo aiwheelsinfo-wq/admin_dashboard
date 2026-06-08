@@ -58,9 +58,12 @@ if (!isset($_SESSION['admin_id'])) {
                 </li>
                 <li><a href="https://agnicarrental.com/admin2025/bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
                 <li><a href="#" id="Blocked_Customer"><i class="fas fa-user-slash me-2"></i>Blocked Customer</a></li>
-                <li>
-  <a href="#" id="Extract_Data">
+                <li><a href="#" id="Extract_Data">
     <i class="fas fa-file-excel me-2"></i> Extract Data
+  </a>
+</li>
+                <li><a href="partner/index.php" id="partner_api">
+    <i class="fas fa-handshake me-2"></i> Partner API
   </a>
 </li>
             
