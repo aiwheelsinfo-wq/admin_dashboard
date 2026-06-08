@@ -1,20 +1,20 @@
 <?php
 /**
  * test-db.php
- * Dump column names and types of the bookings table to verify schema.
+ * Dump all migrations from schema_migrations table.
  */
 
 require_once __DIR__ . '/db_connect.php';
 
-$result = mysqli_query($conn, "DESCRIBE bookings");
+$result = mysqli_query($conn, "SELECT * FROM schema_migrations ORDER BY id ASC");
 if (!$result) {
-    die("Error describing table: " . mysqli_error($conn));
+    die("Error querying migrations: " . mysqli_error($conn));
 }
 
-$columns = [];
+$migrations = [];
 while ($row = mysqli_fetch_assoc($result)) {
-    $columns[] = $row;
+    $migrations[] = $row;
 }
 
 header('Content-Type: application/json');
-echo json_encode($columns, JSON_PRETTY_PRINT);
+echo json_encode($migrations, JSON_PRETTY_PRINT);
