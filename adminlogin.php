@@ -26,20 +26,25 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            padding: 1rem;
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100vw !important;
         }
 
         .login-card {
             display: flex;
-            width: 820px;
-            max-width: 820px;
-            padding: 0;
+            width: 100vw !important;
+            max-width: 100vw !important;
+            padding: 0 !important;
             background-color: transparent;
-            min-height: 540px;
-            border-radius: 18px;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            border-radius: 0 !important;
             overflow: hidden;
-            box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+            box-shadow: none !important;
         }
 
         /* ── LEFT PANEL ── */
@@ -138,12 +143,19 @@
 
         /* ── RIGHT PANEL ── */
         .right-panel {
-            width: 380px;
+            flex: 1;
             background: #ffffff;
             display: flex;
             flex-direction: column;
             justify-content: center;
             padding: 3rem 2.5rem;
+            position: relative;
+        }
+
+        .right-panel-content {
+            width: 100%;
+            max-width: 380px;
+            margin: 0 auto;
             position: relative;
         }
 
@@ -285,9 +297,9 @@
 
         /* ── RESPONSIVE ── */
         @media (max-width: 700px) {
-            .login-card   { flex-direction: column; width: 95vw; max-width: 95vw; min-height: auto; }
-            .left-panel   { padding: 2.5rem 2rem; }
-            .right-panel  { width: 100%; padding: 2.5rem 2rem; }
+            .login-card   { flex-direction: column; width: 100vw !important; max-width: 100vw !important; height: auto !important; min-height: 100vh !important; overflow-y: auto; }
+            .left-panel   { padding: 3rem 2rem; flex: none; height: auto; }
+            .right-panel  { width: 100%; padding: 3rem 2rem; flex: none; height: auto; }
             .brand-name   { font-size: 2rem; }
             .car-svg      { display: none; }
         }
@@ -326,24 +338,26 @@
 
             <!-- RIGHT PANEL -->
             <div class="right-panel">
-                <h2>Welcome back</h2>
-                <p class="right-subhead">Sign in to the admin dashboard</p>
+                <div class="right-panel-content">
+                    <h2>Welcome back</h2>
+                    <p class="right-subhead">Sign in to the admin dashboard</p>
 
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" value="agnicarrental@gmail.com" placeholder="Enter your email" required>
-                    </div>
-                    <div class="form-group password-wrapper">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" placeholder="Enter your password" required>
-                        <i class="fas fa-eye toggle-icon" id="toggleIcon"></i>
-                    </div>
-                    <p id="error-message" class="error-msg"></p>
-                    <button type="submit" class="login-btn"><span>Login</span></button>
-                </form>
+                    <form id="loginForm">
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" value="agnicarrental@gmail.com" placeholder="Enter your email" required>
+                        </div>
+                        <div class="form-group password-wrapper">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" placeholder="Enter your password" required>
+                            <i class="fas fa-eye toggle-icon" id="toggleIcon"></i>
+                        </div>
+                        <p id="error-message" class="error-msg"></p>
+                        <button type="submit" class="login-btn"><span>Login</span></button>
+                    </form>
 
-                <p class="footer-badge">© 2025 Agni Car Rental. All rights reserved.</p>
+                    <p class="footer-badge">© 2025 Agni Car Rental. All rights reserved.</p>
+                </div>
             </div>
 
         </div>
