@@ -20,7 +20,7 @@ if (!isset($_SESSION['admin_id'])) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZkOB0WSoPjjdf8gRUj9GcXXJuWvpj5Mo&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBz4vqQWuT-s_3UEWk6pnSMxSIt7QOZEqk&libraries=places"></script>
     
 </head>
 <body>
@@ -364,10 +364,7 @@ if (!isset($_SESSION['admin_id'])) {
     </div>
 
     <script src="javascripts/Dasboardscripts.js"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCZkOB0WSoPjjdf8gRUj9GcXXJuWvpj5Mo&libraries=places"
-  async
-  defer
->
+    <script>
 function viewDriverOnMap(lat, lng) {
     if (!lat || !lng) {
         alert("Location not available");
@@ -376,12 +373,6 @@ function viewDriverOnMap(lat, lng) {
     const mapUrl = `https://www.google.com/maps?q=${lat},${lng}`;
     window.open(mapUrl, '_blank');
 }
-
-  src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places"
-  async
-  defer
-
-
     </script>
     <!-- Popup (must be outside table, better at end of <body>) -->
 <div id="carPopup" class="popup-overlay">
