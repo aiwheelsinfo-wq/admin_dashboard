@@ -33,6 +33,9 @@
         .login-card {
             display: flex;
             width: 820px;
+            max-width: 820px;
+            padding: 0;
+            background-color: transparent;
             min-height: 540px;
             border-radius: 18px;
             overflow: hidden;
@@ -282,7 +285,7 @@
 
         /* ── RESPONSIVE ── */
         @media (max-width: 700px) {
-            .login-card   { flex-direction: column; width: 95vw; min-height: auto; }
+            .login-card   { flex-direction: column; width: 95vw; max-width: 95vw; min-height: auto; }
             .left-panel   { padding: 2.5rem 2rem; }
             .right-panel  { width: 100%; padding: 2.5rem 2rem; }
             .brand-name   { font-size: 2rem; }
