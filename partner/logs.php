@@ -64,7 +64,7 @@ $api_names = ['search-cab','get-fare','book-cab','booking-status','cancel-bookin
     <title>API Logs — Agni Car Rental</title>
     <link rel="icon" type="image/png" href="../images/pnglogoagni.png">
     <link rel="stylesheet" href="../css/Dashboard_styles.css">
-    <link rel="stylesheet" href="../css/partner_styles.css">
+    <link rel="stylesheet" href="../css/partner_styles.css?v=1.3">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
