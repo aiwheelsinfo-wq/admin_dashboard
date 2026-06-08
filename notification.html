@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Auto Notification Sender</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 20px;
+    }
+    pre {
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #ccc;
+      overflow-x: auto;
+    }
+    h2 {
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+  <h1>📤 Auto Notification Status</h1>
+
+  <h2>🚗 Car Document Notifications</h2>
+  <pre id="carStatus">Waiting...</pre>
+
+  <h2>👨‍✈️ Driver License Notifications</h2>
+  <pre id="driverStatus">Waiting...</pre>
+
+  <script>
+    function fetchAndDisplay(endpoint, elementId) {
+      fetch(endpoint)
+        .then(response => response.text())
+        .then(raw => {
+          try {
+            const data = JSON.parse(raw);
+            document.getElementById(elementId).innerText =
+              `✅ ${new Date().toLocaleTimeString()}:\n` +
+              JSON.stringify(data, null, 2);
+          } catch (e) {
+            document.getElementById(elementId).innerText =
+              `❌ JSON Parse Error at ${new Date().toLocaleTimeString()}:\n${e}\n\nRaw Response:\n${raw}`;
+          }
+        })
+        .catch(error => {
+          document.getElementById(elementId).innerText =
+            `❌ Fetch Error at ${new Date().toLocaleTimeString()}:\n${error}`;
+        });
+    }
+
+    function runBothRequests() {
+      fetchAndDisplay('https://agnicarrental.com/2025/send_notification_forExpaird_car_documtns.php', 'carStatus');
+      fetchAndDisplay('https://agnicarrental.com/2025/send_notification_forExpaird_driver_documents.php', 'driverStatus');
+    }
+
+    // Run on page load and every 30 seconds
+    window.onload = () => {
+      runBothRequests();
+      setInterval(runBothRequests, 30000);
+    };
+  </script>
+</body>
+</html>

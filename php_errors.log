@@ -1,0 +1,15 @@
+[03-May-2025 20:16:52 Asia/Kolkata] PHP Fatal error:  Uncaught mysqli_sql_exception: Table 'agnicar2025.vendors' doesn't exist in /home/o96ayd7ennr5/public_html/admin2025/register_driver.php:55
+Stack trace:
+#0 /home/o96ayd7ennr5/public_html/admin2025/register_driver.php(55): mysqli_prepare()
+#1 {main}
+  thrown in /home/o96ayd7ennr5/public_html/admin2025/register_driver.php on line 55
+[03-May-2025 20:16:59 Asia/Kolkata] PHP Fatal error:  Uncaught mysqli_sql_exception: Table 'agnicar2025.vendors' doesn't exist in /home/o96ayd7ennr5/public_html/admin2025/register_driver.php:55
+Stack trace:
+#0 /home/o96ayd7ennr5/public_html/admin2025/register_driver.php(55): mysqli_prepare()
+#1 {main}
+  thrown in /home/o96ayd7ennr5/public_html/admin2025/register_driver.php on line 55
+[03-May-2025 20:17:12 Asia/Kolkata] PHP Fatal error:  Uncaught mysqli_sql_exception: Table 'agnicar2025.vendors' doesn't exist in /home/o96ayd7ennr5/public_html/admin2025/register_driver.php:55
+Stack trace:
+#0 /home/o96ayd7ennr5/public_html/admin2025/register_driver.php(55): mysqli_prepare()
+#1 {main}
+  thrown in /home/o96ayd7ennr5/public_html/admin2025/register_driver.php on line 55

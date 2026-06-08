@@ -1,0 +1,8 @@
+[19-Apr-2025 15:46:55 Asia/Kolkata] PHP Fatal error:  Uncaught Error: Call to undefined function validateDate() in /home/o96ayd7ennr5/public_html/admin2025/register_car.php:101
+Stack trace:
+#0 {main}
+  thrown in /home/o96ayd7ennr5/public_html/admin2025/register_car.php on line 101
+[19-Apr-2025 15:47:32 Asia/Kolkata] PHP Fatal error:  Uncaught Error: Call to undefined function validateDate() in /home/o96ayd7ennr5/public_html/admin2025/register_car.php:101
+Stack trace:
+#0 {main}
+  thrown in /home/o96ayd7ennr5/public_html/admin2025/register_car.php on line 101
