@@ -23,13 +23,17 @@
 
         body {
             min-height: 100vh;
-            background-color: #f1f5f9;
+            background: radial-gradient(circle at 50% 50%, #1e293b 0%, #0f172a 100%);
             font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
             overflow-x: hidden;
         }
 
         nav {
-            display: none !important; /* hide default navigation if any */
+            display: none !important;
         }
 
         /* Layout Container */
@@ -37,32 +41,27 @@
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            min-height: 100vh !important;
+            width: 100% !important;
+            max-width: 1000px !important;
+            margin: auto !important;
             padding: 0 !important;
-            margin: 0 !important;
-            max-width: 100vw !important;
-            background: #f8fafc;
         }
 
         .login-card {
             display: flex !important;
-            width: 100vw !important;
-            max-width: 100vw !important;
-            height: 100vh !important;
-            min-height: 100vh !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            border-radius: 0 !important;
+            width: 100% !important;
+            height: 640px !important;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px !important;
             overflow: hidden !important;
-            box-shadow: none !important;
-            background-color: transparent !important;
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6), 0 0 80px 0 rgba(232, 160, 32, 0.05) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
         }
 
         /* ── LEFT PANEL (Branding & Features) ── */
         .left-panel {
-            background: radial-gradient(circle at 10% 20%, #1a2236 0%, #0d1220 90%);
+            width: 45%;
+            background: radial-gradient(circle at 10% 20%, #1e283b 0%, #0b0f19 100%);
             position: relative;
             overflow: hidden;
             display: flex;
@@ -70,62 +69,55 @@
             justify-content: center;
             align-items: center;
             color: #ffffff;
+            padding: 3rem 2rem;
             z-index: 1;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        /* Left Panel background glow grids */
         .left-panel::before {
             content: '';
             position: absolute;
-            width: 500px;
-            height: 500px;
+            width: 300px;
+            height: 300px;
             background: radial-gradient(circle, rgba(232, 160, 32, 0.08) 0%, rgba(232, 160, 32, 0) 70%);
-            top: -150px;
-            left: -150px;
+            top: -50px;
+            left: -50px;
             z-index: -1;
-            pointer-events: none;
         }
 
         .left-panel::after {
             content: '';
             position: absolute;
-            width: 400px;
-            height: 400px;
+            width: 250px;
+            height: 250px;
             background: radial-gradient(circle, rgba(232, 160, 32, 0.05) 0%, rgba(232, 160, 32, 0) 70%);
-            bottom: -100px;
-            right: -100px;
+            bottom: -50px;
+            right: -50px;
             z-index: -1;
-            pointer-events: none;
         }
 
         .brand-container {
             text-align: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .brand-logo-img {
-            height: 90px;
+            height: 75px;
             object-fit: contain;
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
             filter: drop-shadow(0 0 15px rgba(232, 160, 32, 0.35));
             animation: pulseGlow 3s ease-in-out infinite;
         }
 
         @keyframes pulseGlow {
-            0%, 100% {
-                transform: scale(1);
-                filter: drop-shadow(0 0 15px rgba(232, 160, 32, 0.35));
-            }
-            50% {
-                transform: scale(1.03);
-                filter: drop-shadow(0 0 25px rgba(232, 160, 32, 0.55));
-            }
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(232, 160, 32, 0.35)); }
+            50% { transform: scale(1.03); filter: drop-shadow(0 0 25px rgba(232, 160, 32, 0.55)); }
         }
 
         .brand-title {
             font-family: 'Poppins', sans-serif;
             font-weight: 800;
-            font-size: 2.75rem;
+            font-size: 2.3rem;
             color: #ffffff;
             line-height: 1;
             letter-spacing: -0.5px;
@@ -135,62 +127,62 @@
         .brand-subtitle {
             font-family: 'Poppins', sans-serif;
             font-weight: 600;
-            font-size: 0.85rem;
-            letter-spacing: 6px;
+            font-size: 0.75rem;
+            letter-spacing: 5px;
             color: #e8a020;
-            margin: 6px 0 0 6px;
+            margin: 5px 0 0 5px;
             text-transform: uppercase;
         }
 
         .title-underline {
-            width: 60px;
-            height: 3px;
+            width: 45px;
+            height: 2.5px;
             background: linear-gradient(90deg, #e8a020, #f5b027);
-            margin: 1.5rem auto;
+            margin: 1.25rem auto;
             border-radius: 2px;
         }
 
         .brand-tagline {
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             color: #94a3b8;
-            max-width: 320px;
-            line-height: 1.6;
+            max-width: 280px;
+            line-height: 1.5;
             font-weight: 400;
         }
 
         /* Features Highlights */
         .feature-list {
             list-style: none;
-            margin: 2rem 0;
+            margin: 1.5rem 0;
             padding: 0;
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.25rem 2rem;
+            grid-template-columns: 1fr;
+            gap: 0.85rem;
             text-align: left;
-            max-width: 480px;
             width: 100%;
+            max-width: 280px;
         }
 
         .feature-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-size: 0.95rem;
-            color: #e2e8f0;
+            gap: 10px;
+            font-size: 0.85rem;
+            color: #cbd5e1;
             font-weight: 500;
         }
 
         .feature-icon {
             color: #e8a020;
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             filter: drop-shadow(0 0 4px rgba(232, 160, 32, 0.4));
         }
 
         /* SVG Route Graphic */
         .left-graphics-container {
             width: 100%;
-            max-width: 450px;
-            margin-top: 1.5rem;
+            max-width: 320px;
+            margin-top: 1rem;
             position: relative;
         }
 
@@ -200,68 +192,29 @@
             overflow: visible;
         }
 
-        .route-line-anim-1 {
-            animation: routeAnim1 20s linear infinite;
-        }
-
-        .route-line-anim-2 {
-            animation: routeAnim2 15s linear infinite;
-        }
-
-        @keyframes routeAnim1 {
-            0% { stroke-dashoffset: 200; }
-            100% { stroke-dashoffset: 0; }
-        }
-
-        @keyframes routeAnim2 {
-            0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: 200; }
-        }
+        .route-line-anim-1 { animation: routeAnim1 20s linear infinite; }
+        .route-line-anim-2 { animation: routeAnim2 15s linear infinite; }
+        @keyframes routeAnim1 { 0% { stroke-dashoffset: 200; } 100% { stroke-dashoffset: 0; } }
+        @keyframes routeAnim2 { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 200; } }
 
         .ping-anim {
             transform-origin: center;
             animation: ping 2.5s cubic-bezier(0, 0, 0.2, 1) infinite;
         }
-
         @keyframes ping {
             0% { transform: scale(0.6); opacity: 0.8; }
             100% { transform: scale(2.2); opacity: 0; }
         }
 
-        /* ── RIGHT PANEL (Login Card) ── */
+        /* ── RIGHT PANEL (Login Area) ── */
         .right-panel {
-            background: radial-gradient(circle at 80% 20%, #f8fafc 0%, #e2e8f0 100%);
+            width: 55%;
+            background: #ffffff;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            align-items: center;
+            padding: 4rem 3.5rem;
             position: relative;
-            z-index: 1;
-        }
-
-        .login-card-inner {
-            width: 100%;
-            max-width: 450px;
-            padding: 3rem;
-            background: rgba(255, 255, 255, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 24px;
-            box-shadow: 
-                0 4px 6px -1px rgba(0, 0, 0, 0.02), 
-                0 10px 15px -3px rgba(0, 0, 0, 0.03),
-                0 20px 25px -5px rgba(0, 0, 0, 0.05),
-                0 0 40px 0 rgba(232, 160, 32, 0.02);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .login-card-inner:hover {
-            transform: translateY(-4px);
-            box-shadow: 
-                0 10px 15px -3px rgba(0, 0, 0, 0.03),
-                0 25px 35px -10px rgba(0, 0, 0, 0.06),
-                0 0 50px 0 rgba(232, 160, 32, 0.04);
         }
 
         .right-panel-header {
@@ -315,7 +268,7 @@
         .form-group input {
             width: 100%;
             padding: 14px 16px 14px 46px !important;
-            background: rgba(248, 250, 252, 0.8) !important;
+            background: #f8fafc !important;
             border: 1.5px solid #cbd5e1 !important;
             border-radius: 12px !important;
             font-size: 0.95rem !important;
@@ -329,7 +282,7 @@
         .form-group input:focus {
             background: #ffffff !important;
             border-color: #e8a020 !important;
-            box-shadow: 0 0 0 4px rgba(232, 160, 32, 0.15) !important;
+            box-shadow: 0 0 0 4px rgba(232, 160, 32, 0.12) !important;
         }
 
         .form-group input:focus + .input-prefix-icon {
@@ -429,96 +382,77 @@
         .delay-700 { animation-delay: 0.7s; }
 
         @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         /* Footer badge */
         .footer-badge {
-            position: relative !important;
-            bottom: auto !important;
-            left: auto !important;
-            right: auto !important;
-            margin-top: 2rem !important;
+            margin-top: 2.5rem !important;
             text-align: center !important;
             font-size: 0.8rem !important;
-            color: #64748b !important;
+            color: #94a3b8 !important;
             font-weight: 500 !important;
-            letter-spacing: 0px !important;
         }
 
         /* ── RESPONSIVE MEDIA QUERIES ── */
-        @media (min-width: 1024px) {
-            .left-panel {
-                width: 45%;
-                height: 100vh;
-                padding: 4rem;
+        @media (max-width: 850px) {
+            body {
+                padding: 1rem;
             }
-            .right-panel {
-                width: 55%;
-                height: 100vh;
-                padding: 4rem;
-            }
-        }
-
-        @media (min-width: 768px) and (max-width: 1023px) {
             .login-card {
-                flex-direction: row !important;
-            }
-            .left-panel {
-                width: 45%;
-                height: 100vh;
-                padding: 2.5rem 1.5rem;
+                height: 580px !important;
             }
             .right-panel {
-                width: 55%;
-                height: 100vh;
+                padding: 3rem 2rem;
+            }
+            .left-panel {
                 padding: 2.5rem 1.5rem;
             }
             .brand-title {
-                font-size: 2.25rem;
-            }
-            .feature-list {
-                grid-template-columns: 1fr;
-                gap: 0.75rem;
+                font-size: 2rem;
             }
         }
 
         @media (max-width: 767px) {
+            body {
+                padding: 0;
+                align-items: flex-start;
+                background: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+            }
             .container {
-                height: auto !important;
-                min-height: 100vh !important;
-                overflow-y: auto !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: 100vh;
+                margin: 0 !important;
             }
             .login-card {
                 flex-direction: column !important;
                 height: auto !important;
                 min-height: 100vh !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
             }
             .left-panel {
                 width: 100%;
-                padding: 3rem 1.5rem 2.5rem;
-                min-height: 35vh;
+                min-height: 30vh;
+                padding: 2.5rem 1.5rem 1.5rem;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             }
             .right-panel {
                 width: 100%;
-                padding: 2.5rem 1.5rem 4rem;
-                min-height: 65vh;
+                min-height: 70vh;
+                padding: 2.5rem 1.5rem 3rem;
                 justify-content: flex-start;
+                background: #ffffff;
             }
             .feature-list, .left-graphics-container {
                 display: none !important;
             }
-            .login-card-inner {
-                padding: 2rem 1.5rem;
-                border-radius: 20px;
-                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            .footer-badge {
+                margin-top: 3rem !important;
             }
         }
     </style>
@@ -616,43 +550,41 @@
                 </div>
             </div>
 
-            <!-- RIGHT PANEL: CENTERED LOGIN CARD -->
+            <!-- RIGHT PANEL: LOGIN AREA -->
             <div class="right-panel">
-                <div class="login-card-inner animate-fade-in delay-200">
-                    <div class="right-panel-header">
-                        <h2>Welcome Back 👋</h2>
-                        <p class="right-subhead">Sign in to continue to your dashboard</p>
-                    </div>
-
-                    <form id="loginForm">
-                        <div class="form-group">
-                            <label for="email">Email Address</label>
-                            <div class="input-wrapper">
-                                <input type="email" id="email" value="agnicarrental@gmail.com" placeholder="name@company.com" required>
-                                <i class="fa-regular fa-envelope input-prefix-icon"></i>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="password">Password</label>
-                            <div class="input-wrapper password-wrapper">
-                                <input type="password" id="password" placeholder="••••••••" required>
-                                <i class="fa-solid fa-lock input-prefix-icon"></i>
-                                <i class="fas fa-eye toggle-icon" id="toggleIcon"></i>
-                            </div>
-                        </div>
-                        
-                        <p id="error-message" class="error-msg"></p>
-                        
-                        <button type="submit" class="login-btn">
-                            <span>Sign In</span>
-                            <i class="fa-solid fa-arrow-right"></i>
-                        </button>
-                    </form>
-
-                    <footer class="footer-badge">
-                        <p>© 2025 Agni Car Rental. All Rights Reserved.</p>
-                    </footer>
+                <div class="right-panel-header animate-fade-in delay-100">
+                    <h2>Welcome Back 👋</h2>
+                    <p class="right-subhead">Sign in to continue to your dashboard</p>
                 </div>
+
+                <form id="loginForm" class="animate-fade-in delay-200">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-wrapper">
+                            <input type="email" id="email" value="agnicarrental@gmail.com" placeholder="name@company.com" required>
+                            <i class="fa-regular fa-envelope input-prefix-icon"></i>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper password-wrapper">
+                            <input type="password" id="password" placeholder="••••••••" required>
+                            <i class="fa-solid fa-lock input-prefix-icon"></i>
+                            <i class="fas fa-eye toggle-icon" id="toggleIcon"></i>
+                        </div>
+                    </div>
+                    
+                    <p id="error-message" class="error-msg"></p>
+                    
+                    <button type="submit" class="login-btn">
+                        <span>Sign In</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <footer class="footer-badge animate-fade-in delay-300">
+                    <p>© 2025 Agni Car Rental. All Rights Reserved.</p>
+                </footer>
             </div>
 
         </div>
