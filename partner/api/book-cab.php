@@ -57,27 +57,52 @@ $partner_ref = mysqli_real_escape_string($conn, trim($body['partner_booking_ref'
 // Generate booking ID
 $booking_id = 'PB' . strtoupper(substr(md5(uniqid($partner['api_key'], true)), 0, 10));
 
+// ── Ensure user exists in users table so they show up in admin joins ──────
+$user_check = mysqli_prepare($conn, "SELECT phone_number FROM users WHERE phone_number = ? LIMIT 1");
+if ($user_check) {
+    mysqli_stmt_bind_param($user_check, 's', $user_mobile);
+    mysqli_stmt_execute($user_check);
+    mysqli_stmt_store_result($user_check);
+    $user_exists = mysqli_stmt_num_rows($user_check) > 0;
+    mysqli_stmt_close($user_check);
+
+    if (!$user_exists) {
+        $user_inst = mysqli_prepare($conn, "INSERT INTO users (phone_number, name, email, created_at) VALUES (?, ?, ?, NOW())");
+        if ($user_inst) {
+            mysqli_stmt_bind_param($user_inst, 'sss', $user_mobile, $user_name, $user_email);
+            mysqli_stmt_execute($user_inst);
+            mysqli_stmt_close($user_inst);
+        }
+    } else {
+        $user_upd = mysqli_prepare($conn, "UPDATE users SET name = ?, email = ? WHERE phone_number = ?");
+        if ($user_upd) {
+            mysqli_stmt_bind_param($user_upd, 'sss', $user_name, $user_email, $user_mobile);
+            mysqli_stmt_execute($user_upd);
+            mysqli_stmt_close($user_upd);
+        }
+    }
+}
+
 // Check if bookings table has the columns we need; use safe INSERT
 // We add 'source' as 'partner' and track booker_id as partner mobile
 $insert_sql = "INSERT INTO bookings
     (booking_id, from_address, to_address, trip_type, car_type,
-     date, time, user_name, booker_id, email,
+     date, time, booker_id,
      distance, total_amount, return_date, return_time,
      booking_status, booked_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Confirmed', NOW())";
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Confirmed', NOW())";
 
 $stmt = mysqli_prepare($conn, $insert_sql);
 
 if (!$stmt) {
-    // Fallback: try without optional columns
     $err = mysqli_error($conn);
     log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>$err], 'error');
     api_error('Booking creation failed: ' . $err, 500);
 }
 
-mysqli_stmt_bind_param($stmt, 'ssssssssssddss',
+mysqli_stmt_bind_param($stmt, 'ssssssssddss',
     $booking_id, $from, $to, $trip_type, $car_type,
-    $date, $time, $user_name, $user_mobile, $user_email,
+    $date, $time, $user_mobile,
     $distance, $amount, $ret_date, $ret_time
 );
 
