@@ -45,11 +45,14 @@
             max-width: 1000px !important;
             margin: auto !important;
             padding: 0 !important;
+            min-height: auto !important;
         }
 
         .login-card {
             display: flex !important;
             width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
             height: 640px !important;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 24px !important;
