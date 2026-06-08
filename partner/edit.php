@@ -31,20 +31,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Invalid email address.';
     } else {
-        $upd = mysqli_prepare($conn, "UPDATE partners SET partner_name=?, company_name=?, contact_person=?, mobile_number=?, email=?, rate_limit_per_minute=?, rate_limit_per_day=?, notes=? WHERE id=?");
-        mysqli_stmt_bind_param($upd, 'sssssiisd', $partner_name, $company_name, $contact_person, $mobile, $email, $rate_min, $rate_day, $notes, $id);
-        if (mysqli_stmt_execute($upd)) {
-            $success = 'Partner updated successfully!';
-            // Refresh
-            $stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
-            mysqli_stmt_bind_param($stmt, 'i', $id);
-            mysqli_stmt_execute($stmt);
-            $p = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
-            mysqli_stmt_close($stmt);
-        } else {
-            $error = 'Update failed: ' . mysqli_error($conn);
+        try {
+            $upd = mysqli_prepare($conn, "UPDATE partners SET partner_name=?, company_name=?, contact_person=?, mobile_number=?, email=?, rate_limit_per_minute=?, rate_limit_per_day=?, notes=? WHERE id=?");
+            mysqli_stmt_bind_param($upd, 'sssssiisi', $partner_name, $company_name, $contact_person, $mobile, $email, $rate_min, $rate_day, $notes, $id);
+            if (mysqli_stmt_execute($upd)) {
+                $success = 'Partner updated successfully!';
+                // Refresh
+                $stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
+                mysqli_stmt_bind_param($stmt, 'i', $id);
+                mysqli_stmt_execute($stmt);
+                $p = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+                mysqli_stmt_close($stmt);
+            } else {
+                $error = 'Update failed: ' . mysqli_error($conn);
+            }
+            mysqli_stmt_close($upd);
+        } catch (mysqli_sql_exception $e) {
+            if ($e->getCode() == 1062) {
+                $error = 'Error: A partner with this email address already exists.';
+            } else {
+                $error = 'Database error: ' . $e->getMessage();
+            }
         }
-        mysqli_stmt_close($upd);
     }
 }
 ?>

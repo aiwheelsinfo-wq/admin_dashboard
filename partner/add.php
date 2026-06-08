@@ -34,24 +34,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $secret_key = bin2hex(random_bytes(24));
 
-        $stmt = mysqli_prepare($conn,
-            "INSERT INTO partners (partner_name, company_name, contact_person, mobile_number, email, api_key, secret_key, rate_limit_per_minute, rate_limit_per_day, notes, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
-        );
-        mysqli_stmt_bind_param($stmt, 'sssssssiis',
-            $partner_name, $company_name, $contact_person, $mobile, $email,
-            $api_key, $secret_key, $rate_min, $rate_day, $notes
-        );
+        try {
+            $stmt = mysqli_prepare($conn,
+                "INSERT INTO partners (partner_name, company_name, contact_person, mobile_number, email, api_key, secret_key, rate_limit_per_minute, rate_limit_per_day, notes, status)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
+            );
+            mysqli_stmt_bind_param($stmt, 'sssssssiis',
+                $partner_name, $company_name, $contact_person, $mobile, $email,
+                $api_key, $secret_key, $rate_min, $rate_day, $notes
+            );
 
-        if (mysqli_stmt_execute($stmt)) {
-            $new_id  = mysqli_insert_id($conn);
-            $success = "Partner added successfully!";
-            // Show keys in session for one-time display
-            $_SESSION['new_keys'] = ['api_key' => $api_key, 'secret_key' => $secret_key, 'id' => $new_id];
-        } else {
-            $error = 'Error: ' . mysqli_error($conn);
+            if (mysqli_stmt_execute($stmt)) {
+                $new_id  = mysqli_insert_id($conn);
+                $success = "Partner added successfully!";
+                // Show keys in session for one-time display
+                $_SESSION['new_keys'] = ['api_key' => $api_key, 'secret_key' => $secret_key, 'id' => $new_id];
+            } else {
+                $error = 'Error: ' . mysqli_error($conn);
+            }
+            mysqli_stmt_close($stmt);
+        } catch (mysqli_sql_exception $e) {
+            if ($e->getCode() == 1062) {
+                $error = 'Error: A partner with this email address already exists.';
+            } else {
+                $error = 'Database error: ' . $e->getMessage();
+            }
         }
-        mysqli_stmt_close($stmt);
     }
 }
 
