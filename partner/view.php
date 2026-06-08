@@ -59,16 +59,50 @@ mysqli_stmt_close($logs_stmt);
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body style="background:linear-gradient(135deg,#0f0f23,#1a1a2e,#16213e);min-height:100vh;">
+<!-- Top Nav -->
 <nav class="top-nav">
     <div class="logo-container"><img src="../images/logo.png" alt="Logo" class="logo"></div>
     <h1 class="dashboard-heading"><?= htmlspecialchars($p['partner_name']) ?></h1>
-    <div class="right-nav">
-        <a href="edit.php?id=<?= $id ?>" class="btn btn-warning btn-sm me-1"><i class="fas fa-edit"></i></a>
-        <a href="index.php" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Back</a>
+    <div class="center-nav">
+        <a href="../dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
     </div>
+    <div class="right-nav">
+        <form action="../logout.php" method="POST" class="logout-form d-inline">
+            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </form>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
 </nav>
 
-<div class="partner-page">
+<div class="container-fluid separator"></div>
+
+<div class="dashboard-container">
+    <nav class="sidebar" id="sidebar">
+        <ul>
+            <li><a href="../dashboard.php?tab=driver" id="driver"><i class="fas fa-user me-2"></i> Driver</a></li>
+            <li><a href="../dashboard.php?tab=cab" id="cab"><i class="fas fa-taxi me-2"></i> Cab</a></li>
+            <li><a href="../dashboard.php?tab=booking" id="booking"><i class="fas fa-calendar me-2"></i> Booking</a></li>
+            <li><a href="../dashboard.php?tab=completed" id="Complete"><i class="fas fa-calendar-check me-2"></i> Completed</a></li>
+            <li>
+                <a href="../dashboard.php?tab=newuser" id="newuser">
+                    <i class="fa-solid fa-users me-2"></i> Customers
+                </a>
+            </li>
+            <li><a href="https://agnicarrental.com/admin2025/bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
+            <li><a href="../dashboard.php?tab=blocked_customer" id="Blocked_Customer"><i class="fas fa-user-slash me-2"></i>Blocked Customer</a></li>
+            <li><a href="../dashboard.php?tab=extract_data" id="Extract_Data"><i class="fas fa-file-excel me-2"></i> Extract Data</a></li>
+            <li><a href="index.php" id="partner_api" style="background-color: #465c71;"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
+        </ul>
+    </nav>
+    <main class="content" style="padding: 0;">
+        <div class="partner-page" style="padding-top: 20px;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 style="margin: 0; color: #fff;"><i class="fas fa-info-circle me-2"></i> Partner Overview</h3>
+                <div class="d-flex gap-2">
+                    <a href="edit.php?id=<?= $id ?>" class="btn-partner-warning"><i class="fas fa-edit me-1"></i> Edit</a>
+                    <a href="index.php" class="btn-partner-info"><i class="fas fa-arrow-left me-1"></i> Back</a>
+                </div>
+            </div>
 
     <!-- Stats Dashboard -->
     <div class="partner-stats">
@@ -232,7 +266,8 @@ mysqli_stmt_close($logs_stmt);
         </div>
         <?php endif; ?>
     </div>
-
+</div>
+    </main>
 </div>
 <div class="partner-toast" id="toast"></div>
 <script>
@@ -262,6 +297,22 @@ $('#toggleStatusBtn').on('click', function() {
                 $('#status-badge').attr('class',isBlocked?'badge-blocked':'badge-active').text(isBlocked?'Blocked':'Active');
                 showToast('✅ '+res.message,'success');
             } else { showToast('❌ '+res.message,'error'); }
+        }
+    });
+});
+
+// Hamburger menu toggle
+$(document).ready(function() {
+    const hamburger = $('#hamburger');
+    const sidebar = $('#sidebar');
+    hamburger.on('click', () => {
+        sidebar.toggleClass('active');
+        hamburger.attr('aria-expanded', sidebar.hasClass('active'));
+    });
+    $(document).on('click', (e) => {
+        if (!sidebar.is(e.target) && !sidebar.has(e.target).length && !hamburger.is(e.target) && !hamburger.has(e.target).length) {
+            sidebar.removeClass('active');
+            hamburger.attr('aria-expanded', 'false');
         }
     });
 });

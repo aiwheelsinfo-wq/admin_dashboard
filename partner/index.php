@@ -40,15 +40,39 @@ while ($row = mysqli_fetch_assoc($result)) {
 <nav class="top-nav">
     <div class="logo-container"><img src="../images/logo.png" alt="Logo" class="logo"></div>
     <h1 class="dashboard-heading">Partner API Management</h1>
+    <div class="center-nav">
+        <a href="../dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
+    </div>
     <div class="right-nav">
-        <a href="../dashboard.php" class="btn btn-outline-light btn-sm me-2"><i class="fas fa-arrow-left me-1"></i> Dashboard</a>
         <form action="../logout.php" method="POST" class="logout-form d-inline">
             <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </form>
     </div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
 </nav>
 
-<div class="partner-page" style="padding-top: 20px;">
+<div class="container-fluid separator"></div>
+
+<div class="dashboard-container">
+    <nav class="sidebar" id="sidebar">
+        <ul>
+            <li><a href="../dashboard.php?tab=driver" id="driver"><i class="fas fa-user me-2"></i> Driver</a></li>
+            <li><a href="../dashboard.php?tab=cab" id="cab"><i class="fas fa-taxi me-2"></i> Cab</a></li>
+            <li><a href="../dashboard.php?tab=booking" id="booking"><i class="fas fa-calendar me-2"></i> Booking</a></li>
+            <li><a href="../dashboard.php?tab=completed" id="Complete"><i class="fas fa-calendar-check me-2"></i> Completed</a></li>
+            <li>
+                <a href="../dashboard.php?tab=newuser" id="newuser">
+                    <i class="fa-solid fa-users me-2"></i> Customers
+                </a>
+            </li>
+            <li><a href="https://agnicarrental.com/admin2025/bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
+            <li><a href="../dashboard.php?tab=blocked_customer" id="Blocked_Customer"><i class="fas fa-user-slash me-2"></i>Blocked Customer</a></li>
+            <li><a href="../dashboard.php?tab=extract_data" id="Extract_Data"><i class="fas fa-file-excel me-2"></i> Extract Data</a></li>
+            <li><a href="index.php" id="partner_api" style="background-color: #465c71;"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
+        </ul>
+    </nav>
+    <main class="content" style="padding: 0;">
+        <div class="partner-page" style="padding-top: 20px;">
 
     <!-- Header -->
     <div class="partner-header">
@@ -177,6 +201,8 @@ while ($row = mysqli_fetch_assoc($result)) {
     </div>
 
 </div>
+    </main>
+</div>
 
 <!-- Toast -->
 <div class="partner-toast" id="toast"></div>
@@ -246,6 +272,22 @@ $(document).on('click', '.btn-delete', function() {
             } else {
                 showToast('❌ ' + res.message, 'error');
             }
+        }
+    });
+});
+
+// Hamburger menu toggle
+$(document).ready(function() {
+    const hamburger = $('#hamburger');
+    const sidebar = $('#sidebar');
+    hamburger.on('click', () => {
+        sidebar.toggleClass('active');
+        hamburger.attr('aria-expanded', sidebar.hasClass('active'));
+    });
+    $(document).on('click', (e) => {
+        if (!sidebar.is(e.target) && !sidebar.has(e.target).length && !hamburger.is(e.target) && !hamburger.has(e.target).length) {
+            sidebar.removeClass('active');
+            hamburger.attr('aria-expanded', 'false');
         }
     });
 });

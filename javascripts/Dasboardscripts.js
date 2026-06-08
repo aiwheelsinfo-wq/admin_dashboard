@@ -1323,6 +1323,28 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     fetchonRides();
     fetchnewUsers();
     fetchBlocked_Customer();
+
+    // Parse URL parameter to activate correct tab on load
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        if (tabParam === 'driver') {
+            $("#driver").click();
+        } else if (tabParam === 'cab') {
+            $("#cab").click();
+        } else if (tabParam === 'booking') {
+            // Already default, but make sure
+            $("#booking").click();
+        } else if (tabParam === 'completed') {
+            $("#Complete").click();
+        } else if (tabParam === 'newuser') {
+            $("#newuser").click();
+        } else if (tabParam === 'blocked_customer') {
+            $("#Blocked_Customer").click();
+        } else if (tabParam === 'extract_data') {
+            $("#Extract_Data").click();
+        }
+    }
 });
 
 // Booking confirmation toggle

@@ -69,21 +69,52 @@ $api_names = ['search-cab','get-fare','book-cab','booking-status','cancel-bookin
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body style="background:linear-gradient(135deg,#0f0f23,#1a1a2e,#16213e);min-height:100vh;">
+<!-- Top Nav -->
 <nav class="top-nav">
     <div class="logo-container"><img src="../images/logo.png" alt="Logo" class="logo"></div>
     <h1 class="dashboard-heading">API Logs</h1>
-    <div class="right-nav">
-        <a href="index.php" class="btn btn-outline-light btn-sm"><i class="fas fa-arrow-left me-1"></i>Partners</a>
+    <div class="center-nav">
+        <a href="../dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
     </div>
+    <div class="right-nav">
+        <form action="../logout.php" method="POST" class="logout-form d-inline">
+            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </form>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
 </nav>
 
-<div class="partner-page">
-    <div class="partner-header">
-        <div>
-            <h2><i class="fas fa-history me-2"></i>API Request Logs</h2>
-            <div class="breadcrumb-text">Showing <?= number_format($total_rows) ?> total log entries</div>
-        </div>
-    </div>
+<div class="container-fluid separator"></div>
+
+<div class="dashboard-container">
+    <nav class="sidebar" id="sidebar">
+        <ul>
+            <li><a href="../dashboard.php?tab=driver" id="driver"><i class="fas fa-user me-2"></i> Driver</a></li>
+            <li><a href="../dashboard.php?tab=cab" id="cab"><i class="fas fa-taxi me-2"></i> Cab</a></li>
+            <li><a href="../dashboard.php?tab=booking" id="booking"><i class="fas fa-calendar me-2"></i> Booking</a></li>
+            <li><a href="../dashboard.php?tab=completed" id="Complete"><i class="fas fa-calendar-check me-2"></i> Completed</a></li>
+            <li>
+                <a href="../dashboard.php?tab=newuser" id="newuser">
+                    <i class="fa-solid fa-users me-2"></i> Customers
+                </a>
+            </li>
+            <li><a href="https://agnicarrental.com/admin2025/bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
+            <li><a href="../dashboard.php?tab=blocked_customer" id="Blocked_Customer"><i class="fas fa-user-slash me-2"></i>Blocked Customer</a></li>
+            <li><a href="../dashboard.php?tab=extract_data" id="Extract_Data"><i class="fas fa-file-excel me-2"></i> Extract Data</a></li>
+            <li><a href="index.php" id="partner_api" style="background-color: #465c71;"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
+        </ul>
+    </nav>
+    <main class="content" style="padding: 0;">
+        <div class="partner-page" style="padding-top: 20px;">
+            <div class="partner-header">
+                <div>
+                    <h2><i class="fas fa-history me-2"></i>API Request Logs</h2>
+                    <div class="breadcrumb-text">Showing <?= number_format($total_rows) ?> total log entries</div>
+                </div>
+                <div>
+                    <a href="index.php" class="btn-partner-info"><i class="fas fa-arrow-left me-1"></i> Back to Partners</a>
+                </div>
+            </div>
 
     <!-- Filter Bar -->
     <form method="GET" class="filter-bar">
@@ -187,7 +218,9 @@ $api_names = ['search-cab','get-fare','book-cab','booking-status','cancel-bookin
         <?php endif; ?>
         <?php endif; ?>
     </div>
-
+    </div>
+</div>
+    </main>
 </div>
 
 <!-- Log Detail Modal -->
@@ -212,6 +245,22 @@ function showLog(id, req, res) {
     try { document.getElementById('logRes').textContent = JSON.stringify(JSON.parse(res), null, 2); } catch(e) { document.getElementById('logRes').textContent = res; }
     document.getElementById('logModal').style.display = 'block';
 }
+
+// Hamburger menu toggle
+$(document).ready(function() {
+    const hamburger = $('#hamburger');
+    const sidebar = $('#sidebar');
+    hamburger.on('click', () => {
+        sidebar.toggleClass('active');
+        hamburger.attr('aria-expanded', sidebar.hasClass('active'));
+    });
+    $(document).on('click', (e) => {
+        if (!sidebar.is(e.target) && !sidebar.has(e.target).length && !hamburger.is(e.target) && !hamburger.has(e.target).length) {
+            sidebar.removeClass('active');
+            hamburger.attr('aria-expanded', 'false');
+        }
+    });
+});
 </script>
 </body>
 </html>
