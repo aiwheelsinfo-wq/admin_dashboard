@@ -432,20 +432,20 @@ function showBookingModal(booking) {
                                     bounds.extend(toLatLng);
                                     map.fitBounds(bounds);
                                 } else {
-                                    $('#routeError').text('Unable to calculate route. Please check the addresses or try again.');
+                                    $('#routeError').text(`Unable to calculate route (${status}). Please check the addresses or try again.`);
                                     $('#routeError').show();
                                     console.error('Directions request failed:', status);
                                 }
                             }
                         );
                     } else {
-                        $('#routeError').text('Unable to geocode destination address. Please verify the address.');
+                        $('#routeError').text(`Unable to geocode destination address (${status}). Please verify the address.`);
                         $('#routeError').show();
                         console.error('Geocoding "To" failed:', status);
                     }
                 });
             } else {
-                $('#routeError').text('Unable to geocode starting address. Please verify the address.');
+                $('#routeError').text(`Unable to geocode starting address (${status}). Please verify the address.`);
                 $('#routeError').show();
                 console.error('Geocoding "From" failed:', status);
             }
