@@ -4,24 +4,24 @@
    ================================================ */
 
 :root {
-    --partner-primary:   #6C63FF;
-    --partner-secondary: #4ECDC4;
-    --partner-accent:    #FF6B6B;
-    --partner-dark:      #1a1a2e;
-    --partner-card-bg:   #16213e;
-    --partner-border:    rgba(108, 99, 255, 0.25);
-    --partner-text:      #e0e0e0;
-    --partner-muted:     #888;
-    --active-green:      #00D68F;
-    --blocked-red:       #FF3D71;
-    --warning-orange:    #FFAA00;
+    --partner-primary:   #007bff;
+    --partner-secondary: #0056b3;
+    --partner-accent:    #17a2b8;
+    --partner-dark:      #f4f4f4;
+    --partner-card-bg:   #ffffff;
+    --partner-border:    #dee2e6;
+    --partner-text:      #333333;
+    --partner-muted:     #6c757d;
+    --active-green:      #28a745;
+    --blocked-red:       #dc3545;
+    --warning-orange:    #ffc107;
 }
 
 /* ── Page Wrapper ─────────────────────────────── */
 .partner-page {
     padding: 24px;
     min-height: 100vh;
-    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    background: #f4f4f4;
     color: var(--partner-text);
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
@@ -86,7 +86,7 @@
 .stat-card .stat-value {
     font-size: 2rem;
     font-weight: 800;
-    color: #fff;
+    color: #111;
     line-height: 1;
 }
 .stat-card .stat-label {
@@ -104,7 +104,7 @@
     border-radius: 16px;
     padding: 24px;
     margin-bottom: 24px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
 }
 .partner-card-header {
     display: flex;
@@ -117,7 +117,7 @@
 .partner-card-header h4 {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #fff;
+    color: #111;
     margin: 0;
 }
 
@@ -245,7 +245,7 @@
     color: var(--partner-text);
 }
 .partner-table thead th {
-    background: rgba(108,99,255,0.1);
+    background: rgba(0,123,255,0.08);
     color: var(--partner-muted);
     font-size: 0.75rem;
     text-transform: uppercase;
@@ -255,12 +255,13 @@
     border: none;
 }
 .partner-table tbody tr {
-    background: rgba(255,255,255,0.03);
+    background: #ffffff;
+    border: 1px solid var(--partner-border);
     border-radius: 10px;
     transition: background .2s, transform .2s;
 }
 .partner-table tbody tr:hover {
-    background: rgba(108,99,255,0.08);
+    background: rgba(0,123,255,0.04);
     transform: translateX(2px);
 }
 .partner-table tbody td {
@@ -277,7 +278,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background: rgba(0,0,0,0.3);
+    background: #f8f9fa;
     border: 1px solid var(--partner-border);
     border-radius: 10px;
     padding: 12px 16px;
@@ -316,20 +317,20 @@
 }
 .partner-form .form-control,
 .partner-form .form-select {
-    background: rgba(255,255,255,0.05);
+    background: #ffffff;
     border: 1px solid var(--partner-border);
     border-radius: 10px;
-    color: #fff;
+    color: #333333;
     padding: 11px 16px;
     font-size: 0.9rem;
     transition: border-color .2s, box-shadow .2s;
 }
 .partner-form .form-control:focus,
 .partner-form .form-select:focus {
-    background: rgba(108,99,255,0.1);
+    background: #ffffff;
     border-color: var(--partner-primary);
-    box-shadow: 0 0 0 3px rgba(108,99,255,0.15);
-    color: #fff;
+    box-shadow: 0 0 0 3px rgba(0,123,255,0.15);
+    color: #333333;
     outline: none;
 }
 .partner-form .form-control::placeholder { color: rgba(255,255,255,0.3); }
@@ -343,19 +344,20 @@
     align-items: flex-end;
     margin-bottom: 20px;
     padding: 16px;
-    background: rgba(255,255,255,0.03);
+    background: #ffffff;
     border-radius: 12px;
     border: 1px solid var(--partner-border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 .filter-bar .form-group { margin: 0; }
 .filter-bar label { font-size: 0.75rem; color: var(--partner-muted); margin-bottom: 5px; display:block; }
 .filter-bar select,
 .filter-bar input[type="date"],
 .filter-bar input[type="text"] {
-    background: rgba(255,255,255,0.06);
+    background: #ffffff;
     border: 1px solid var(--partner-border);
     border-radius: 8px;
-    color: #fff;
+    color: #333333;
     padding: 8px 14px;
     font-size: 0.85rem;
     min-width: 140px;
@@ -378,7 +380,7 @@
 }
 .info-item span {
     font-size: 0.95rem;
-    color: #fff;
+    color: #111;
     font-weight: 500;
 }
 

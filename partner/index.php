@@ -34,7 +34,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body style="background: linear-gradient(135deg,#0f0f23 0%,#1a1a2e 50%,#16213e 100%); min-height:100vh;">
+<body>
 
 <!-- Top Nav -->
 <nav class="top-nav">
@@ -123,7 +123,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     <div class="partner-card">
         <div class="partner-card-header">
             <h4><i class="fas fa-users-cog me-2" style="color:#6C63FF"></i>All Partners</h4>
-            <input type="text" id="searchInput" class="form-control" style="max-width:250px;background:rgba(255,255,255,0.07);border:1px solid rgba(108,99,255,0.3);color:#fff;border-radius:8px;" placeholder="🔍 Search partner...">
+            <input type="text" id="searchInput" class="form-control" style="max-width:250px;background:#fff;border:1px solid var(--partner-border);color:#333;border-radius:8px;" placeholder="🔍 Search partner...">
         </div>
 
         <?php if (empty($partners)): ?>
@@ -153,15 +153,15 @@ while ($row = mysqli_fetch_assoc($result)) {
                     <tr id="row-<?= $p['id'] ?>">
                         <td><?= $i + 1 ?></td>
                         <td>
-                            <div style="font-weight:600;color:#fff;"><?= htmlspecialchars($p['partner_name']) ?></div>
-                            <div style="font-size:0.78rem;color:#888;"><?= htmlspecialchars($p['company_name']) ?></div>
+                            <div style="font-weight:600;color:#333;"><?= htmlspecialchars($p['partner_name']) ?></div>
+                            <div style="font-size:0.78rem;color:#666;"><?= htmlspecialchars($p['company_name']) ?></div>
                         </td>
                         <td>
                             <div><?= htmlspecialchars($p['contact_person']) ?></div>
                             <div style="font-size:0.78rem;color:#888;"><?= htmlspecialchars($p['mobile_number']) ?></div>
                         </td>
                         <td>
-                            <code style="font-size:0.75rem;color:#4ECDC4;background:rgba(0,0,0,0.3);padding:3px 8px;border-radius:5px;">
+                            <code style="font-size:0.75rem;color:#0056b3;background:#f1f3f5;padding:3px 8px;border-radius:5px;">
                                 <?= substr(htmlspecialchars($p['api_key']), 0, 18) ?>...
                             </code>
                         </td>

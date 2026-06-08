@@ -58,7 +58,7 @@ mysqli_stmt_close($logs_stmt);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
-<body style="background:linear-gradient(135deg,#0f0f23,#1a1a2e,#16213e);min-height:100vh;">
+<body>
 <!-- Top Nav -->
 <nav class="top-nav">
     <div class="logo-container"><img src="../images/logo.png" alt="Logo" class="logo"></div>
@@ -200,8 +200,8 @@ mysqli_stmt_close($logs_stmt);
                 </div>
 
                 <!-- API Endpoints Reference -->
-                <div style="margin-top:20px;background:rgba(0,0,0,0.3);border-radius:10px;padding:16px;">
-                    <div style="font-size:0.78rem;color:#888;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">API Endpoints</div>
+                <div style="margin-top:20px;background:#f8f9fa;border:1px solid var(--partner-border);border-radius:10px;padding:16px;">
+                    <div style="font-size:0.78rem;color:var(--partner-muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">API Endpoints</div>
                     <?php
                     $endpoints = [
                         ['POST','search-cab','Search available cabs'],
@@ -214,10 +214,10 @@ mysqli_stmt_close($logs_stmt);
                     ];
                     foreach ($endpoints as [$method, $ep, $desc]):
                     ?>
-                    <div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
-                        <span style="background:rgba(108,99,255,0.2);color:#6C63FF;border-radius:4px;padding:2px 8px;font-size:0.7rem;font-weight:700;width:38px;text-align:center;"><?= $method ?></span>
-                        <code style="color:#4ECDC4;font-size:0.8rem;flex:1;">/partner/api/<?= $ep ?>.php</code>
-                        <span style="font-size:0.75rem;color:#666;"><?= $desc ?></span>
+                    <div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--partner-border);">
+                        <span style="background:rgba(0,123,255,0.15);color:#0056b3;border-radius:4px;padding:2px 8px;font-size:0.7rem;font-weight:700;width:38px;text-align:center;"><?= $method ?></span>
+                        <code style="color:#0056b3;font-size:0.8rem;flex:1;background:none;padding:0;">/partner/api/<?= $ep ?>.php</code>
+                        <span style="font-size:0.75rem;color:#555;"><?= $desc ?></span>
                     </div>
                     <?php endforeach; ?>
                 </div>
@@ -243,7 +243,7 @@ mysqli_stmt_close($logs_stmt);
                 <?php foreach ($logs as $i => $log): ?>
                     <tr>
                         <td><?= $i+1 ?></td>
-                        <td><code style="color:#4ECDC4;font-size:0.82rem;"><?= htmlspecialchars($log['api_name']) ?></code></td>
+                        <td><code style="color:#0056b3;background:none;padding:0;font-size:0.82rem;"><?= htmlspecialchars($log['api_name']) ?></code></td>
                         <td><?= htmlspecialchars($log['method']) ?></td>
                         <td style="font-family:monospace;font-size:0.8rem;"><?= htmlspecialchars($log['ip_address']) ?></td>
                         <td>

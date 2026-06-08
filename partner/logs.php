@@ -68,7 +68,7 @@ $api_names = ['search-cab','get-fare','book-cab','booking-status','cancel-bookin
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body style="background:linear-gradient(135deg,#0f0f23,#1a1a2e,#16213e);min-height:100vh;">
+<body>
 <!-- Top Nav -->
 <nav class="top-nav">
     <div class="logo-container"><img src="../images/logo.png" alt="Logo" class="logo"></div>
@@ -182,7 +182,7 @@ $api_names = ['search-cab','get-fare','book-cab','booking-status','cancel-bookin
                     <tr>
                         <td><?= $offset + $i + 1 ?></td>
                         <td style="font-weight:600;"><?= htmlspecialchars($log['partner_name'] ?? 'Unknown') ?></td>
-                        <td><code style="color:#4ECDC4;"><?= htmlspecialchars($log['api_name']) ?></code></td>
+                        <td><code style="color:#0056b3;background:none;padding:0;"><?= htmlspecialchars($log['api_name']) ?></code></td>
                         <td><?= htmlspecialchars($log['method']) ?></td>
                         <td style="font-family:monospace;"><?= htmlspecialchars($log['ip_address']) ?></td>
                         <td><span class="<?= $cls ?>"><?= ucfirst(str_replace('_',' ',$log['status'])) ?></span></td>
