@@ -49,12 +49,24 @@ $km_rate = $base_rates[$car_key] ?? 13.0;
 $effective_km = $distance_km;
 $trip_note    = '';
 
+// For Round-Trip: fare is NOT final — extra charges decided after trip completion
+$is_final_fare   = true;
+$pending_charges = [];
+
 switch ($trip_type) {
     case 'Round-Trip':
-        $effective_km = $distance_km * 2;          // charge both ways
-        $min_km       = 250;
+        $effective_km    = $distance_km * 2;   // both ways
+        $min_km          = 250;
         if ($effective_km < $min_km) $effective_km = $min_km;
-        $trip_note = "Round-Trip: charged for " . round($effective_km, 1) . " km (both ways, min 250 km).";
+        $is_final_fare   = false;              // IMPORTANT: not a final price
+        $pending_charges = [
+            'parking_charge' => 'Decided by driver after trip',
+            'toll_charge'    => 'Decided by driver after trip',
+            'permit_charge'  => 'Decided by driver after trip',
+            'driver_allowance' => 'Decided by driver after trip',
+            'other_charges'  => 'Any additional trip expenses',
+        ];
+        $trip_note = "Round-Trip base fare (" . round($effective_km, 1) . " km). FINAL amount will be set by admin after trip completion based on actual charges.";
         break;
 
     case 'Local-taxi':
@@ -68,7 +80,7 @@ switch ($trip_type) {
         break;
 
     default: // One-way
-        $min_km       = 130;
+        $min_km = 130;
         if ($effective_km < $min_km) $effective_km = $min_km;
         $trip_note = "One-way: charged for " . round($effective_km, 1) . " km (min 130 km).";
         break;
@@ -93,12 +105,15 @@ $response = [
         'effective_km'       => round($effective_km, 2),
         'km_rate'            => $km_rate,
         'base_charge'        => round($base, 2),
-        'driver_allowance'   => $driver_allowance,
-        'toll_charge'        => $toll,
-        'gst_5_percent'      => round($gst, 2),
-        'estimated_total'    => round($total, 2),
+        'driver_allowance'   => $is_final_fare ? $driver_allowance : null,
+        'toll_charge'        => $is_final_fare ? $toll : null,
+        'gst_5_percent'      => $is_final_fare ? round($gst, 2) : null,
+        // For Round-Trip: estimated_total is null — final fare set by admin after trip
+        'estimated_total'    => $is_final_fare ? round($total, 2) : null,
+        'is_final_fare'      => $is_final_fare,
+        'pending_charges'    => empty($pending_charges) ? null : $pending_charges,
         'currency'           => 'INR',
-        'note'               => $trip_note . ' Toll charges subject to actual road tolls.',
+        'note'               => $trip_note,
     ],
 ];
 
