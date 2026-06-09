@@ -11,12 +11,13 @@ require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/logger.php';
 
 // Fetch all bookings for this partner
+// NOTE: ORDER BY b.booked_at DESC (b.id may not exist on all servers)
 $sql = "SELECT b.booking_id, pb.partner_booking_ref, b.from_address, b.to_address, b.trip_type, b.car_type, b.date, b.time, u.name AS user_name, b.booker_id AS user_mobile, b.booking_status, b.driver_id, b.driver_name, b.vehicle_id, b.total_amount, b.booked_at 
         FROM partner_bookings pb
         INNER JOIN bookings b ON pb.booking_id = b.booking_id
         LEFT JOIN users u ON b.booker_id = u.phone_number
         WHERE pb.partner_id = ?
-        ORDER BY b.id DESC";
+        ORDER BY b.booked_at DESC";
 
 $stmt = mysqli_prepare($conn, $sql);
 
@@ -27,7 +28,13 @@ if (!$stmt) {
 }
 
 mysqli_stmt_bind_param($stmt, 'i', $partner['id']);
-mysqli_stmt_execute($stmt);
+if (!mysqli_stmt_execute($stmt)) {
+    $err = mysqli_stmt_error($stmt);
+    mysqli_stmt_close($stmt);
+    log_api_request($partner['id'], $_API_NAME, [], ['status'=>false,'message'=>$err], 'error');
+    api_error('Query execution failed: ' . $err, 500);
+}
+
 $result = mysqli_stmt_get_result($stmt);
 
 $bookings = [];
