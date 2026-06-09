@@ -83,14 +83,18 @@ if ($user_check) {
     }
 }
 
+// Generate OTP
+$otp = (string)rand(1000, 9999);
+
 // Check if bookings table has the columns we need; use safe INSERT
 // We add 'source' as 'partner' and track booker_id as partner mobile
 $insert_sql = "INSERT INTO bookings
     (booking_id, from_address, to_address, trip_type, car_type,
-     date, time, booker_id,
+     date, time, booker_id, mobile, otp,
      distance, total_amount, return_date, return_time,
+     vendor_amount, agni_amount,
      booking_status, booked_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Not Confirmed', NOW())";
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())";
 
 $stmt = mysqli_prepare($conn, $insert_sql);
 
@@ -100,10 +104,12 @@ if (!$stmt) {
     api_error('Booking creation failed: ' . $err, 500);
 }
 
-mysqli_stmt_bind_param($stmt, 'ssssssssddss',
+$zero = 0.0;
+mysqli_stmt_bind_param($stmt, 'ssssssssssddssdd',
     $booking_id, $from, $to, $trip_type, $car_type,
-    $date, $time, $user_mobile,
-    $distance, $amount, $ret_date, $ret_time
+    $date, $time, $user_mobile, $user_mobile, $otp,
+    $distance, $amount, $ret_date, $ret_time,
+    $amount, $zero
 );
 
 if (!mysqli_stmt_execute($stmt)) {
@@ -130,7 +136,7 @@ $response = [
     'data'    => [
         'booking_id'         => $booking_id,
         'partner_booking_ref'=> $partner_ref,
-        'booking_status'     => 'Not Confirmed',
+        'booking_status'     => 'Pending',
         'from_address'       => $from,
         'to_address'         => $to,
         'trip_type'          => $trip_type,
@@ -139,7 +145,7 @@ $response = [
         'time'               => $time,
         'passenger_name'     => $user_name,
         'passenger_mobile'   => $user_mobile,
-        'note'               => 'Admin will confirm the booking. Track status using /booking-status?booking_id=' . $booking_id,
+        'note'               => 'Booking is pending vendor acceptance. Track status using /booking-status?booking_id=' . $booking_id,
     ],
 ];
 
