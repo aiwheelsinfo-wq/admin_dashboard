@@ -121,9 +121,9 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Category Management — Rentox Vendor & Driver</title>
+    <title>Car Category Management — Agni Car Rental</title>
     <link rel="icon" type="image/png" href="images/pnglogoagni.png">
-    <link rel="stylesheet" href="css/Dashboard_styles.css?v=2.0">
+    <link rel="stylesheet" href="css/Dashboard_styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -256,13 +256,18 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
 <!-- Top Nav -->
 <nav class="top-nav">
     <div class="logo-container">
-        <img src="images/logo_rentox.png" alt="Company Logo" class="logo">
+        <img src="images/logo.png" alt="Company Logo" class="logo">
     </div>
     <h1 class="dashboard-heading">
         <i class="fas fa-tags me-2"></i> Car Categories
     </h1>
-    <div class="right-nav">
+    <div class="center-nav">
         <a href="dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
+    </div>
+    <div class="right-nav">
+        <form action="logout.php" method="POST" class="logout-form">
+            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </form>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
 </nav>
@@ -282,18 +287,12 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                     <i class="fa-solid fa-users me-2"></i> Customers
                 </a>
             </li>
-            <li><a href="bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
+            <li><a href="https://agnicarrental.com/admin2025/bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
             <li><a href="dashboard.php?tab=blocked_customer" id="Blocked_Customer"><i class="fas fa-user-slash me-2"></i>Blocked Customer</a></li>
             <li><a href="dashboard.php?tab=extract_data" id="Extract_Data"><i class="fas fa-file-excel me-2"></i> Extract Data</a></li>
             <li><a href="partner/index.php" id="partner_api"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
             <li><a href="partner/monitor.php" id="partner_monitor"><i class="fas fa-desktop me-2"></i> Partner Monitor</a></li>
             <li><a href="car_categories.php" id="car_categories_menu" style="background-color: #465c71;"><i class="fas fa-tags me-2"></i> Car Categories</a></li>
-            <li class="mt-4 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.15) !important;">
-                <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" style="color: #ff4b2b; font-weight: 600;">
-                    <i class="fas fa-sign-out-alt me-2"></i> Logout
-                </a>
-                <form id="logout-form" action="logout.php" method="POST" style="display: none;"></form>
-            </li>
         </ul>
     </nav>
 

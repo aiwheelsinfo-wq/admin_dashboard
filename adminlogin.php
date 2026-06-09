@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="images/pnglogoagni.png">
-    <title>Rentox Vendor & Driver - Admin Login</title>
+    <title>Agni Car Rental - Admin Login</title>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Google Fonts: Inter and Poppins -->
@@ -468,9 +468,9 @@
             <!-- LEFT PANEL: BRANDING & FEATURES -->
             <div class="left-panel">
                 <div class="brand-container animate-fade-in">
-                    <img src="images/logo.png" alt="Rentox Logo" class="brand-logo-img" style="background-color: white; padding: 4px; border-radius: 8px;">
-                    <h1 class="brand-title">Rentox</h1>
-                    <p class="brand-subtitle">VENDOR & DRIVER</p>
+                    <img src="images/pnglogoagni.png" alt="Agni Logo" class="brand-logo-img">
+                    <h1 class="brand-title">Agni</h1>
+                    <p class="brand-subtitle">CAR RENTAL</p>
                     <div class="title-underline"></div>
                     <p class="brand-tagline">Enterprise Fleet & Mobility Management System</p>
                 </div>
@@ -586,7 +586,7 @@
                 </form>
 
                 <footer class="footer-badge animate-fade-in delay-300">
-                    <p>© 2026 Rentox. All Rights Reserved.</p>
+                    <p>© 2025 Agni Car Rental. All Rights Reserved.</p>
                 </footer>
             </div>
 
