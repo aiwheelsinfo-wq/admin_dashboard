@@ -34,7 +34,7 @@ if (!$pb_row) {
 }
 
 // Full booking details
-$b_stmt = mysqli_prepare($conn, "SELECT * FROM bookings WHERE booking_id = ? LIMIT 1");
+$b_stmt = mysqli_prepare($conn, "SELECT b.*, u.name AS user_name, u.email FROM bookings b LEFT JOIN users u ON b.booker_id = u.phone_number WHERE b.booking_id = ? LIMIT 1");
 mysqli_stmt_bind_param($b_stmt, 's', $booking_id_esc);
 mysqli_stmt_execute($b_stmt);
 $b_result = mysqli_stmt_get_result($b_stmt);
