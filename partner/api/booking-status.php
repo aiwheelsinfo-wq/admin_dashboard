@@ -34,7 +34,7 @@ if (!$pb_row) {
 }
 
 // Fetch booking details
-$b_stmt = mysqli_prepare($conn, "SELECT b.booking_id, b.from_address, b.to_address, b.trip_type, b.car_type, b.date, b.time, u.name AS user_name, b.booker_id, b.booking_status, b.driver_id, b.driver_name, b.vehicle_id, b.total_amount, b.booked_at FROM bookings b LEFT JOIN users u ON b.booker_id = u.phone_number WHERE b.booking_id = ? LIMIT 1");
+$b_stmt = mysqli_prepare($conn, "SELECT b.booking_id, b.from_address, b.to_address, b.trip_type, b.car_type, b.date, b.time, u.name AS user_name, b.booker_id, b.booking_status, b.driver_id, b.vehicle_id, b.total_amount, b.booked_at FROM bookings b LEFT JOIN users u ON b.booker_id = u.phone_number WHERE b.booking_id = ? LIMIT 1");
 mysqli_stmt_bind_param($b_stmt, 's', $booking_id_esc);
 mysqli_stmt_execute($b_stmt);
 $b_result = mysqli_stmt_get_result($b_stmt);
@@ -62,7 +62,7 @@ $response = [
         'passenger_name'      => $booking['user_name'],
         'passenger_mobile'    => $booking['booker_id'],
         'driver_assigned'     => !empty($booking['driver_id']),
-        'driver_name'         => $booking['driver_name'] ?? null,
+        'driver_name'         => null,
         'driver_mobile'       => $booking['driver_id']   ?? null,
         'vehicle_number'      => $booking['vehicle_id']  ?? null,
         'total_amount'        => $booking['total_amount'] ?? null,

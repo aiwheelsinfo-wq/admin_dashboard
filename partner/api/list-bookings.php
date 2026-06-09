@@ -12,7 +12,7 @@ require_once __DIR__ . '/logger.php';
 
 // Fetch all bookings for this partner
 // NOTE: ORDER BY b.booked_at DESC (b.id may not exist on all servers)
-$sql = "SELECT b.booking_id, pb.partner_booking_ref, b.from_address, b.to_address, b.trip_type, b.car_type, b.date, b.time, u.name AS user_name, b.booker_id AS user_mobile, b.booking_status, b.driver_id, b.driver_name, b.vehicle_id, b.total_amount, b.booked_at 
+$sql = "SELECT b.booking_id, pb.partner_booking_ref, b.from_address, b.to_address, b.trip_type, b.car_type, b.date, b.time, u.name AS user_name, b.booker_id AS user_mobile, b.booking_status, b.driver_id, b.vehicle_id, b.total_amount, b.booked_at 
         FROM partner_bookings pb
         INNER JOIN bookings b ON pb.booking_id = b.booking_id
         LEFT JOIN users u ON b.booker_id = u.phone_number
@@ -52,7 +52,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         'passenger_name'      => $row['user_name'],
         'passenger_mobile'    => $row['user_mobile'],
         'driver_assigned'     => !empty($row['driver_id']),
-        'driver_name'         => $row['driver_name'] ?? null,
+        'driver_name'         => null,
         'driver_mobile'       => $row['driver_id']   ?? null,
         'vehicle_number'      => $row['vehicle_id']  ?? null,
         'total_amount'        => $row['total_amount'] ?? null,
