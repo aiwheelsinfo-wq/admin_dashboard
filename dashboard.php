@@ -27,7 +27,7 @@ if (!isset($_SESSION['admin_id'])) {
     <nav class="top-nav">
         
         <div class="logo-container">
-            <img src="images/logo.png" alt="Company Logo" class="logo">
+            <!-- <img src="images/logo.png" alt="Company Logo" class="logo"> -->
         </div>
         <h1 class="dashboard-heading">Dashboard</h1>
         <div class="center-nav">
