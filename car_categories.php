@@ -121,7 +121,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Car Category Management — Agni Car Rental</title>
+    <title>Car Category Management — Rentox Vendor & Driver</title>
     <link rel="icon" type="image/png" href="images/pnglogoagni.png">
     <link rel="stylesheet" href="css/Dashboard_styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -261,13 +261,8 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
     <h1 class="dashboard-heading">
         <i class="fas fa-tags me-2"></i> Car Categories
     </h1>
-    <div class="center-nav">
-        <a href="dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
-    </div>
     <div class="right-nav">
-        <form action="logout.php" method="POST" class="logout-form">
-            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-        </form>
+        <a href="dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
 </nav>
@@ -293,6 +288,12 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
             <li><a href="partner/index.php" id="partner_api"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
             <li><a href="partner/monitor.php" id="partner_monitor"><i class="fas fa-desktop me-2"></i> Partner Monitor</a></li>
             <li><a href="car_categories.php" id="car_categories_menu" style="background-color: #465c71;"><i class="fas fa-tags me-2"></i> Car Categories</a></li>
+            <li class="mt-4 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.15) !important;">
+                <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" style="color: #ff4b2b; font-weight: 600;">
+                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                </a>
+                <form id="logout-form" action="logout.php" method="POST" style="display: none;"></form>
+            </li>
         </ul>
     </nav>
 

@@ -270,7 +270,7 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Partner Booking Dashboard — Agni Car Rental</title>
+    <title>Partner Booking Dashboard — Rentox Vendor & Driver</title>
     <link rel="icon" type="image/png" href="../images/pnglogoagni.png">
     <link rel="stylesheet" href="../css/Dashboard_styles.css">
     <link rel="stylesheet" href="../css/partner_styles.css?v=1.4">
@@ -570,13 +570,8 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
     <h1 class="dashboard-heading">
         <i class="fas fa-desktop me-2" style="font-size:1.6rem;"></i> Partner Monitor
     </h1>
-    <div class="center-nav">
-        <a href="../dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
-    </div>
     <div class="right-nav">
-        <form action="../logout.php" method="POST" class="logout-form">
-            <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-        </form>
+        <a href="../dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
     </div>
     <button class="hamburger" id="hamburger" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
 </nav>
@@ -602,6 +597,12 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
             <li><a href="index.php" id="partner_api"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
             <li><a href="monitor.php" id="partner_monitor" style="background-color: #465c71;"><i class="fas fa-desktop me-2"></i> Partner Monitor</a></li>
             <li><a href="../car_categories.php" id="car_categories_menu"><i class="fas fa-tags me-2"></i> Car Categories</a></li>
+            <li class="mt-4 pt-3 border-top" style="border-color: rgba(255, 255, 255, 0.15) !important;">
+                <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" style="color: #ff4b2b; font-weight: 600;">
+                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                </a>
+                <form id="logout-form" action="../logout.php" method="POST" style="display: none;"></form>
+            </li>
         </ul>
     </nav>
 
@@ -1236,7 +1237,7 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
                     doc.setTextColor(255, 255, 255);
                     doc.setFont('Helvetica', 'bold');
                     doc.setFontSize(16);
-                    doc.text('AGNI CAR RENTAL', 14, 11);
+                    doc.text('RENTOX VENDOR & DRIVER', 14, 11);
                     
                     doc.setFont('Helvetica', 'normal');
                     doc.setFontSize(10);
@@ -1318,7 +1319,7 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
                         didDrawPage: function(data) {
                             doc.setFontSize(8);
                             doc.setTextColor(150, 150, 150);
-                            doc.text('Confidential - Agni Car Rental Admin Panel', 14, 203);
+                            doc.text('Confidential - Rentox Admin Panel', 14, 203);
                             
                             let pageNum = doc.internal.getNumberOfPages();
                             doc.text(`Page ${pageNum}`, 275, 203);
