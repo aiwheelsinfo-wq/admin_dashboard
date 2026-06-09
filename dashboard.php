@@ -40,7 +40,7 @@ if (!isset($_SESSION['admin_id'])) {
             <ul>
                 <li><a href="#" id="driver"><i class="fas fa-user me-2"></i> Driver</a></li>
                 <li><a href="#" id="cab"><i class="fas fa-taxi me-2"></i> Cab</a></li>
-                <li><a href="https://agnicarrental.com/admin2025/dashboard.php" id="booking"><i class="fas fa-calendar me-2"></i> Booking</a></li>
+                <li><a href="dashboard.php" id="booking"><i class="fas fa-calendar me-2"></i> Booking</a></li>
                 <li><a href="#" id="Complete"><i class="fas fa-calendar-check me-2"></i> Completed</a></li>
                 <li>
                     <a href="#" id="newuser">
@@ -48,7 +48,7 @@ if (!isset($_SESSION['admin_id'])) {
                         <span id="newuserCount" class="badge bg-danger ms-2" style="display: none;">0</span>
                     </a>
                 </li>
-                <li><a href="https://agnicarrental.com/admin2025/bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
+                <li><a href="bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
                 <li><a href="#" id="Blocked_Customer"><i class="fas fa-user-slash me-2"></i>Blocked Customer</a></li>
                 <li><a href="#" id="Extract_Data">
     <i class="fas fa-file-excel me-2"></i> Extract Data
