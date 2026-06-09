@@ -1,41 +1,6 @@
 $(document).ready(function () {
     // Today and tomorrow date 
     const today = new Date();
-
-    // Helper to animate integer counters
-    function animateCounter(elementId, targetValue) {
-        const el = $(`#${elementId}`);
-        if (el.length === 0) return;
-        $({ Counter: parseInt(el.text()) || 0 }).animate({ Counter: targetValue }, {
-            duration: 800,
-            easing: 'swing',
-            step: function () {
-                el.text(Math.ceil(this.Counter));
-            },
-            complete: function() {
-                el.text(targetValue);
-            }
-        });
-    }
-
-    // Helper to animate currency counters
-    function animateCurrencyCounter(elementId, targetValue) {
-        const el = $(`#${elementId}`);
-        if (el.length === 0) return;
-        const currentText = el.text().replace(/[^\d]/g, '');
-        const currentVal = parseInt(currentText) || 0;
-        $({ Counter: currentVal }).animate({ Counter: targetValue }, {
-            duration: 800,
-            easing: 'swing',
-            step: function () {
-                el.text('₹' + Math.ceil(this.Counter).toLocaleString());
-            },
-            complete: function() {
-                el.text('₹' + targetValue.toLocaleString());
-            }
-        });
-    }
-
     const todayStr = today.toISOString().split('T')[0];
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
@@ -824,36 +789,12 @@ function renderDriverTable(drivers, page = currentDriverPage) {
             allBookings = data.bookingsdata || [];
             let todayCount = 0;
             let tomorrowCount = 0;
-            let revenueToday = 0;
-            let revenueMonth = 0;
-
-            const currentYear = today.getFullYear();
-            const currentMonth = today.getMonth();
-
             allBookings.forEach(booking => {
                 booking.formattedDate = formatDate(booking.date);
                 booking.formattedTime = formatTime(booking.time);
                 booking.sortTime = new Date(`${booking.date} ${booking.time}`).getTime();
-                
-                const bDate = new Date(booking.date);
-                const bookingYear = bDate.getFullYear();
-                const bookingMonth = bDate.getMonth();
-                const fare = parseFloat(booking.total_amount) || 0;
-
-                if (booking.date === todayStr) {
-                    todayCount++;
-                    if (['Accepted', 'Completed', 'Started'].includes(booking.booking_status)) {
-                        revenueToday += fare;
-                    }
-                }
-                if (booking.date === tomorrowStr && booking.booking_status !== "Completed") {
-                    tomorrowCount++;
-                }
-                if (bookingYear === currentYear && bookingMonth === currentMonth) {
-                    if (['Accepted', 'Completed', 'Started'].includes(booking.booking_status)) {
-                        revenueMonth += fare;
-                    }
-                }
+                if (booking.date === todayStr && booking.booking_status !== "Completed") todayCount++;
+                if (booking.date === tomorrowStr && booking.booking_status !== "Completed") tomorrowCount++;
             });
             currentFilter = "all";
             currentBookingPage = 1;
@@ -862,15 +803,9 @@ function renderDriverTable(drivers, page = currentDriverPage) {
             $("#driverTableContainer").addClass("hidden");
             $("#carTableContainer").addClass("hidden");
             $("#waitingforapprovalTableContainer").addClass("hidden");
-            
-            // Animate counters
-            animateCounter("bookingsTodayCount", todayCount);
-            animateCurrencyCounter("revenueTodayCount", Math.round(revenueToday));
-            animateCurrencyCounter("revenueMonthCount", Math.round(revenueMonth));
-            
+            $("#latestBooking").text(todayCount + tomorrowCount);
             $("#refreshBookings").show();
         }).fail(function () {
-
             $("#bookingTable").html("<tr><td colspan='12'>Error loading bookings</td></tr>");
             $("#bookingHeading").text("All Bookings");
             $("#refreshBookings").show();
@@ -881,7 +816,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     function fetchDrivers() {
         $.getJSON("https://agnicarrental.com/admin2025/driver_list_Agni.php", function (data) {
             allDrivers = data.driversdata || [];
-            animateCounter("driverCount", allDrivers.length);
+            $("#driverCount").text(allDrivers.length);
             currentDriverPage = 1;
             renderDriverTable(allDrivers);
         }).fail(function () {
@@ -893,7 +828,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     function fetchCars() {
         $.getJSON("https://agnicarrental.com/admin2025/car_list_Agni.php", function (data) {
             allCars = data.carsdata || [];
-            animateCounter("carCount", allCars.length);
+            $("#carCount").text(allCars.length);
             currentCarPage = 1;
             renderCarTable(allCars);
         }).fail(function () {
@@ -906,7 +841,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $.getJSON("https://agnicarrental.com/admin2025/car_list_Agni.php", function (data) {
             allwaitingforapproval = data.carsdata || [];
             const filtered1 = allwaitingforapproval.filter(item => item.status === "Notified");
-            animateCounter("waitingforapprovalCount", filtered1.length);
+            $("#waitingforapprovalCount").text(filtered1.length);
             currentWaitingPage = 1;
             renderwaitingforapprovalTable(allwaitingforapproval);
         }).fail(function () {
@@ -918,11 +853,10 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     function fetchonRides() {
         $.getJSON("https://agnicarrental.com/admin2025/onride_list_Agni.php", function (data) {
             allonRides = data.onridesdata || [];
-            animateCounter("onRideCount", allonRides.length);
+            $("#onRideCount").text(allonRides.length);
             currentonRidePage = 1;
             renderonRideTable(allonRides);
         }).fail(function () {
-
             $("#onrideTable").html("<tr><td colspan='9'>Error loading onrides</td></tr>");
         });
     }
@@ -1193,18 +1127,6 @@ function renderDriverTable(drivers, page = currentDriverPage) {
                 case "Local-Duty": headingText = "Local Duty Bookings"; break;
             }
         }
-
-        // Apply Advanced Filters
-        const filterDate = $("#bookingFilterDate").val();
-        const filterStatus = $("#bookingFilterStatus").val();
-
-        if (filterDate) {
-            filteredBookings = filteredBookings.filter(b => b.date === filterDate);
-        }
-        if (filterStatus) {
-            filteredBookings = filteredBookings.filter(b => b.booking_status.toLowerCase() === filterStatus.toLowerCase());
-        }
-
         if (searchTerm) {
             filteredBookings = filteredBookings.filter(b =>
                 (b.booking_id || "").toLowerCase().includes(searchTerm) ||
@@ -1370,179 +1292,25 @@ function renderDriverTable(drivers, page = currentDriverPage) {
                 (BlockC.agency_name || "").toLowerCase().includes(searchTerm)
             );
             currentBlocked_CustomerPage = 1;
-            renderBlocked_CustomerTable(filtered);    // Collapsible Sidebar & Layout Handlers
-    $(document).ready(() => {
-        const sidebarToggle = $('#sidebarToggle');
-        const sidebar = $('#sidebar');
-        
-        // Tooltip handlers
-        let tooltips = [];
-        function initSidebarTooltips() {
-            destroySidebarTooltips();
-            $('.menu-item').each(function() {
-                tooltips.push(new bootstrap.Tooltip(this));
-            });
-        }
-        function destroySidebarTooltips() {
-            tooltips.forEach(t => t.destroy());
-            tooltips = [];
-        }
+            renderBlocked_CustomerTable(filtered);
+        });
+    // Placeholder Hamburger Toggle
+        $(document).ready(() => {
+            const hamburger = $('#hamburger');
+            const sidebar = $('#sidebar');
 
-        // Initialize tooltips by default on mobile or collapsed sidebar
-        if (sidebar.hasClass('collapsed') || $(window).width() < 992) {
-            initSidebarTooltips();
-        }
-
-        // Toggle action
-        sidebarToggle.on('click', (e) => {
-            e.stopPropagation();
-            if ($(window).width() >= 992) {
-                sidebar.toggleClass('collapsed');
-                if (sidebar.hasClass('collapsed')) {
-                    initSidebarTooltips();
-                } else {
-                    destroySidebarTooltips();
-                }
-            } else {
+            hamburger.on('click', () => {
                 sidebar.toggleClass('active');
-            }
-        });
-
-        // Close sidebar on outer clicks on mobile
-        $(document).on('click', (e) => {
-            if ($(window).width() < 992) {
-                if (!sidebar.is(e.target) && !sidebar.has(e.target).length && !sidebarToggle.is(e.target) && !sidebarToggle.has(e.target).length) {
-                    sidebar.removeClass('active');
-                }
-            }
-        });
-
-        // Active State Navigation Highlighting
-        $('.menu-item').on('click', function() {
-            if ($(this).hasClass('logout-item')) return;
-            $('.menu-item').removeClass('active');
-            $(this).addClass('active');
-        });
-
-        // Search redirection from header to active tabs
-        function syncAndTriggerSearch(val) {
-            if (!$("#bookingTableContainer").hasClass("hidden")) {
-                $("#bookingSearchInput").val(val).trigger("input");
-            } else if (!$("#driverTableContainer").hasClass("hidden")) {
-                $("#driverSearchInput").val(val).trigger("input");
-            } else if (!$("#carTableContainer").hasClass("hidden")) {
-                $("#carSearchInput").val(val).trigger("input");
-            } else if (!$("#waitingforapprovalTableContainer").hasClass("hidden")) {
-                $("#waitingforapprovalSearchInput").val(val).trigger("input");
-            } else if (!$("#onrideTableContainer").hasClass("hidden")) {
-                $("#onrideSearchInput").val(val).trigger("input");
-            } else if (!$("#newuserTableContainer").hasClass("hidden")) {
-                $("#newuserSearchInput").val(val).trigger("input");
-            } else if (!$("#Blocked_CustomerTableContainer").hasClass("hidden")) {
-                $("#Blocked_CustomerSearchInput").val(val).trigger("input");
-            }
-        }
-
-        $("#globalSearchInput").on("input", function() {
-            syncAndTriggerSearch($(this).val().toLowerCase());
-        });
-
-        // Mobile Search Toggle Overlay
-        $("#mobileSearchToggle").on("click", function() {
-            $("#mobileSearchBar").removeClass("d-none");
-            $("#globalSearchInputMobile").focus();
-        });
-        
-        $("#closeMobileSearch").on("click", function() {
-            $("#mobileSearchBar").addClass("d-none");
-            $("#globalSearchInputMobile").val("");
-            syncAndTriggerSearch("");
-        });
-
-        $("#globalSearchInputMobile").on("input", function() {
-            syncAndTriggerSearch($(this).val().toLowerCase());
-        });
-
-        // Hook up advanced booking table filters
-        $("#bookingFilterDate, #bookingFilterStatus").on("change", function() {
-            currentBookingPage = 1;
-            filterBookings($("#bookingSearchInput").val().toLowerCase());
-        });
-
-        // Export Bookings to CSV
-        $("#btnExportBookings").on("click", function() {
-            let filteredBookings = allBookings;
-            const searchTerm = $("#bookingSearchInput").val().toLowerCase();
-            const filterDate = $("#bookingFilterDate").val();
-            const filterStatus = $("#bookingFilterStatus").val();
-            
-            if (currentFilter === "completed") {
-                filteredBookings = allBookings.filter(b => b.booking_status === "Completed");
-            } else if (currentFilter === "latest") {
-                filteredBookings = allBookings.filter(b =>
-                    (b.date === todayStr || b.date === tomorrowStr) &&
-                    b.booking_status !== "Completed"
-                );
-            } else {
-                filteredBookings = allBookings.filter(b => b.booking_status !== "Completed");
-                if (currentFilter !== "all") {
-                    filteredBookings = filteredBookings.filter(b => b.trip_type.toLowerCase() === currentFilter.toLowerCase());
-                }
-            }
-            
-            if (filterDate) {
-                filteredBookings = filteredBookings.filter(b => b.date === filterDate);
-            }
-            if (filterStatus) {
-                filteredBookings = filteredBookings.filter(b => b.booking_status.toLowerCase() === filterStatus.toLowerCase());
-            }
-            if (searchTerm) {
-                filteredBookings = filteredBookings.filter(b =>
-                    (b.booking_id || "").toLowerCase().includes(searchTerm) ||
-                    (b.from_address || "").toLowerCase().includes(searchTerm) ||
-                    (b.to_address || "").toLowerCase().includes(searchTerm) ||
-                    (b.formattedDate || "").toLowerCase().includes(searchTerm) ||
-                    (b.formattedTime || "").toLowerCase().includes(searchTerm) ||
-                    (b.user_name || "").toLowerCase().includes(searchTerm) ||
-                    (b.mobile || "").toLowerCase().includes(searchTerm) ||
-                    (b.booking_status || "").toLowerCase().includes(searchTerm)
-                );
-            }
-            
-            if (filteredBookings.length === 0) {
-                alert("No bookings to export.");
-                return;
-            }
-            
-            const headers = ["Sr.No", "Booking ID", "From", "To", "Date", "Time", "Customer", "Mobile", "Status"];
-            const csvRows = [headers.join(",")];
-            
-            filteredBookings.forEach((b, index) => {
-                const row = [
-                    index + 1,
-                    b.booking_id,
-                    b.from_address,
-                    b.to_address,
-                    b.formattedDate,
-                    b.formattedTime,
-                    b.user_name,
-                    b.booker_id,
-                    b.booking_status
-                ].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`);
-                csvRows.push(row.join(","));
+                hamburger.attr('aria-expanded', sidebar.hasClass('active'));
             });
-            
-            const csvString = '\ufeff' + csvRows.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Booking_List_${new Date().toISOString().slice(0, 10)}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+
+            $(document).on('click', (e) => {
+                if (!sidebar.is(e.target) && !sidebar.has(e.target).length && !hamburger.is(e.target) && !hamburger.has(e.target).length) {
+                    sidebar.removeClass('active');
+                    hamburger.attr('aria-expanded', 'false');
+                }
+            });
         });
-    });
         
         
     
