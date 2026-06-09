@@ -66,6 +66,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-handshake me-2"></i> Partner API
   </a>
 </li>
+                <li><a href="partner/monitor.php" id="partner_monitor">
+    <i class="fas fa-desktop me-2"></i> Partner Monitor
+  </a>
+</li>
             
             </ul>
         </nav>

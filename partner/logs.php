@@ -101,7 +101,8 @@ $api_names = ['search-cab','get-fare','book-cab','booking-status','cancel-bookin
             <li><a href="https://agnicarrental.com/admin2025/bookacall/admin-bookings.php" id="bookacall"><i class="fa-solid fa-phone me-2"></i>BookACall</a></li>
             <li><a href="../dashboard.php?tab=blocked_customer" id="Blocked_Customer"><i class="fas fa-user-slash me-2"></i>Blocked Customer</a></li>
             <li><a href="../dashboard.php?tab=extract_data" id="Extract_Data"><i class="fas fa-file-excel me-2"></i> Extract Data</a></li>
-            <li><a href="index.php" id="partner_api" style="background-color: #465c71;"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
+            <li><a href="index.php" id="partner_api"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
+            <li><a href="monitor.php" id="partner_monitor"><i class="fas fa-desktop me-2"></i> Partner Monitor</a></li>
         </ul>
     </nav>
     <main class="content" style="padding: 0;">
