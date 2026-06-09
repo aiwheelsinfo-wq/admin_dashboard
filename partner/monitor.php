@@ -121,6 +121,49 @@ if ($search_query) {
 
 $where_sql = implode(' AND ', $where);
 
+// --- Export All Bookings as JSON if Requested ---
+if (isset($_GET['action']) && $_GET['action'] === 'export_all_json') {
+    $export_sql = "
+        SELECT
+            pb.booking_id,
+            p.company_name,
+            p.partner_name,
+            COALESCE(u.name, 'N/A') AS customer_name,
+            b.mobile AS customer_mobile,
+            b.from_address AS pickup_location,
+            b.to_address AS drop_location,
+            b.car_type AS vehicle_type,
+            COALESCE(d.full_name, 'Not Assigned') AS driver_name,
+            b.total_amount AS fare_amount,
+            b.booking_status,
+            pb.created_at AS booking_date,
+            b.trip_type
+        FROM partner_bookings pb
+        INNER JOIN bookings b ON pb.booking_id = b.booking_id
+        INNER JOIN partners p ON pb.partner_id = p.id
+        LEFT JOIN users u ON b.booker_id = u.phone_number
+        LEFT JOIN drivers d ON b.driver_id = d.phone_number
+        WHERE $where_sql
+        ORDER BY pb.created_at DESC
+    ";
+    $export_stmt = mysqli_prepare($conn, $export_sql);
+    if (!empty($params)) {
+        mysqli_stmt_bind_param($export_stmt, $types, ...$params);
+    }
+    mysqli_stmt_execute($export_stmt);
+    $export_res = mysqli_stmt_get_result($export_stmt);
+    $all_bookings = [];
+    while ($row = mysqli_fetch_assoc($export_res)) {
+        $all_bookings[] = $row;
+    }
+    mysqli_stmt_close($export_stmt);
+    
+    header('Content-Type: application/json');
+    echo json_encode($all_bookings);
+    exit();
+}
+
+
 // 1. Pagination Row Count
 $count_sql = "
     SELECT COUNT(*) AS total
@@ -237,8 +280,61 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Chart.js for premium quality analytical reporting -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF and jsPDF-AutoTable for client-side PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
     <style>
+        /* Export Buttons - Premium Styling */
+        .btn-export-excel {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: #fff !important;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(56, 239, 125, 0.2);
+        }
+        .btn-export-excel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
+            filter: brightness(1.05);
+        }
+        .btn-export-excel:active {
+            transform: translateY(0);
+        }
+        .btn-export-pdf {
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+            color: #fff !important;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(255, 75, 43, 0.2);
+        }
+        .btn-export-pdf:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 75, 43, 0.4);
+            filter: brightness(1.05);
+        }
+        .btn-export-pdf:active {
+            transform: translateY(0);
+        }
+
         body {
             font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif !important;
             background-color: #f6f8fa;
@@ -645,8 +741,17 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
             <div class="partner-card-header flex-column flex-sm-row align-items-start align-items-sm-center gap-3">
                 <h4 class="mb-0"><i class="fas fa-list-alt me-2" style="color:#17a2b8;"></i>Partner Booking Monitor</h4>
                 
+                <div class="d-flex gap-2 ms-sm-auto flex-wrap">
+                    <button type="button" id="btnExportCSV" class="btn-export-excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button type="button" id="btnExportPDF" class="btn-export-pdf">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                </div>
+
                 <!-- Simple Dynamic Search Box -->
-                <form method="GET" class="w-100" style="max-width:320px;">
+                <form method="GET" class="w-100" style="max-width:320px; margin-bottom: 0;">
                     <div class="input-group">
                         <!-- Keep other filter states hidden -->
                         <?php if ($filter_start_date): ?><input type="hidden" name="start_date" value="<?= htmlspecialchars($filter_start_date) ?>"><?php endif; ?>
@@ -1024,6 +1129,211 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
                     }
                 }
             }
+        });
+
+        // Export Excel (CSV)
+        $('#btnExportCSV').on('click', function() {
+            const btn = $(this);
+            const originalContent = btn.html();
+            btn.html('<i class="fas fa-spinner fa-spin"></i> Excel').prop('disabled', true);
+            
+            const searchParams = new URLSearchParams(window.location.search);
+            searchParams.set('action', 'export_all_json');
+            
+            fetch(`monitor.php?${searchParams.toString()}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Network response was not ok");
+                    return res.json();
+                })
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        alert("No bookings available to export.");
+                        return;
+                    }
+                    
+                    const headers = [
+                        'Booking ID', 'Company Name', 'Customer Name', 'Customer Mobile', 
+                        'Pickup Location', 'Drop Location', 'Vehicle Type', 'Trip Type', 
+                        'Driver Name', 'Fare Amount', 'Booking Status', 'Booking Date'
+                    ];
+                    
+                    const csvRows = [headers.join(',')];
+                    
+                    data.forEach(row => {
+                        let fare = parseFloat(row.fare_amount);
+                        let fareStr = (row.trip_type === 'Round-Trip' && fare <= 0) ? 'TBD' : fare.toFixed(2);
+                        
+                        const values = [
+                            row.booking_id,
+                            row.company_name,
+                            row.customer_name,
+                            row.customer_mobile,
+                            row.pickup_location,
+                            row.drop_location,
+                            row.vehicle_type,
+                            row.trip_type,
+                            row.driver_name,
+                            fareStr,
+                            row.booking_status,
+                            row.booking_date
+                        ].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`);
+                        
+                        csvRows.push(values.join(','));
+                    });
+                    
+                    const csvString = '\ufeff' + csvRows.join('\n');
+                    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Partner_Bookings_${new Date().toISOString().slice(0, 10)}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                })
+                .catch(err => {
+                    console.error("Export error:", err);
+                    alert("Failed to export Excel. Please try again.");
+                })
+                .finally(() => {
+                    btn.html(originalContent).prop('disabled', false);
+                });
+        });
+
+        // Export PDF
+        $('#btnExportPDF').on('click', function() {
+            const btn = $(this);
+            const originalContent = btn.html();
+            btn.html('<i class="fas fa-spinner fa-spin"></i> PDF').prop('disabled', true);
+            
+            const searchParams = new URLSearchParams(window.location.search);
+            searchParams.set('action', 'export_all_json');
+            
+            fetch(`monitor.php?${searchParams.toString()}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("Network response was not ok");
+                    return res.json();
+                })
+                .then(data => {
+                    if (!data || data.length === 0) {
+                        alert("No bookings available to export.");
+                        return;
+                    }
+                    
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF({
+                        orientation: 'landscape',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+                    
+                    // Header Banner
+                    doc.setFillColor(70, 92, 113);
+                    doc.rect(0, 0, 297, 24, 'F');
+                    
+                    // Brand / Logo Text
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFont('Helvetica', 'bold');
+                    doc.setFontSize(16);
+                    doc.text('AGNI CAR RENTAL', 14, 11);
+                    
+                    doc.setFont('Helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.text('Partner Booking Monitor Report', 14, 18);
+                    
+                    // Metadata
+                    doc.setFontSize(8.5);
+                    doc.text(`Generated: ${new Date().toLocaleString()}`, 230, 10);
+                    doc.text(`Total Bookings: ${data.length}`, 230, 15);
+                    
+                    // Filters
+                    let filterTexts = [];
+                    const startDate = searchParams.get('start_date');
+                    const endDate = searchParams.get('end_date');
+                    const status = searchParams.get('booking_status');
+                    const vehicle = searchParams.get('vehicle_type');
+                    
+                    if (startDate || endDate) {
+                        filterTexts.push(`Date Range: ${startDate || 'Any'} to ${endDate || 'Any'}`);
+                    }
+                    if (status) filterTexts.push(`Status: ${status}`);
+                    if (vehicle) filterTexts.push(`Vehicle: ${vehicle}`);
+                    
+                    const filterInfo = filterTexts.length > 0 ? `Filters applied: ${filterTexts.join(' | ')}` : 'Filters applied: None';
+                    doc.setTextColor(100, 100, 100);
+                    doc.setFontSize(9);
+                    doc.text(filterInfo, 14, 31);
+                    
+                    const tableHeaders = [
+                        ['Booking ID', 'Company', 'Customer Info', 'Pickup & Drop Location', 'Vehicle / Trip', 'Driver', 'Fare', 'Status', 'Date']
+                    ];
+                    
+                    const tableRows = data.map(row => {
+                        let fare = parseFloat(row.fare_amount);
+                        let fareStr = (row.trip_type === 'Round-Trip' && fare <= 0) ? 'TBD' : `INR ${fare.toFixed(2)}`;
+                        
+                        return [
+                            row.booking_id || 'N/A',
+                            row.company_name || 'N/A',
+                            `${row.customer_name || 'N/A'}\n${row.customer_mobile || 'N/A'}`,
+                            `P: ${row.pickup_location || 'N/A'}\nD: ${row.drop_location || 'N/A'}`,
+                            `${row.vehicle_type || 'N/A'}\n(${row.trip_type || 'N/A'})`,
+                            row.driver_name || 'N/A',
+                            fareStr,
+                            row.booking_status || 'N/A',
+                            row.booking_date ? row.booking_date.slice(0, 16) : 'N/A'
+                        ];
+                    });
+                    
+                    doc.autoTable({
+                        startY: 35,
+                        head: tableHeaders,
+                        body: tableRows,
+                        theme: 'striped',
+                        headStyles: {
+                            fillColor: [70, 92, 113],
+                            textColor: [255, 255, 255],
+                            fontStyle: 'bold',
+                            fontSize: 9,
+                            halign: 'left'
+                        },
+                        bodyStyles: {
+                            fontSize: 8,
+                            valign: 'middle',
+                            cellPadding: 3
+                        },
+                        columnStyles: {
+                            0: { cellWidth: 22 },
+                            1: { cellWidth: 25 },
+                            2: { cellWidth: 32 },
+                            3: { cellWidth: 60 },
+                            4: { cellWidth: 30 },
+                            5: { cellWidth: 28 },
+                            6: { cellWidth: 20, halign: 'right' },
+                            7: { cellWidth: 22, halign: 'center' },
+                            8: { cellWidth: 25 }
+                        },
+                        margin: { left: 14, right: 14 },
+                        didDrawPage: function(data) {
+                            doc.setFontSize(8);
+                            doc.setTextColor(150, 150, 150);
+                            doc.text('Confidential - Agni Car Rental Admin Panel', 14, 203);
+                            
+                            let pageNum = doc.internal.getNumberOfPages();
+                            doc.text(`Page ${pageNum}`, 275, 203);
+                        }
+                    });
+                    
+                    doc.save(`Partner_Bookings_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+                })
+                .catch(err => {
+                    console.error("Export error:", err);
+                    alert("Failed to export PDF. Please try again.");
+                })
+                .finally(() => {
+                    btn.html(originalContent).prop('disabled', false);
+                });
         });
 
         // Hamburger sidebar toggle
