@@ -70,6 +70,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-desktop me-2"></i> Partner Monitor
   </a>
 </li>
+                <li><a href="car_categories.php" id="car_categories_menu">
+    <i class="fas fa-tags me-2"></i> Car Categories
+  </a>
+</li>
             
             </ul>
         </nav>

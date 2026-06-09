@@ -505,6 +505,7 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
             <li><a href="../dashboard.php?tab=extract_data" id="Extract_Data"><i class="fas fa-file-excel me-2"></i> Extract Data</a></li>
             <li><a href="index.php" id="partner_api"><i class="fas fa-handshake me-2"></i> Partner API</a></li>
             <li><a href="monitor.php" id="partner_monitor" style="background-color: #465c71;"><i class="fas fa-desktop me-2"></i> Partner Monitor</a></li>
+            <li><a href="../car_categories.php" id="car_categories_menu"><i class="fas fa-tags me-2"></i> Car Categories</a></li>
         </ul>
     </nav>
 
