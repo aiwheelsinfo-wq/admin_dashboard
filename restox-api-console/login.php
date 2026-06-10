@@ -3,7 +3,7 @@ session_start();
 require_once __DIR__ . '/../db_connect.php';
 
 // If already logged in, redirect to dashboard
-if (isset($_SESSION['partner_id'])) {
+if (isset($_SESSION['admin_id'])) {
     header("Location: dashboard.php");
     exit();
 }
@@ -18,23 +18,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter both email and password.';
     } else {
         try {
-            $stmt = mysqli_prepare($conn, "SELECT id, email, password, company_name FROM partners WHERE email = ? LIMIT 1");
+            // Check credentials against admins table
+            $stmt = mysqli_prepare($conn, "SELECT id, password FROM admins WHERE email = ? LIMIT 1");
             mysqli_stmt_bind_param($stmt, 's', $email);
             mysqli_stmt_execute($stmt);
             $res = mysqli_stmt_get_result($stmt);
-            $partner = mysqli_fetch_assoc($res);
+            $admin = mysqli_fetch_assoc($res);
             mysqli_stmt_close($stmt);
 
-            if ($partner && password_verify($password, $partner['password'])) {
+            if ($admin && $password === $admin['password']) {
                 // Set session
-                $_SESSION['partner_id'] = $partner['id'];
-                $_SESSION['partner_email'] = $partner['email'];
-                $_SESSION['partner_company'] = $partner['company_name'];
+                $_SESSION['admin_id'] = $admin['id'];
+                $_SESSION['admin_email'] = $email;
                 
                 header("Location: dashboard.php");
                 exit();
             } else {
-                $error = 'Invalid email address or password.';
+                $error = 'Invalid admin email address or password.';
             }
         } catch (Exception $e) {
             $error = 'An error occurred during authentication: ' . $e->getMessage();
@@ -188,10 +188,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             gap: 6px;
         }
 
-        .form-label span {
-            color: var(--error-color);
-        }
-
         .form-control {
             font-family: inherit;
             background-color: var(--input-bg);
@@ -253,23 +249,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: linear-gradient(135deg, #818cf8 0%, var(--primary-accent) 100%);
         }
 
-        .redirect-link {
-            text-align: center;
-            margin-top: 24px;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        .redirect-link a {
-            color: var(--primary-accent);
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .redirect-link a:hover {
-            text-decoration: underline;
-        }
-
         .footer-note {
             text-align: center;
             font-size: 0.8rem;
@@ -290,8 +269,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="header-section">
-            <h2 class="header-title">Welcome Back</h2>
-            <p class="header-subtitle">Login with your partner credentials to manage your developer settings and retrieve API credentials.</p>
+            <h2 class="header-title">Admin Console Login</h2>
+            <p class="header-subtitle">Log in using your Agni Car Rental administrator email and password.</p>
         </div>
 
         <?php if ($error): ?>
@@ -303,8 +282,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="POST">
             <div class="form-group">
-                <label class="form-label" for="email"><i class="fa-solid fa-envelope"></i> Business Email</label>
-                <input type="email" id="email" name="email" class="form-control" placeholder="api@company.com" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
+                <label class="form-label" for="email"><i class="fa-solid fa-envelope"></i> Administrator Email</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="admin@company.com" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
             </div>
 
             <div class="form-group">
@@ -316,10 +295,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <i class="fa-solid fa-right-to-bracket"></i> Login to Console
             </button>
         </form>
-
-        <div class="redirect-link">
-            Need developer access? <a href="register.php">Apply here</a>
-        </div>
 
         <div class="footer-note">
             &copy; 2026 Redox. All rights reserved. Redox API Service.
