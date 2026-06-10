@@ -113,10 +113,10 @@ function get_email_body($otp, $to_name) {
  * @return bool True if successfully sent, false otherwise.
  */
 function send_otp_email($to_email, $otp, $to_name = 'Partner') {
-    $mail = new PHPMailer(true);
     try {
         // Tier 1: Try direct SMTP connection (with 4-second timeout limit to prevent hanging)
         // This is ideal for local development or servers that don't block outbound port 587.
+        $mail = new PHPMailer(true);
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
@@ -141,40 +141,40 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         // Tier 2: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
         // This is the most reliable method on GoDaddy shared hosting, utilizing the local Exim server.
         try {
-            $mail->clearAllRecipients();
-            $mail->isSMTP();
-            $mail->Host       = 'localhost';
-            $mail->SMTPAuth   = false;
-            $mail->SMTPAutoTLS = false;
-            $mail->SMTPSecure = false;
-            $mail->Port       = 25;
-            $mail->Timeout    = 4;
+            $mailLocal = new PHPMailer(true);
+            $mailLocal->isSMTP();
+            $mailLocal->Host       = 'localhost';
+            $mailLocal->SMTPAuth   = false;
+            $mailLocal->SMTPAutoTLS = false;
+            $mailLocal->SMTPSecure = false;
+            $mailLocal->Port       = 25;
+            $mailLocal->Timeout    = 4;
 
-            $mail->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-            $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
-            $mail->addAddress($to_email, $to_name);
-            $mail->isHTML(true);
-            $mail->Subject = 'Email Verification OTP - Redox API Service';
-            $mail->Body    = get_email_body($otp, $to_name);
+            $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+            $mailLocal->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+            $mailLocal->addAddress($to_email, $to_name);
+            $mailLocal->isHTML(true);
+            $mailLocal->Subject = 'Email Verification OTP - Redox API Service';
+            $mailLocal->Body    = get_email_body($otp, $to_name);
             
-            $mail->send();
+            $mailLocal->send();
             return true;
         } catch (Exception $eLocalhost) {
             // Tier 3: Fallback to PHP native mail() function via PHPMailer
             try {
-                $mail->clearAllRecipients();
-                $mail->isMail(); 
-                $mail->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-                $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
-                $mail->addAddress($to_email, $to_name);
-                $mail->isHTML(true);
-                $mail->Subject = 'Email Verification OTP - Redox API Service';
-                $mail->Body    = get_email_body($otp, $to_name);
+                $mailBackup = new PHPMailer(true);
+                $mailBackup->isMail(); 
+                $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+                $mailBackup->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+                $mailBackup->addAddress($to_email, $to_name);
+                $mailBackup->isHTML(true);
+                $mailBackup->Subject = 'Email Verification OTP - Redox API Service';
+                $mailBackup->Body    = get_email_body($otp, $to_name);
                 
-                $mail->send();
+                $mailBackup->send();
                 return true;
             } catch (Exception $eFallback) {
-                error_log("PHPMailer all tiers failed. Error: " . $mail->ErrorInfo);
+                error_log("PHPMailer all tiers failed. Error: " . $mailBackup->ErrorInfo);
                 return false;
             }
         }
