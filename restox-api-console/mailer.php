@@ -114,6 +114,15 @@ function get_email_body($otp, $to_name) {
  */
 function send_otp_email($to_email, $otp, $to_name = 'Partner') {
     try {
+        // Detect if running on local development environment
+        $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) 
+                 || (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] === 'localhost');
+        
+        if (!$is_local) {
+            // Bypass Gmail SMTP on live host to prevent the 4-second connection timeout hang
+            throw new Exception("Bypassing Gmail SMTP on live server");
+        }
+
         // Tier 1: Try direct SMTP connection (with 4-second timeout limit to prevent hanging)
         // This is ideal for local development or servers that don't block outbound port 587.
         $mail = new PHPMailer(true);
