@@ -153,9 +153,11 @@ mysqli_stmt_close($logs_stmt);
                 <div class="info-grid">
                     <div class="info-item"><label>Partner Name</label><span><?= htmlspecialchars($p['partner_name']) ?></span></div>
                     <div class="info-item"><label>Company</label><span><?= htmlspecialchars($p['company_name']) ?></span></div>
+                    <div class="info-item"><label>Company Owner</label><span><?= htmlspecialchars($p['company_owner_name'] ?? 'N/A') ?></span></div>
                     <div class="info-item"><label>Contact Person</label><span><?= htmlspecialchars($p['contact_person']) ?></span></div>
                     <div class="info-item"><label>Mobile</label><span><?= htmlspecialchars($p['mobile_number']) ?></span></div>
                     <div class="info-item"><label>Email</label><span><?= htmlspecialchars($p['email']) ?></span></div>
+                    <div class="info-item"><label>GST Number</label><span><code style="font-size:0.85rem; background:rgba(0,0,0,0.15); padding:2px 6px; border-radius:4px; color:#0056b3;"><?= htmlspecialchars($p['gst_number'] ?? 'N/A') ?></code></span></div>
                     <div class="info-item"><label>Rate Limit</label><span><?= $p['rate_limit_per_minute'] ?>/min · <?= number_format($p['rate_limit_per_day']) ?>/day</span></div>
                     <div class="info-item"><label>Member Since</label><span><?= date('d M Y', strtotime($p['created_at'])) ?></span></div>
                 </div>
@@ -187,19 +189,31 @@ mysqli_stmt_close($logs_stmt);
                 <div class="partner-card-header">
                     <h4><i class="fas fa-key me-2" style="color:#FFAA00"></i>API Credentials</h4>
                 </div>
-                <label style="color:#888;font-size:0.75rem;text-transform:uppercase;">API Key</label>
-                <div class="api-key-display">
-                    <code id="api-key-display"><?= htmlspecialchars($p['api_key']) ?></code>
-                    <button class="copy-btn" onclick="copyText('api-key-display',this)"><i class="fas fa-copy"></i> Copy</button>
-                </div>
-                <label style="color:#888;font-size:0.75rem;text-transform:uppercase;margin-top:12px;">Secret Key</label>
-                <div class="api-key-display">
-                    <code id="secret-display">••••••••••••••••••••••••••••••••••••••••</code>
-                </div>
-                <div class="mt-3 d-flex gap-2 flex-wrap">
-                    <a href="edit.php?id=<?= $id ?>" class="btn-partner-warning btn-sm"><i class="fas fa-sync me-1"></i>Regenerate Keys</a>
-                    <a href="logs.php?partner_id=<?= $id ?>" class="btn-partner-info"><i class="fas fa-list me-1"></i>View Logs</a>
-                </div>
+                <?php if ($p['status'] === 'pending'): ?>
+                    <div style="background:rgba(255,152,0,0.08); border:1px dashed rgba(255,152,0,0.3); border-radius:8px; padding:16px; color:#ffb74d; font-size:0.9rem; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-hourglass-half"></i>
+                        <span>This partner request is pending approval. API keys have not been generated yet.</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn-partner-success btn-approve" data-id="<?= $id ?>" data-company="<?= htmlspecialchars($p['company_name']) ?>">
+                            <i class="fas fa-check-circle me-1"></i> Approve & Generate Keys
+                        </button>
+                    </div>
+                <?php else: ?>
+                    <label style="color:#888;font-size:0.75rem;text-transform:uppercase;">API Key</label>
+                    <div class="api-key-display">
+                        <code id="api-key-display"><?= htmlspecialchars($p['api_key']) ?></code>
+                        <button class="copy-btn" onclick="copyText('api-key-display',this)"><i class="fas fa-copy"></i> Copy</button>
+                    </div>
+                    <label style="color:#888;font-size:0.75rem;text-transform:uppercase;margin-top:12px;">Secret Key</label>
+                    <div class="api-key-display">
+                        <code id="secret-display">••••••••••••••••••••••••••••••••••••••••</code>
+                    </div>
+                    <div class="mt-3 d-flex gap-2 flex-wrap">
+                        <a href="edit.php?id=<?= $id ?>" class="btn-partner-warning btn-sm"><i class="fas fa-sync me-1"></i>Regenerate Keys</a>
+                        <a href="logs.php?partner_id=<?= $id ?>" class="btn-partner-info"><i class="fas fa-list me-1"></i>View Logs</a>
+                    </div>
+                <?php endif; ?>
 
                 <!-- API Endpoints Reference -->
                 <div style="margin-top:20px;background:#f8f9fa;border:1px solid var(--partner-border);border-radius:10px;padding:16px;">
@@ -272,7 +286,71 @@ mysqli_stmt_close($logs_stmt);
     </main>
 </div>
 <div class="partner-toast" id="toast"></div>
+
+<!-- Approval Modal -->
+<div class="modal fade" id="approvalModal" tabindex="-1" aria-labelledby="approvalModalLabel" aria-hidden="true" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="background:#1a1a2e; color:#fff; border: 2px solid #00D68F; border-radius:16px; padding: 10px;">
+      <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <h5 class="modal-title" id="approvalModalLabel" style="color:#00D68F; font-weight:700;"><i class="fas fa-key me-2"></i>API Credentials Generated</h5>
+      </div>
+      <div class="modal-body">
+        <p style="color:#ff9800; font-size:0.85rem; margin-bottom:16px;">⚠️ Copy these keys now! The secret key will not be shown again in full.</p>
+        
+        <div class="mb-3">
+          <label style="color:#888; font-size:0.75rem; text-transform:uppercase; font-weight:600;">API Key</label>
+          <div class="api-key-display" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:8px; margin-top:4px;">
+            <code id="modal-api-key" style="color:#00D68F; font-size:0.85rem; word-break:break-all;"></code>
+            <button class="copy-btn" onclick="copyText('modal-api-key', this)" style="background:#6c63ff; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.8rem; cursor:pointer;"><i class="fas fa-copy"></i> Copy</button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label style="color:#888; font-size:0.75rem; text-transform:uppercase; font-weight:600;">Secret Key</label>
+          <div class="api-key-display" style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:8px; margin-top:4px;">
+            <code id="modal-secret-key" style="color:#00D68F; font-size:0.85rem; word-break:break-all;"></code>
+            <button class="copy-btn" onclick="copyText('modal-secret-key', this)" style="background:#6c63ff; color:#fff; border:none; padding:4px 10px; border-radius:6px; font-size:0.8rem; cursor:pointer;"><i class="fas fa-copy"></i> Copy</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="border-top: 1px solid rgba(255,255,255,0.1);">
+        <button type="button" class="btn-partner-primary" onclick="window.location.reload();" style="border-radius:8px; font-size:0.9rem; padding:8px 16px;">Done & Reload</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Approve Request AJAX
+$(document).on('click', '.btn-approve', function() {
+    const id = $(this).data('id');
+    const company = $(this).data('company');
+    
+    if (!confirm(`Are you sure you want to approve "${company}" and generate API credentials?`)) return;
+    
+    $.ajax({
+        url: 'approve_partner.php',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ partner_id: id }),
+        success(res) {
+            if (res.status) {
+                $('#modal-api-key').text(res.api_key);
+                $('#modal-secret-key').text(res.secret_key);
+                
+                const modal = new bootstrap.Modal(document.getElementById('approvalModal'));
+                modal.show();
+            } else {
+                showToast('❌ ' + res.message, 'error');
+            }
+        },
+        error() {
+            showToast('❌ Request failed', 'error');
+        }
+    });
+});
+
 function copyText(id, btn) {
     navigator.clipboard.writeText(document.getElementById(id).textContent).then(() => {
         btn.innerHTML='<i class="fas fa-check"></i> Copied!'; btn.classList.add('copied');

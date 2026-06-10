@@ -17,14 +17,16 @@ if (!$p) { header("Location: index.php"); exit(); }
 $error = ''; $success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $partner_name   = trim($_POST['partner_name']           ?? '');
-    $company_name   = trim($_POST['company_name']           ?? '');
-    $contact_person = trim($_POST['contact_person']         ?? '');
-    $mobile         = trim($_POST['mobile_number']          ?? '');
-    $email          = trim($_POST['email']                  ?? '');
-    $rate_min       = (int)($_POST['rate_limit_per_minute'] ?? 60);
-    $rate_day       = (int)($_POST['rate_limit_per_day']    ?? 10000);
-    $notes          = trim($_POST['notes']                  ?? '');
+    $partner_name       = trim($_POST['partner_name']           ?? '');
+    $company_name       = trim($_POST['company_name']           ?? '');
+    $company_owner_name = trim($_POST['company_owner_name']     ?? '');
+    $contact_person     = trim($_POST['contact_person']         ?? '');
+    $mobile             = trim($_POST['mobile_number']          ?? '');
+    $email              = trim($_POST['email']                  ?? '');
+    $rate_min           = (int)($_POST['rate_limit_per_minute'] ?? 60);
+    $rate_day           = (int)($_POST['rate_limit_per_day']    ?? 10000);
+    $notes              = trim($_POST['notes']                  ?? '');
+    $gst_number         = trim($_POST['gst_number']             ?? '');
 
     if (!$partner_name || !$company_name || !$contact_person || !$mobile || !$email) {
         $error = 'All required fields must be filled.';
@@ -32,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid email address.';
     } else {
         try {
-            $upd = mysqli_prepare($conn, "UPDATE partners SET partner_name=?, company_name=?, contact_person=?, mobile_number=?, email=?, rate_limit_per_minute=?, rate_limit_per_day=?, notes=? WHERE id=?");
-            mysqli_stmt_bind_param($upd, 'sssssiisi', $partner_name, $company_name, $contact_person, $mobile, $email, $rate_min, $rate_day, $notes, $id);
+            $upd = mysqli_prepare($conn, "UPDATE partners SET partner_name=?, company_name=?, company_owner_name=?, contact_person=?, mobile_number=?, email=?, gst_number=?, rate_limit_per_minute=?, rate_limit_per_day=?, notes=? WHERE id=?");
+            mysqli_stmt_bind_param($upd, 'ssssssssisi', $partner_name, $company_name, $company_owner_name, $contact_person, $mobile, $email, $gst_number, $rate_min, $rate_day, $notes, $id);
             if (mysqli_stmt_execute($upd)) {
                 $success = 'Partner updated successfully!';
                 // Refresh
@@ -156,6 +158,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="text" name="company_name" class="form-control" required value="<?= htmlspecialchars($p['company_name']) ?>">
                     </div>
                     <div class="col-md-6">
+                        <label>Company Owner Name</label>
+                        <input type="text" name="company_owner_name" class="form-control" value="<?= htmlspecialchars($p['company_owner_name'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-6">
                         <label>Contact Person <span style="color:#FF3D71">*</span></label>
                         <input type="text" name="contact_person" class="form-control" required value="<?= htmlspecialchars($p['contact_person']) ?>">
                     </div>
@@ -163,9 +169,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label>Mobile Number <span style="color:#FF3D71">*</span></label>
                         <input type="tel" name="mobile_number" class="form-control" required value="<?= htmlspecialchars($p['mobile_number']) ?>">
                     </div>
-                    <div class="col-12">
+                    <div class="col-md-6">
                         <label>Email <span style="color:#FF3D71">*</span></label>
                         <input type="email" name="email" class="form-control" required value="<?= htmlspecialchars($p['email']) ?>">
+                    </div>
+                    <div class="col-12">
+                        <label>GST Number</label>
+                        <input type="text" name="gst_number" class="form-control" value="<?= htmlspecialchars($p['gst_number'] ?? '') ?>">
                     </div>
                     <div class="col-md-6">
                         <label>Requests per Minute</label>
