@@ -2,83 +2,33 @@
 session_start();
 require_once __DIR__ . '/../db_connect.php';
 
-// Auth Check (must be logged in as admin)
-if (!isset($_SESSION['admin_id'])) {
+// Auth Check (must be logged in as partner)
+if (!isset($_SESSION['partner_id'])) {
     header("Location: login.php");
     exit();
 }
 
-$error = '';
-$success = '';
+$id = $_SESSION['partner_id'];
 
-// Handle AJAX/POST request to add partner
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_partner') {
-    $company_name       = trim($_POST['company_name'] ?? '');
-    $company_owner_name = trim($_POST['company_owner_name'] ?? '');
-    $contact_person     = trim($_POST['contact_person'] ?? '');
-    $contact_number     = trim($_POST['contact_number'] ?? '');
-    $email              = trim($_POST['email'] ?? '');
-    $gst_number         = trim($_POST['gst_number'] ?? '');
+// Fetch latest partner details
+$stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
+mysqli_stmt_bind_param($stmt, 'i', $id);
+mysqli_stmt_execute($stmt);
+$res = mysqli_stmt_get_result($stmt);
+$p = mysqli_fetch_assoc($res);
+mysqli_stmt_close($stmt);
 
-    if (!$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number) {
-        $error = 'All fields are required.';
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = 'Please enter a valid email address.';
-    } else {
-        try {
-            // Check if email already exists
-            $check_stmt = mysqli_prepare($conn, "SELECT id FROM partners WHERE email = ? LIMIT 1");
-            mysqli_stmt_bind_param($check_stmt, 's', $email);
-            mysqli_stmt_execute($check_stmt);
-            mysqli_stmt_store_result($check_stmt);
-            
-            if (mysqli_stmt_num_rows($check_stmt) > 0) {
-                $error = 'A partner with this email address is already registered.';
-                mysqli_stmt_close($check_stmt);
-            } else {
-                mysqli_stmt_close($check_stmt);
-
-                $partner_name = $company_name;
-                $notes = 'Registered via Redox API Service Console';
-
-                $stmt = mysqli_prepare($conn, 
-                    "INSERT INTO partners (partner_name, company_name, company_owner_name, contact_person, mobile_number, email, gst_number, status, notes)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)"
-                );
-                
-                mysqli_stmt_bind_param($stmt, 'ssssssss', 
-                    $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $notes
-                );
-
-                if (mysqli_stmt_execute($stmt)) {
-                    $success = 'Partner request added successfully!';
-                } else {
-                    $error = 'Failed to add partner: ' . mysqli_error($conn);
-                }
-                mysqli_stmt_close($stmt);
-            }
-        } catch (Exception $e) {
-            $error = 'Database error: ' . $e->getMessage();
-        }
-    }
-    
-    // Return JSON if AJAX
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-        echo json_encode([
-            'success' => empty($error),
-            'message' => empty($error) ? $success : $error
-        ]);
-        exit;
-    }
+if (!$p) {
+    session_destroy();
+    header("Location: login.php");
+    exit();
 }
 
-// Fetch all partners
-$partners = [];
-$result = mysqli_query($conn, "SELECT * FROM partners ORDER BY created_at DESC");
-if ($result) {
-    while ($row = mysqli_fetch_assoc($result)) {
-        $partners[] = $row;
-    }
+// Log out action
+if (isset($_GET['action']) && $_GET['action'] === 'logout') {
+    session_destroy();
+    header("Location: login.php");
+    exit();
 }
 ?>
 <!DOCTYPE html>
@@ -93,8 +43,6 @@ if ($result) {
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <style>
         :root {
@@ -113,6 +61,12 @@ if ($result) {
             --input-border: rgba(255, 255, 255, 0.1);
         }
 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg-color);
@@ -121,9 +75,11 @@ if ($result) {
                 radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.08) 0px, transparent 50%);
             color: var(--text-primary);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
 
-        /* Ambient background circles */
         .ambient-blur {
             position: absolute;
             width: 400px;
@@ -219,7 +175,7 @@ if ($result) {
         /* Dashboard Container */
         .dashboard-container {
             width: 100%;
-            max-width: 1200px;
+            max-width: 1100px;
             margin: 40px auto;
             padding: 0 24px;
             animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
@@ -230,239 +186,209 @@ if ($result) {
             to { opacity: 1; transform: translateY(0); }
         }
 
-        .header-panel {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-
-        .header-title-sec h2 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 6px;
-        }
-
-        .header-title-sec p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            margin: 0;
-        }
-
-        .btn-primary-action {
-            background: linear-gradient(135deg, var(--primary-accent) 0%, #4f46e5 100%);
-            color: #fff;
-            border: none;
-            border-radius: 12px;
-            padding: 12px 24px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            text-decoration: none;
-        }
-
-        .btn-primary-action:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(108, 99, 255, 0.5);
-            background: linear-gradient(135deg, #818cf8 0%, var(--primary-accent) 100%);
-            color: #fff;
-        }
-
-        /* Search Section */
-        .search-bar-card {
-            background-color: var(--card-bg);
-            border: 1px solid var(--card-border);
+        /* Status Banner */
+        .status-banner {
             border-radius: 16px;
-            padding: 16px 24px;
-            margin-bottom: 24px;
-            backdrop-filter: blur(12px);
-        }
-
-        .search-input-wrapper {
-            position: relative;
+            padding: 24px;
+            margin-bottom: 32px;
             display: flex;
             align-items: center;
+            gap: 20px;
+            line-height: 1.5;
         }
 
-        .search-icon {
-            position: absolute;
-            left: 16px;
-            color: var(--text-muted);
+        .status-banner-pending {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: #ffb74d;
         }
 
-        .search-control {
-            background-color: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--input-border);
-            border-radius: 10px;
+        .status-banner-active {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: #a7f3d0;
+        }
+
+        .status-banner-blocked {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .status-icon {
+            font-size: 2.2rem;
+            flex-shrink: 0;
+        }
+
+        .status-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 4px;
             color: #fff;
-            padding: 10px 16px 10px 46px;
+        }
+
+        .status-desc {
             font-size: 0.95rem;
-            width: 100%;
-            outline: none;
-            transition: all 0.3s ease;
+            opacity: 0.85;
         }
 
-        .search-control:focus {
-            border-color: var(--primary-accent);
-            box-shadow: 0 0 0 3px var(--primary-glow);
-            background-color: rgba(255, 255, 255, 0.06);
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 2fr;
+            gap: 28px;
         }
 
-        /* Table Design */
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .panel-card {
             backdrop-filter: blur(16px);
             background-color: var(--card-bg);
             border: 1px solid var(--card-border);
             border-radius: 20px;
-            padding: 24px;
+            padding: 28px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            overflow-x: auto;
         }
 
-        .partner-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-
-        .partner-table th {
+        .panel-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 20px;
             color: #fff;
-            font-weight: 600;
-            padding: 14px 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            background-color: rgba(0,0,0,0.15);
-            text-align: left;
-        }
-
-        .partner-table td {
-            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            vertical-align: middle;
+            padding-bottom: 12px;
         }
 
-        .partner-table tr:hover {
-            background-color: rgba(255,255,255,0.01);
+        /* Info Item Details */
+        .info-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
         }
 
-        /* Badges */
-        .badge-state {
-            padding: 4px 10px;
-            border-radius: 100px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            display: inline-block;
-        }
-
-        .badge-state-pending {
-            background-color: rgba(245, 158, 11, 0.15);
-            color: var(--warning-color);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .badge-state-active {
-            background-color: rgba(16, 185, 129, 0.15);
-            color: var(--success-color);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .badge-state-blocked {
-            background-color: rgba(239, 68, 68, 0.15);
-            color: var(--error-color);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .credentials-wrapper {
+        .info-item {
             display: flex;
             flex-direction: column;
             gap: 6px;
-            max-width: 320px;
         }
 
-        .credential-item {
+        .info-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            word-break: break-all;
+        }
+
+        /* Key display boxes */
+        .key-box-group {
+            margin-bottom: 24px;
+        }
+
+        .key-label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .key-display-wrapper {
+            background-color: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 12px 16px;
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.04);
-            padding: 4px 8px;
-            border-radius: 6px;
-            gap: 8px;
+            align-items: center;
+            gap: 12px;
         }
 
-        .credential-code {
-            font-family: monospace;
-            font-size: 0.8rem;
-            color: #818cf8;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+        .key-code {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.92rem;
+            color: var(--success-color);
+            word-break: break-all;
             flex: 1;
         }
 
-        .btn-mini-copy {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
+        .btn-copy {
+            background: rgba(108, 99, 255, 0.15);
+            border: 1px solid rgba(108, 99, 255, 0.3);
+            color: #a5b4fc;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 0.82rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
         }
 
-        .btn-mini-copy:hover {
+        .btn-copy:hover {
+            background: var(--primary-accent);
             color: #fff;
-            background-color: rgba(255,255,255,0.1);
         }
 
-        /* Glassmorphic Modal */
-        .modal-content-glass {
-            background-color: #111827 !important;
-            border: 1px solid var(--card-border) !important;
-            border-radius: 20px !important;
-            color: #fff !important;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important;
+        /* Endpoint Reference Table */
+        .endpoint-table-container {
+            margin-top: 15px;
+            overflow-x: auto;
         }
 
-        .modal-header-glass {
-            border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-            padding: 20px 24px !important;
-        }
-
-        .modal-footer-glass {
-            border-top: 1px solid rgba(255,255,255,0.05) !important;
-            padding: 16px 24px !important;
-        }
-
-        .form-label-glass {
+        .endpoint-table {
+            width: 100%;
+            border-collapse: collapse;
             font-size: 0.88rem;
-            font-weight: 500;
+            text-align: left;
+        }
+
+        .endpoint-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            text-transform: uppercase;
+            font-size: 0.78rem;
+        }
+
+        .endpoint-table td {
+            padding: 12px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             color: var(--text-secondary);
-            margin-bottom: 6px;
         }
 
-        .form-control-glass {
-            background-color: rgba(255, 255, 255, 0.03) !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
-            border-radius: 10px !important;
-            color: #fff !important;
-            padding: 10px 14px !important;
-            font-size: 0.95rem !important;
+        .method-badge {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: inline-block;
+            width: 44px;
+            text-align: center;
         }
 
-        .form-control-glass:focus {
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border-color: var(--primary-accent) !important;
-            box-shadow: 0 0 0 3px var(--primary-glow) !important;
+        .endpoint-path {
+            font-family: monospace;
+            color: #818cf8;
         }
 
         .toast-notification {
@@ -482,7 +408,7 @@ if ($result) {
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 1050;
+            z-index: 1000;
         }
 
         .toast-notification.show {
@@ -504,158 +430,178 @@ if ($result) {
         </div>
         <div class="user-nav-badge">
             <div class="company-badge">
-                <i class="fa-solid fa-user-shield" style="color: var(--primary-accent);"></i>
-                <span>Admin Console</span>
+                <i class="fa-solid fa-circle-user" style="color: var(--primary-accent);"></i>
+                <span><?= htmlspecialchars($p['company_name']) ?></span>
             </div>
-            <a href="login.php?action=logout" class="btn-logout">
+            <a href="?action=logout" class="btn-logout">
                 <i class="fa-solid fa-sign-out-alt"></i> Logout
             </a>
         </div>
     </header>
 
-    <!-- Main Container -->
+    <!-- Main Content -->
     <main class="dashboard-container">
         
-        <!-- Header Section -->
-        <div class="header-panel">
-            <div class="header-title-sec">
-                <h2>B2B API Partner Management</h2>
-                <p>Register new integration partners, monitor status, and view access credentials.</p>
-            </div>
-            <button class="btn-primary-action" data-bs-toggle="modal" data-bs-target="#addPartnerModal">
-                <i class="fa-solid fa-plus"></i> Add Partner
-            </button>
-        </div>
-
-        <!-- Search Card -->
-        <div class="search-bar-card">
-            <div class="search-input-wrapper">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                <input type="text" id="searchInput" class="search-control" placeholder="Search partner by company name, owner, contact person, or email...">
-            </div>
-        </div>
-
-        <!-- Partners Table Panel -->
-        <div class="panel-card">
-            <?php if (empty($partners)): ?>
-                <div style="text-align: center; padding: 60px 0; color: var(--text-muted);">
-                    <i class="fa-solid fa-handshake" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
-                    <p>No integration partners registered yet. Click <strong>Add Partner</strong> to create one.</p>
+        <!-- Status Banner -->
+        <?php if ($p['status'] === 'pending'): ?>
+            <div class="status-banner status-banner-pending">
+                <i class="fa-solid fa-hourglass-half status-icon"></i>
+                <div>
+                    <h3 class="status-title">Application Pending Approval</h3>
+                    <p class="status-desc">Your B2B registration request is currently being verified. Once approved, your API credentials and endpoints reference will automatically display below.</p>
                 </div>
-            <?php else: ?>
-                <table class="partner-table" id="partnersTable">
-                    <thead>
-                        <tr>
-                            <th>Company Name</th>
-                            <th>Company Owner</th>
-                            <th>Contact Person</th>
-                            <th>Contact Phone</th>
-                            <th>Business Email</th>
-                            <th>GSTIN</th>
-                            <th>Status</th>
-                            <th>API Access Credentials</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($partners as $p): ?>
-                            <tr>
-                                <td><strong><?= htmlspecialchars($p['company_name']) ?></strong></td>
-                                <td><?= htmlspecialchars($p['company_owner_name'] ?? 'N/A') ?></td>
-                                <td><?= htmlspecialchars($p['contact_person']) ?></td>
-                                <td><?= htmlspecialchars($p['mobile_number']) ?></td>
-                                <td><?= htmlspecialchars($p['email']) ?></td>
-                                <td><code style="background:rgba(0,0,0,0.15); padding:3px 6px; border-radius:4px; font-size:0.82rem; color:#818cf8;"><?= htmlspecialchars($p['gst_number'] ?? 'N/A') ?></code></td>
-                                <td>
-                                    <?php
-                                    $statusClass = match($p['status']) {
-                                        'pending' => 'badge-state-pending',
-                                        'active'  => 'badge-state-active',
-                                        'blocked' => 'badge-state-blocked',
-                                        default   => 'badge-state-pending'
-                                    };
-                                    ?>
-                                    <span class="badge-state <?= $statusClass ?>"><?= htmlspecialchars($p['status']) ?></span>
-                                </td>
-                                <td>
-                                    <?php if ($p['status'] !== 'active'): ?>
-                                        <span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">
-                                            <i class="fa-solid fa-lock me-1"></i> Keys will display once approved
-                                        </span>
-                                    <?php else: ?>
-                                        <div class="credentials-wrapper">
-                                            <div class="credential-item">
-                                                <code class="credential-code" id="key-<?= $p['id'] ?>" title="<?= htmlspecialchars($p['api_key']) ?>"><?= htmlspecialchars($p['api_key']) ?></code>
-                                                <button class="btn-mini-copy" onclick="copyValue('key-<?= $p['id'] ?>', this)" title="Copy API Key"><i class="fa-solid fa-copy"></i></button>
-                                            </div>
-                                            <div class="credential-item">
-                                                <code class="credential-code" id="secret-<?= $p['id'] ?>" title="<?= htmlspecialchars($p['secret_key']) ?>"><?= htmlspecialchars($p['secret_key']) ?></code>
-                                                <button class="btn-mini-copy" onclick="copyValue('secret-<?= $p['id'] ?>', this)" title="Copy Secret Key"><i class="fa-solid fa-copy"></i></button>
-                                            </div>
-                                        </div>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
+            </div>
+        <?php elseif ($p['status'] === 'blocked'): ?>
+            <div class="status-banner status-banner-blocked">
+                <i class="fa-solid fa-ban status-icon"></i>
+                <div>
+                    <h3 class="status-title">API Access Suspended</h3>
+                    <p class="status-desc">Your credentials have been suspended. Please contact our integration support team to resolve this issue.</p>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="status-banner status-banner-active">
+                <i class="fa-solid fa-circle-check status-icon"></i>
+                <div>
+                    <h3 class="status-title">API Integration Active</h3>
+                    <p class="status-desc">Your credentials are live. You may begin sending API requests using the credentials and paths documented below.</p>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <!-- Grid -->
+        <div class="dashboard-grid">
+            
+            <!-- Left Side: Profile Info -->
+            <section class="panel-card">
+                <h3 class="panel-title"><i class="fa-solid fa-building"></i> Profile Details</h3>
+                <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">Company Name</span>
+                        <span class="info-value"><?= htmlspecialchars($p['company_name']) ?></span>
+                    </div>
+                    <?php if (!empty($p['company_owner_name'])): ?>
+                        <div class="info-item">
+                            <span class="info-label">Company Owner</span>
+                            <span class="info-value"><?= htmlspecialchars($p['company_owner_name']) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($p['gst_number'])): ?>
+                        <div class="info-item">
+                            <span class="info-label">GST Number</span>
+                            <span class="info-value" style="font-family: monospace; color:#818cf8;"><?= htmlspecialchars($p['gst_number']) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <div class="info-item">
+                        <span class="info-label">Contact Name</span>
+                        <span class="info-value"><?= htmlspecialchars($p['contact_person']) ?></span>
+                    </div>
+                    <?php if (!empty($p['mobile_number'])): ?>
+                        <div class="info-item">
+                            <span class="info-label">Contact Mobile</span>
+                            <span class="info-value"><?= htmlspecialchars($p['mobile_number']) ?></span>
+                        </div>
+                    <?php endif; ?>
+                    <div class="info-item">
+                        <span class="info-label">Business Email</span>
+                        <span class="info-value"><?= htmlspecialchars($p['email']) ?></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Account Created</span>
+                        <span class="info-value"><?= date('d F Y', strtotime($p['created_at'])) ?></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Side: API Access & Credentials -->
+            <section class="panel-card">
+                <?php if ($p['status'] !== 'active'): ?>
+                    <h3 class="panel-title"><i class="fa-solid fa-key"></i> API Access Credentials</h3>
+                    <div style="text-align: center; padding: 40px 0; color: var(--text-muted);">
+                        <i class="fa-solid fa-lock" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;"></i>
+                        <p>Credentials will be generated and shown here after your application is approved.</p>
+                    </div>
+                <?php else: ?>
+                    <h3 class="panel-title"><i class="fa-solid fa-key"></i> Live API Credentials</h3>
+                    
+                    <div class="key-box-group">
+                        <label class="key-label">API Key (X-API-Key)</label>
+                        <div class="key-display-wrapper">
+                            <code class="key-code" id="live-api-key"><?= htmlspecialchars($p['api_key']) ?></code>
+                            <button class="btn-copy" onclick="copyValue('live-api-key', this)"><i class="fa-solid fa-copy"></i> Copy</button>
+                        </div>
+                    </div>
+
+                    <div class="key-box-group">
+                        <label class="key-label">Secret Key (X-Secret-Key)</label>
+                        <div class="key-display-wrapper">
+                            <code class="key-code" id="live-secret-key"><?= htmlspecialchars($p['secret_key']) ?></code>
+                            <button class="btn-copy" onclick="copyValue('live-secret-key', this)"><i class="fa-solid fa-copy"></i> Copy</button>
+                        </div>
+                    </div>
+
+                    <div style="background: rgba(108, 99, 255, 0.06); border: 1px solid rgba(108, 99, 255, 0.15); border-radius: 12px; padding: 14px; font-size: 0.85rem; color: #a5b4fc; margin-bottom: 28px;">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Rate limits: <strong><?= $p['rate_limit_per_minute'] ?> req/min</strong> and <strong><?= number_format($p['rate_limit_per_day']) ?> req/day</strong>. Include authorization parameters inside request headers.
+                    </div>
+
+                    <h3 class="panel-title" style="margin-top: 20px;"><i class="fa-solid fa-book"></i> Endpoint Reference</h3>
+                    <p style="font-size: 0.88rem; color: var(--text-secondary); margin-bottom: 12px;">Base URL: <code style="font-family: monospace; background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; color:#fff;">https://agnicarrental.com/admin2025/partner/api</code></p>
+                    
+                    <div class="endpoint-table-container">
+                        <table class="endpoint-table">
+                            <thead>
+                                <tr>
+                                    <th>Method</th>
+                                    <th>Endpoint Route</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="method-badge">POST</span></td>
+                                    <td><span class="endpoint-path">/search-cab.php</span></td>
+                                    <td>Search available vehicles</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="method-badge">POST</span></td>
+                                    <td><span class="endpoint-path">/get-fare.php</span></td>
+                                    <td>Calculate tariff estimation</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="method-badge">POST</span></td>
+                                    <td><span class="endpoint-path">/book-cab.php</span></td>
+                                    <td>Submit cab booking</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="method-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">GET</span></td>
+                                    <td><span class="endpoint-path">/booking-status.php</span></td>
+                                    <td>Check current cab status</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="method-badge">POST</span></td>
+                                    <td><span class="endpoint-path">/cancel-booking.php</span></td>
+                                    <td>Cancel existing booking</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="method-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">GET</span></td>
+                                    <td><span class="endpoint-path">/driver-details.php</span></td>
+                                    <td>Get driver coordinates</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="method-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">GET</span></td>
+                                    <td><span class="endpoint-path">/trip-details.php</span></td>
+                                    <td>Retrieve trip records</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </section>
+
         </div>
 
     </main>
-
-    <!-- Add Partner Bootstrap Modal -->
-    <div class="modal fade" id="addPartnerModal" tabindex="-1" aria-labelledby="addPartnerModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content modal-content-glass">
-                <form id="addPartnerForm">
-                    <input type="hidden" name="action" value="add_partner">
-                    <div class="modal-header modal-header-glass">
-                        <h5 class="modal-title" id="addPartnerModalLabel" style="font-weight:700;"><i class="fa-solid fa-user-plus me-2" style="color:var(--primary-accent);"></i>Add Partner Request</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body p-4">
-                        <div id="modalError" class="alert alert-danger d-none" style="border-radius:10px; font-size:0.88rem;"></div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label-glass">Company Name</label>
-                            <input type="text" name="company_name" class="form-control form-control-glass" placeholder="e.g. Akbar Travels" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label-glass">Company Owner Name</label>
-                            <input type="text" name="company_owner_name" class="form-control form-control-glass" placeholder="Full name of owner" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label-glass">Contact Person</label>
-                            <input type="text" name="contact_person" class="form-control form-control-glass" placeholder="Primary contact name" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label-glass">Contact Mobile Number</label>
-                            <input type="tel" name="contact_number" class="form-control form-control-glass" placeholder="+91 XXXXXXXXXX" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label-glass">Business Email</label>
-                            <input type="email" name="email" class="form-control form-control-glass" placeholder="api@company.com" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label class="form-label-glass">GST Number</label>
-                            <input type="text" name="gst_number" class="form-control form-control-glass" placeholder="15-digit GSTIN" required>
-                        </div>
-                    </div>
-                    <div class="modal-footer modal-footer-glass">
-                        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal" style="border-radius:10px; font-size:0.9rem;">Cancel</button>
-                        <button type="submit" class="btn-primary-action" style="padding:10px 20px; font-size:0.9rem;">
-                            <i class="fa-solid fa-paper-plane"></i> Submit Request
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <!-- Toast Notification -->
     <div id="copyToast" class="toast-notification">
@@ -663,60 +609,22 @@ if ($result) {
         <span>Copied to clipboard!</span>
     </div>
 
-    <!-- Bootstrap 5 JS Bundle with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
     <script>
-        // Live Search Filter
-        $('#searchInput').on('input', function() {
-            const q = $(this).val().toLowerCase();
-            $('#partnersTable tbody tr').each(function() {
-                $(this).toggle($(this).text().toLowerCase().includes(q));
-            });
-        });
-
-        // Copy Clipboard Helper
         function copyValue(id, btn) {
-            const textVal = document.getElementById(id).textContent;
-            navigator.clipboard.writeText(textVal).then(() => {
-                const toast = $('#copyToast');
-                toast.addClass('show');
+            const codeText = document.getElementById(id).innerText;
+            navigator.clipboard.writeText(codeText).then(() => {
+                const toast = document.getElementById('copyToast');
+                toast.classList.add('show');
                 
                 const origHtml = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
                 
                 setTimeout(() => {
-                    toast.removeClass('show');
+                    toast.classList.remove('show');
                     btn.innerHTML = origHtml;
                 }, 2000);
             });
         }
-
-        // AJAX Form Submission
-        $('#addPartnerForm').on('submit', function(e) {
-            e.preventDefault();
-            $('#modalError').addClass('d-none').text('');
-            
-            $.ajax({
-                url: 'dashboard.php',
-                method: 'POST',
-                data: $(this).serialize(),
-                dataType: 'json',
-                success: function(res) {
-                    if (res.success) {
-                        // Reload window to refresh partner requests
-                        window.location.reload();
-                    } else {
-                        $('#modalError').removeClass('d-none').text(res.message);
-                    }
-                },
-                error: function() {
-                    $('#modalError').removeClass('d-none').text('Network error occurred. Please try again.');
-                }
-            });
-        });
     </script>
 </body>
 </html>

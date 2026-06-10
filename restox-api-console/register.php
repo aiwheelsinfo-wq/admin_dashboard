@@ -8,36 +8,71 @@ if (isset($_SESSION['partner_id'])) {
     exit();
 }
 
-$error = '';
+$error   = '';
+$success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email    = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    $company_name     = trim($_POST['company_name'] ?? '');
+    $contact_person   = trim($_POST['contact_person'] ?? '');
+    $email            = trim($_POST['email'] ?? '');
+    $password         = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
 
-    if (!$email || !$password) {
-        $error = 'Please enter both email and password.';
+    // Basic validation
+    if (!$company_name || !$contact_person || !$email || !$password || !$confirm_password) {
+        $error = 'All fields are compulsory.';
+    } elseif ($password !== $confirm_password) {
+        $error = 'Passwords do not match.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid business email address.';
+    } elseif (strlen($password) < 6) {
+        $error = 'Password must be at least 6 characters long.';
     } else {
         try {
-            // Check credentials against partners table
-            $stmt = mysqli_prepare($conn, "SELECT id, password, company_name FROM partners WHERE email = ? LIMIT 1");
-            mysqli_stmt_bind_param($stmt, 's', $email);
-            mysqli_stmt_execute($stmt);
-            $res = mysqli_stmt_get_result($stmt);
-            $partner = mysqli_fetch_assoc($res);
-            mysqli_stmt_close($stmt);
-
-            if ($partner && password_verify($password, $partner['password'])) {
-                // Set session
-                $_SESSION['partner_id'] = $partner['id'];
-                $_SESSION['partner_email'] = $email;
-                
-                header("Location: dashboard.php");
-                exit();
+            // Check if email already exists
+            $check_stmt = mysqli_prepare($conn, "SELECT id FROM partners WHERE email = ? LIMIT 1");
+            mysqli_stmt_bind_param($check_stmt, 's', $email);
+            mysqli_stmt_execute($check_stmt);
+            mysqli_stmt_store_result($check_stmt);
+            
+            if (mysqli_stmt_num_rows($check_stmt) > 0) {
+                $error = 'This email address is already registered. Please login instead.';
+                mysqli_stmt_close($check_stmt);
             } else {
-                $error = 'Invalid email address or password.';
+                mysqli_stmt_close($check_stmt);
+
+                // Hash password
+                $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+                // Insert pending request
+                $partner_name = $company_name; // Default display name to company name
+                $notes = 'Registered via Redox API Service B2B Console';
+                
+                $stmt = mysqli_prepare($conn, 
+                    "INSERT INTO partners (partner_name, company_name, contact_person, email, password, status, notes)
+                     VALUES (?, ?, ?, ?, ?, 'pending', ?)"
+                );
+                
+                mysqli_stmt_bind_param($stmt, 'ssssss', 
+                    $partner_name, $company_name, $contact_person, $email, $hashed_password, $notes
+                );
+
+                if (mysqli_stmt_execute($stmt)) {
+                    $new_id = mysqli_insert_id($conn);
+                    
+                    // Auto login
+                    $_SESSION['partner_id'] = $new_id;
+                    $_SESSION['partner_email'] = $email;
+                    
+                    header("Location: dashboard.php");
+                    exit();
+                } else {
+                    $error = 'Failed to submit request: ' . mysqli_error($conn);
+                }
+                mysqli_stmt_close($stmt);
             }
         } catch (Exception $e) {
-            $error = 'An error occurred during authentication: ' . $e->getMessage();
+            $error = 'An error occurred: ' . $e->getMessage();
         }
     }
 }
@@ -47,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Redox API Service</title>
+    <title>Register - Redox API Service</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -106,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .console-container {
             width: 100%;
-            max-width: 450px;
+            max-width: 500px;
             backdrop-filter: blur(16px) saturate(180%);
             -webkit-backdrop-filter: blur(16px) saturate(180%);
             background-color: var(--card-bg);
@@ -128,7 +163,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             align-items: center;
             gap: 12px;
             margin-bottom: 24px;
-            justify-content: center;
         }
 
         .logo-icon {
@@ -148,11 +182,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .header-section {
             margin-bottom: 32px;
-            text-align: center;
         }
 
         .header-title {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             font-weight: 700;
             margin-bottom: 8px;
             color: #fff;
@@ -180,6 +213,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             gap: 6px;
         }
 
+        .form-label span { color: var(--error-color); }
+
         .form-control {
             font-family: inherit;
             background-color: var(--input-bg);
@@ -206,7 +241,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             align-items: center;
             gap: 12px;
-            line-height: 1.4;
         }
 
         .alert-danger {
@@ -243,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .redirect-link {
             text-align: center;
-            margin-top: 24px;
+            margin-top: 20px;
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
@@ -276,8 +310,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="header-section">
-            <h2 class="header-title">Developer Console Login</h2>
-            <p class="header-subtitle">Log in with your partner credentials to manage and view your API integration keys.</p>
+            <h2 class="header-title">Register B2B Account</h2>
+            <p class="header-subtitle">Apply for developer access. Enter your name, company, and choose an access password.</p>
         </div>
 
         <?php if ($error): ?>
@@ -289,22 +323,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <form method="POST">
             <div class="form-group">
-                <label class="form-label" for="email"><i class="fa-solid fa-envelope"></i> Business Email</label>
+                <label class="form-label" for="contact_person"><i class="fa-solid fa-user"></i> Full Name <span>*</span></label>
+                <input type="text" id="contact_person" name="contact_person" class="form-control" placeholder="Your full name" required value="<?= htmlspecialchars($_POST['contact_person'] ?? '') ?>">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="company_name"><i class="fa-solid fa-building"></i> Company Name <span>*</span></label>
+                <input type="text" id="company_name" name="company_name" class="form-control" placeholder="Your company name" required value="<?= htmlspecialchars($_POST['company_name'] ?? '') ?>">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="email"><i class="fa-solid fa-envelope"></i> Business Email <span>*</span></label>
                 <input type="email" id="email" name="email" class="form-control" placeholder="email@company.com" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="password"><i class="fa-solid fa-lock"></i> Password</label>
-                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+                <label class="form-label" for="password"><i class="fa-solid fa-lock"></i> Password <span>*</span></label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Choose a password (min. 6 chars)" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="confirm_password"><i class="fa-solid fa-lock"></i> Confirm Password <span>*</span></label>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Re-enter password" required>
             </div>
 
             <button type="submit" class="btn-submit">
-                <i class="fa-solid fa-right-to-bracket"></i> Login to Console
+                <i class="fa-solid fa-user-plus"></i> Submit Request
             </button>
         </form>
 
         <div class="redirect-link">
-            Need partner access? <a href="register.php">Apply here</a>
+            Already have an account? <a href="login.php">Login here</a>
         </div>
 
         <div class="footer-note">
