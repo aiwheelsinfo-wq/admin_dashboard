@@ -455,6 +455,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             });
 
+            // Handle submission loading state
+            $("#otpForm").on("submit", function() {
+                const btn = $(this).find(".btn-submit");
+                btn.html('<i class="fa-solid fa-spinner fa-spin"></i> Verifying...');
+                btn.css("pointer-events", "none");
+                btn.css("opacity", "0.85");
+            });
+
             // Countdown Timer Configuration
             const expiryTimestamp = <?= $temp['otp_expiry'] ?>;
             

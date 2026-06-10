@@ -1821,6 +1821,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             const alertIcon = document.getElementById('settingsAlertIcon');
             const alertTitle = document.getElementById('settingsAlertTitle');
             const alertDesc = document.getElementById('settingsAlertDesc');
+            
+            const btn = this.querySelector('button[type="submit"]');
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving Details...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.8';
 
             // Reset classes
             alertBox.className = 'alert-banner d-none';
@@ -1853,6 +1859,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         window.location.reload();
                     }, 1500);
                 } else {
+                    btn.innerHTML = origHtml;
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                    
                     alertBox.style.backgroundColor = 'rgba(239, 68, 68, 0.06)';
                     alertBox.style.borderColor = 'rgba(239, 68, 68, 0.15)';
                     alertIcon.className = 'fa-solid fa-circle-exclamation';
@@ -1865,6 +1875,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 }
             })
             .catch(err => {
+                btn.innerHTML = origHtml;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+
                 alertBox.classList.remove('d-none');
                 alertBox.style.backgroundColor = 'rgba(239, 68, 68, 0.06)';
                 alertBox.style.borderColor = 'rgba(239, 68, 68, 0.15)';

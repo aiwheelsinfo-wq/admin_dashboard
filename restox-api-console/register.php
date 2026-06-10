@@ -358,5 +358,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 
+    <script>
+        document.querySelector('form').addEventListener('submit', function() {
+            const btn = this.querySelector('.btn-submit');
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting Request...';
+                btn.style.pointerEvents = 'none';
+                btn.style.opacity = '0.85';
+            }
+        });
+    </script>
 </body>
 </html>
