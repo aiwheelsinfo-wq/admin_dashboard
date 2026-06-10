@@ -126,7 +126,7 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         $mail->Timeout    = 4; 
 
         // Recipients
-        $mail->setFrom('agnicarrental@gmail.com', 'Redox API Service');
+        $mail->setFrom('ai.wheels.info@gmail.com', 'Redox API Service');
         $mail->addAddress($to_email, $to_name);
 
         // Content
@@ -142,7 +142,8 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         try {
             $mail->clearAllRecipients();
             $mail->isMail(); 
-            $mail->setFrom('agnicarrental@gmail.com', 'Redox API Service');
+            $mail->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+            $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
             $mail->addAddress($to_email, $to_name);
             $mail->isHTML(true);
             $mail->Subject = 'Email Verification OTP - Redox API Service';
