@@ -9,6 +9,67 @@ if (!isset($_SESSION['partner_id'])) {
 }
 
 $id = $_SESSION['partner_id'];
+$error = '';
+$success = '';
+
+// Handle Profile Update Request (AJAX or normal POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile') {
+    $partner_name       = trim($_POST['partner_name'] ?? '');
+    $company_name       = trim($_POST['company_name'] ?? '');
+    $company_owner_name = trim($_POST['company_owner_name'] ?? '');
+    $contact_person     = trim($_POST['contact_person'] ?? '');
+    $contact_number     = trim($_POST['contact_number'] ?? '');
+    $email              = trim($_POST['email'] ?? '');
+    $gst_number         = trim($_POST['gst_number'] ?? '');
+
+    if (!$partner_name || !$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number) {
+        $error = 'All fields are required to complete your profile.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Please enter a valid business email address.';
+    } else {
+        try {
+            // Check if email already exists for another partner
+            $check_stmt = mysqli_prepare($conn, "SELECT id FROM partners WHERE email = ? AND id != ? LIMIT 1");
+            mysqli_stmt_bind_param($check_stmt, 'si', $email, $id);
+            mysqli_stmt_execute($check_stmt);
+            mysqli_stmt_store_result($check_stmt);
+            if (mysqli_stmt_num_rows($check_stmt) > 0) {
+                $error = 'This email address is already in use by another partner.';
+            }
+            mysqli_stmt_close($check_stmt);
+
+            if (empty($error)) {
+                $stmt = mysqli_prepare($conn, 
+                    "UPDATE partners 
+                     SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ? 
+                     WHERE id = ?"
+                );
+                mysqli_stmt_bind_param($stmt, 'sssssssi', 
+                    $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $id
+                );
+
+                if (mysqli_stmt_execute($stmt)) {
+                    $success = 'Profile details updated successfully!';
+                    $_SESSION['partner_email'] = $email; // Update session email
+                } else {
+                    $error = 'Failed to update profile: ' . mysqli_error($conn);
+                }
+                mysqli_stmt_close($stmt);
+            }
+        } catch (Exception $e) {
+            $error = 'Database error: ' . $e->getMessage();
+        }
+    }
+
+    // Return JSON response if AJAX request
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        echo json_encode([
+            'success' => empty($error),
+            'message' => empty($error) ? $success : $error
+        ]);
+        exit;
+    }
+}
 
 // Fetch latest partner details
 $stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
@@ -43,6 +104,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <style>
         :root {
@@ -261,9 +324,30 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             color: #fff;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 10px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             padding-bottom: 12px;
+        }
+
+        .btn-edit-profile {
+            background: rgba(108, 99, 255, 0.15);
+            border: 1px solid rgba(108, 99, 255, 0.3);
+            color: #a5b4fc;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-edit-profile:hover {
+            background: var(--primary-accent);
+            color: #fff;
         }
 
         /* Info Item Details */
@@ -408,12 +492,77 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 1000;
+            z-index: 1050;
         }
 
         .toast-notification.show {
             transform: translateY(0);
             opacity: 1;
+        }
+
+        /* Glassmorphic Modal */
+        .modal-content-glass {
+            background-color: #111827 !important;
+            border: 1px solid var(--card-border) !important;
+            border-radius: 20px !important;
+            color: #fff !important;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important;
+        }
+
+        .modal-header-glass {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+            padding: 20px 24px !important;
+        }
+
+        .modal-footer-glass {
+            border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+            padding: 16px 24px !important;
+        }
+
+        .form-label-glass {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-control-glass {
+            background-color: rgba(255, 255, 255, 0.03) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 10px !important;
+            color: #fff !important;
+            padding: 10px 14px !important;
+            font-size: 0.95rem !important;
+        }
+
+        .form-control-glass:focus {
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-color: var(--primary-accent) !important;
+            box-shadow: 0 0 0 3px var(--primary-glow) !important;
+        }
+
+        .btn-primary-action {
+            background: linear-gradient(135deg, var(--primary-accent) 0%, #4f46e5 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn-primary-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(108, 99, 255, 0.5);
+            background: linear-gradient(135deg, #818cf8 0%, var(--primary-accent) 100%);
+            color: #fff;
         }
     </style>
 </head>
@@ -469,39 +618,59 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             </div>
         <?php endif; ?>
 
+        <!-- Check for Incomplete Profile -->
+        <?php 
+        $profile_incomplete = empty($p['partner_name']) || empty($p['company_owner_name']) || empty($p['mobile_number']) || empty($p['gst_number']);
+        if ($profile_incomplete): 
+        ?>
+            <div class="status-banner" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); color: #ffb74d; margin-bottom: 32px;">
+                <i class="fa-solid fa-triangle-exclamation status-icon" style="color: var(--warning-color);"></i>
+                <div style="flex: 1;">
+                    <h3 class="status-title" style="color: #fff;">Incomplete Partner Profile</h3>
+                    <p class="status-desc" style="margin-bottom: 12px;">Please complete your partner details to submit your request for approval. The administrator requires all fields to be filled before activating your API access.</p>
+                    <button class="btn-primary-action" style="padding: 8px 16px; font-size: 0.88rem; display: inline-flex;" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="fa-solid fa-user-plus"></i> Add Partner Details
+                    </button>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Grid -->
         <div class="dashboard-grid">
             
             <!-- Left Side: Profile Info -->
             <section class="panel-card">
-                <h3 class="panel-title"><i class="fa-solid fa-building"></i> Profile Details</h3>
+                <div class="panel-title">
+                    <span><i class="fa-solid fa-building"></i> Profile Details</span>
+                    <button class="btn-edit-profile" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="fa-solid fa-user-pen"></i> Add/Edit Details
+                    </button>
+                </div>
                 <div class="info-list">
+                    <div class="info-item">
+                        <span class="info-label">Partner Name</span>
+                        <span class="info-value"><?= htmlspecialchars($p['partner_name'] ?? 'Not Specified (Click Add/Edit Details)') ?></span>
+                    </div>
                     <div class="info-item">
                         <span class="info-label">Company Name</span>
                         <span class="info-value"><?= htmlspecialchars($p['company_name']) ?></span>
                     </div>
-                    <?php if (!empty($p['company_owner_name'])): ?>
-                        <div class="info-item">
-                            <span class="info-label">Company Owner</span>
-                            <span class="info-value"><?= htmlspecialchars($p['company_owner_name']) ?></span>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($p['gst_number'])): ?>
-                        <div class="info-item">
-                            <span class="info-label">GST Number</span>
-                            <span class="info-value" style="font-family: monospace; color:#818cf8;"><?= htmlspecialchars($p['gst_number']) ?></span>
-                        </div>
-                    <?php endif; ?>
+                    <div class="info-item">
+                        <span class="info-label">Company Owner</span>
+                        <span class="info-value"><?= htmlspecialchars($p['company_owner_name'] ?? 'Not Specified (Click Add/Edit Details)') ?></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">GST Number</span>
+                        <span class="info-value" style="font-family: monospace; color:#818cf8;"><?= htmlspecialchars($p['gst_number'] ?? 'Not Specified (Click Add/Edit Details)') ?></span>
+                    </div>
                     <div class="info-item">
                         <span class="info-label">Contact Name</span>
                         <span class="info-value"><?= htmlspecialchars($p['contact_person']) ?></span>
                     </div>
-                    <?php if (!empty($p['mobile_number'])): ?>
-                        <div class="info-item">
-                            <span class="info-label">Contact Mobile</span>
-                            <span class="info-value"><?= htmlspecialchars($p['mobile_number']) ?></span>
-                        </div>
-                    <?php endif; ?>
+                    <div class="info-item">
+                        <span class="info-label">Contact Mobile</span>
+                        <span class="info-value"><?= htmlspecialchars($p['mobile_number'] ?? 'Not Specified (Click Add/Edit Details)') ?></span>
+                    </div>
                     <div class="info-item">
                         <span class="info-label">Business Email</span>
                         <span class="info-value"><?= htmlspecialchars($p['email']) ?></span>
@@ -603,12 +772,76 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
     </main>
 
+    <!-- Add Partner Details Modal -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-glass">
+                <form id="editProfileForm">
+                    <input type="hidden" name="action" value="update_profile">
+                    <div class="modal-header modal-header-glass">
+                        <h5 class="modal-title" id="editProfileModalLabel" style="font-weight:700;"><i class="fa-solid fa-user-plus me-2" style="color:var(--primary-accent);"></i>Add Partner Details</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4" style="max-height: 70vh; overflow-y: auto;">
+                        <div id="modalError" class="alert alert-danger d-none" style="border-radius:10px; font-size:0.88rem;"></div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label-glass">Partner Name <span>*</span></label>
+                            <input type="text" name="partner_name" class="form-control form-control-glass" value="<?= htmlspecialchars($p['partner_name'] ?? '') ?>" placeholder="e.g. Akbar Travels" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label-glass">Company Name <span>*</span></label>
+                            <input type="text" name="company_name" class="form-control form-control-glass" value="<?= htmlspecialchars($p['company_name']) ?>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label-glass">Company Owner Name <span>*</span></label>
+                            <input type="text" name="company_owner_name" class="form-control form-control-glass" value="<?= htmlspecialchars($p['company_owner_name'] ?? '') ?>" placeholder="Full name of company owner" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label-glass">Contact Person <span>*</span></label>
+                            <input type="text" name="contact_person" class="form-control form-control-glass" value="<?= htmlspecialchars($p['contact_person']) ?>" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label-glass">Contact Mobile Number <span>*</span></label>
+                            <input type="tel" name="contact_number" class="form-control form-control-glass" value="<?= htmlspecialchars($p['mobile_number'] ?? '') ?>" placeholder="+91 XXXXXXXXXX" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label-glass">Business Email <span>*</span></label>
+                            <input type="email" name="email" class="form-control form-control-glass" value="<?= htmlspecialchars($p['email']) ?>" placeholder="email@company.com" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label-glass">GST Number <span>*</span></label>
+                            <input type="text" name="gst_number" class="form-control form-control-glass" value="<?= htmlspecialchars($p['gst_number'] ?? '') ?>" placeholder="15-digit GSTIN" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer modal-footer-glass">
+                        <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal" style="border-radius:10px; font-size:0.9rem;">Cancel</button>
+                        <button type="submit" class="btn-primary-action" style="padding:10px 20px; font-size:0.9rem;">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Details
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="copyToast" class="toast-notification">
         <i class="fa-solid fa-check-circle"></i>
         <span>Copied to clipboard!</span>
     </div>
 
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
     <script>
         function copyValue(id, btn) {
             const codeText = document.getElementById(id).innerText;
@@ -617,7 +850,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 toast.classList.add('show');
                 
                 const origHtml = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+                btn.innerHTML = '<i class="fa-solid fa-check"></i>';
                 
                 setTimeout(() => {
                     toast.classList.remove('show');
@@ -625,6 +858,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 }, 2000);
             });
         }
+
+        // AJAX profile submit handler
+        $('#editProfileForm').on('submit', function(e) {
+            e.preventDefault();
+            $('#modalError').addClass('d-none').text('');
+            
+            $.ajax({
+                url: 'dashboard.php',
+                method: 'POST',
+                data: $(this).serialize(),
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        window.location.reload();
+                    } else {
+                        $('#modalError').removeClass('d-none').text(res.message);
+                    }
+                },
+                error: function() {
+                    $('#modalError').removeClass('d-none').text('Network error occurred. Please try again.');
+                }
+            });
+        });
     </script>
 </body>
 </html>
