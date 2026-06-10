@@ -12,95 +12,17 @@ require_once __DIR__ . '/PHPMailer/SMTP.php';
  */
 function get_email_body($otp, $to_name) {
     return '
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <style>
-            body {
-                background-color: #0b0f19;
-                font-family: Arial, sans-serif;
-                color: #f3f4f6;
-                margin: 0;
-                padding: 0;
-            }
-            .container {
-                max-width: 600px;
-                margin: 40px auto;
-                background-color: #111827;
-                border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 16px;
-                padding: 40px;
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            }
-            .logo {
-                font-size: 24px;
-                font-weight: bold;
-                color: #6c63ff;
-                margin-bottom: 24px;
-                text-align: center;
-                letter-spacing: -0.5px;
-            }
-            .title {
-                font-size: 20px;
-                font-weight: bold;
-                margin-bottom: 16px;
-                color: #ffffff;
-                text-align: center;
-            }
-            .message {
-                font-size: 16px;
-                line-height: 1.6;
-                color: #9ca3af;
-                margin-bottom: 30px;
-                text-align: center;
-            }
-            .otp-box {
-                font-size: 32px;
-                font-weight: bold;
-                color: #10b981;
-                background-color: rgba(16, 185, 129, 0.1);
-                border: 1px solid rgba(16, 185, 129, 0.2);
-                padding: 12px 24px;
-                border-radius: 8px;
-                text-align: center;
-                letter-spacing: 6px;
-                display: inline-block;
-                margin: 0 auto;
-            }
-            .otp-container {
-                text-align: center;
-                margin-bottom: 30px;
-            }
-            .footer {
-                font-size: 12px;
-                color: #6b7280;
-                text-align: center;
-                border-top: 1px solid rgba(255, 255, 255, 0.05);
-                padding-top: 20px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="logo">REDOX API SERVICE</div>
-            <div class="title">Verify Your Email Address</div>
-            <div class="message">
-                Hello ' . htmlspecialchars($to_name) . ',<br>
-                Thank you for applying to the Redox API Service. Please use the following One-Time Password (OTP) to complete your email verification. This code is valid for 10 minutes.
-            </div>
-            <div class="otp-container">
-                <div class="otp-box">' . $otp . '</div>
-            </div>
-            <div class="message">
-                If you did not request this, please ignore this email.
-            </div>
-            <div class="footer">
-                &copy; 2026 Redox. All rights reserved. Redox API Service.
-            </div>
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff; color: #1f2937;">
+        <h2 style="color: #6c63ff; margin-top: 0;">Redox API Service</h2>
+        <p style="font-size: 15px; line-height: 1.5;">Hello ' . htmlspecialchars($to_name) . ',</p>
+        <p style="font-size: 15px; line-height: 1.5;">Thank you for registering. Please use the following One-Time Password (OTP) to verify your email address:</p>
+        <div style="font-size: 30px; font-weight: bold; color: #10b981; background-color: #f3f4f6; border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px; text-align: center; letter-spacing: 5px; margin: 24px 0;">
+            ' . $otp . '
         </div>
-    </body>
-    </html>
+        <p style="font-size: 14px; color: #6b7280;">This verification code is valid for 10 minutes.</p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+        <p style="font-size: 12px; color: #9ca3af; text-align: center;">&copy; 2026 Redox API Service. All rights reserved.</p>
+    </div>
     ';
 }
 
