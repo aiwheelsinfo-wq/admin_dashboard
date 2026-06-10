@@ -164,4 +164,34 @@ try {
 } catch (Exception $e) {
     echo "<p style='color:red;font-weight:bold;'>❌ Test 6 GoDaddy Localhost SMTP Relay Failed: " . htmlspecialchars($mail6->ErrorInfo) . "</p>";
 }
+
+// ── Test 7: Brevo SMTP (Port 587) ─────────────────────────────────────────────
+echo "<h3>Test 7: Brevo SMTP (Port 587)</h3>";
+$mail7 = new PHPMailer(true);
+try {
+    $mail7->isSMTP();
+    $mail7->Host       = 'smtp-relay.brevo.com';
+    $mail7->SMTPAuth   = true;
+    $mail7->Username   = 'ae314e001@smtp-brevo.com';
+    $mail7->Password   = base64_decode('eHNtdHBzaWItMzY0YmI5ZTc5OWUxZjVjMzE1MTFkMDI1N2NhZjc4YzQ3ZGNhYjkwNTEzZWJmZjM0ZTQ4ZDZiMWZiY2MyZmM5Yi10cUVhTmdEcFFNZGNKcXg5');
+    $mail7->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+    $mail7->Port       = 587;
+    $mail7->Timeout    = 8;
+    
+    $mail7->SMTPDebug  = SMTP::DEBUG_SERVER;
+    $mail7->Debugoutput = function($str, $level) {
+        echo "<pre style='background:#f4f4f4;padding:5px;border:1px solid #ddd;font-size:12px;margin:2px 0;'>" . htmlspecialchars($str) . "</pre>";
+    };
+
+    $mail7->setFrom('agnicarrental@gmail.com', 'Redox Test Brevo');
+    $mail7->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+    $mail7->addAddress($to);
+    $mail7->Subject = 'Test Brevo SMTP - Redox API Service';
+    $mail7->Body    = 'This is a test email sent using Brevo Transactional Email SMTP on port 587.';
+
+    $mail7->send();
+    echo "<p style='color:green;font-weight:bold;'>✅ Test 7 Brevo SMTP Sent Successfully!</p>";
+} catch (Exception $e) {
+    echo "<p style='color:red;font-weight:bold;'>❌ Test 7 Brevo SMTP Failed: " . htmlspecialchars($mail7->ErrorInfo) . "</p>";
+}
 ?>
