@@ -119,7 +119,7 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'agnicarrental@gmail.com';
+        $mail->Username   = 'ai.wheels.info@gmail.com';
         $mail->Password   = 'tuol rtte tllu cmtk';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
