@@ -116,6 +116,14 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
  * Returns the HTML email template for the admin API access notification.
  */
 function get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
+    $partner_name_val   = !empty($partner_name) ? htmlspecialchars($partner_name) : '<span style="color:#9ca3af;font-style:italic;">Not provided yet (Pending profile details)</span>';
+    $company_name_val   = !empty($company_name) ? htmlspecialchars($company_name) : '<span style="color:#9ca3af;font-style:italic;">Not provided yet (Pending profile details)</span>';
+    $company_owner_val  = !empty($company_owner) ? htmlspecialchars($company_owner) : '<span style="color:#9ca3af;font-style:italic;">Not provided yet (Pending profile details)</span>';
+    $contact_person_val = !empty($contact_person) ? htmlspecialchars($contact_person) : '<span style="color:#9ca3af;font-style:italic;">Not provided yet (Pending profile details)</span>';
+    $contact_mobile_val = !empty($contact_mobile) ? htmlspecialchars($contact_mobile) : '<span style="color:#9ca3af;font-style:italic;">Not provided yet (Pending profile details)</span>';
+    $business_email_val = !empty($business_email) ? '<a href="mailto:' . htmlspecialchars($business_email) . '">' . htmlspecialchars($business_email) . '</a>' : '<span style="color:#9ca3af;font-style:italic;">Not provided yet (Pending profile details)</span>';
+    $gst_number_val     = !empty($gst_number) ? '<span style="font-family:monospace; color:#4f46e5;">' . htmlspecialchars($gst_number) . '</span>' : '<span style="color:#9ca3af;font-style:italic;">Not provided yet (Pending profile details)</span>';
+
     return '
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff; color: #1f2937;">
         <h2 style="color: #4f46e5; margin-top: 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">New Partner API Request</h2>
@@ -126,31 +134,31 @@ function get_admin_notification_body($company_name, $partner_name, $company_owne
         <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
             <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #4b5563; width: 150px; border-bottom: 1px solid #f3f4f6;">Partner Name:</td>
-                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($partner_name) . '</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . $partner_name_val . '</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Company Name:</td>
-                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($company_name) . '</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . $company_name_val . '</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Company Owner:</td>
-                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($company_owner) . '</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . $company_owner_val . '</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Contact Person:</td>
-                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($contact_person) . '</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . $contact_person_val . '</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Contact Mobile:</td>
-                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($contact_mobile) . '</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . $contact_mobile_val . '</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Business Email:</td>
-                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;"><a href="mailto:' . htmlspecialchars($business_email) . '">' . htmlspecialchars($business_email) . '</a></td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . $business_email_val . '</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">GST Number:</td>
-                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6; font-family: monospace;">' . htmlspecialchars($gst_number) . '</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . $gst_number_val . '</td>
             </tr>
         </table>
         

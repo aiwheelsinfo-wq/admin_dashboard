@@ -78,6 +78,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (mysqli_stmt_execute($stmt)) {
                 $new_id = mysqli_insert_id($conn);
                 
+                // Automatically send email notification to Rentox Admin using PHPMailer
+                send_admin_notification_email(
+                    $temp['company_name'],
+                    $partner_name,
+                    '', // Owner Name
+                    $temp['contact_person'],
+                    '', // Contact Mobile
+                    $temp['email'],
+                    ''  // GST Number
+                );
+
                 // Clear temporary session data
                 unset($_SESSION['temp_reg']);
                 unset($_SESSION['last_resend_time']);
