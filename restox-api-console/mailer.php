@@ -115,7 +115,8 @@ function get_email_body($otp, $to_name) {
 function send_otp_email($to_email, $otp, $to_name = 'Partner') {
     $mail = new PHPMailer(true);
     try {
-        // Try direct SMTP connection (with 4-second timeout limit to prevent hanging)
+        // Tier 1: Try direct SMTP connection (with 4-second timeout limit to prevent hanging)
+        // This is ideal for local development or servers that don't block outbound port 587.
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
@@ -137,11 +138,18 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         $mail->send();
         return true;
     } catch (Exception $e) {
-        // Fallback: If SMTP connection is blocked/times out (e.g. on GoDaddy shared hosting),
-        // switch immediately to local sendmail/PHP mail() utility.
+        // Tier 2: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
+        // This is the most reliable method on GoDaddy shared hosting, utilizing the local Exim server.
         try {
             $mail->clearAllRecipients();
-            $mail->isMail(); 
+            $mail->isSMTP();
+            $mail->Host       = 'localhost';
+            $mail->SMTPAuth   = false;
+            $mail->SMTPAutoTLS = false;
+            $mail->SMTPSecure = false;
+            $mail->Port       = 25;
+            $mail->Timeout    = 4;
+
             $mail->setFrom('noreply@agnicarrental.com', 'Redox API Service');
             $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
             $mail->addAddress($to_email, $to_name);
@@ -151,9 +159,24 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
             
             $mail->send();
             return true;
-        } catch (Exception $eFallback) {
-            error_log("PHPMailer SMTP and PHP mail() both failed. Error: " . $mail->ErrorInfo);
-            return false;
+        } catch (Exception $eLocalhost) {
+            // Tier 3: Fallback to PHP native mail() function via PHPMailer
+            try {
+                $mail->clearAllRecipients();
+                $mail->isMail(); 
+                $mail->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+                $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+                $mail->addAddress($to_email, $to_name);
+                $mail->isHTML(true);
+                $mail->Subject = 'Email Verification OTP - Redox API Service';
+                $mail->Body    = get_email_body($otp, $to_name);
+                
+                $mail->send();
+                return true;
+            } catch (Exception $eFallback) {
+                error_log("PHPMailer all tiers failed. Error: " . $mail->ErrorInfo);
+                return false;
+            }
         }
     }
 }
