@@ -111,4 +111,135 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         }
     }
 }
+
+/**
+ * Returns the HTML email template for the admin API access notification.
+ */
+function get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
+    return '
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff; color: #1f2937;">
+        <h2 style="color: #4f46e5; margin-top: 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">New Partner API Request</h2>
+        <p style="font-size: 15px; line-height: 1.5;">Dear Rentox Admin,</p>
+        <p style="font-size: 15px; line-height: 1.5;">A new company has submitted a request for API access to the Rentox Partner API Platform.</p>
+        
+        <h3 style="color: #374151; margin-top: 20px; font-size: 16px;">Company Information:</h3>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px;">
+            <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #4b5563; width: 150px; border-bottom: 1px solid #f3f4f6;">Partner Name:</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($partner_name) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Company Name:</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($company_name) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Company Owner:</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($company_owner) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Contact Person:</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($contact_person) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Contact Mobile:</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;">' . htmlspecialchars($contact_mobile) . '</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">Business Email:</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6;"><a href="mailto:' . htmlspecialchars($business_email) . '">' . htmlspecialchars($business_email) . '</a></td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #4b5563; border-bottom: 1px solid #f3f4f6;">GST Number:</td>
+                <td style="padding: 8px 0; color: #1f2937; border-bottom: 1px solid #f3f4f6; font-family: monospace;">' . htmlspecialchars($gst_number) . '</td>
+            </tr>
+        </table>
+        
+        <p style="font-size: 15px; line-height: 1.5; margin-top: 25px; font-weight: 500; color: #b45309; background-color: #fffbeb; padding: 10px; border-radius: 6px; border-left: 4px solid #f59e0b;">
+            The request is currently marked as Pending Review.
+        </p>
+        
+        <p style="font-size: 14px; margin-top: 25px;">You can review and approve this request in the admin panel under the Partner API section.</p>
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="https://agnicarrental.com/admin2025/partner/index.php" style="background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-block;">Go to Admin Panel</a>
+        </div>
+    </div>
+    ';
+}
+
+/**
+ * Sends a notification email to Rentox Admin when a B2B partner submits/completes their API Access profile details.
+ */
+function send_admin_notification_email($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
+    $mail = new PHPMailer(true);
+    try {
+        // Try direct SMTP connection if running locally
+        $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) 
+                 || (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] === 'localhost');
+        
+        if (!$is_local) {
+            throw new Exception("Bypassing Gmail SMTP on live server");
+        }
+
+        $mail->isSMTP();
+        $mail->Host       = 'smtp.gmail.com';
+        $mail->SMTPAuth   = true;
+        $mail->Username   = 'ai.wheels.info@gmail.com';
+        $mail->Password   = 'tuol rtte tllu cmtk';
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = 587;
+        $mail->Timeout    = 4; 
+
+        // Recipients
+        $mail->setFrom('ai.wheels.info@gmail.com', 'Redox API Service');
+        $mail->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+
+        // Content
+        $mail->isHTML(true);
+        $mail->Subject = 'New Partner API Access Request - Action Required';
+        $mail->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
+
+        $mail->send();
+        return true;
+    } catch (Exception $e) {
+        // Fallback: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
+        try {
+            $mailLocal = new PHPMailer(true);
+            $mailLocal->isSMTP();
+            $mailLocal->Host       = 'localhost';
+            $mailLocal->SMTPAuth   = false;
+            $mailLocal->SMTPAutoTLS = false;
+            $mailLocal->SMTPSecure = false;
+            $mailLocal->Port       = 25;
+            $mailLocal->Timeout    = 4;
+
+            $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+            $mailLocal->addReplyTo($business_email, $contact_person);
+            $mailLocal->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+            $mailLocal->isHTML(true);
+            $mailLocal->Subject = 'New Partner API Access Request - Action Required';
+            $mailLocal->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
+            
+            $mailLocal->send();
+            return true;
+        } catch (Exception $eLocalhost) {
+            // Fallback: PHP native mail() function
+            try {
+                $mailBackup = new PHPMailer(true);
+                $mailBackup->isMail(); 
+                $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+                $mailBackup->addReplyTo($business_email, $contact_person);
+                $mailBackup->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+                $mailBackup->isHTML(true);
+                $mailBackup->Subject = 'New Partner API Access Request - Action Required';
+                $mailBackup->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
+                
+                $mailBackup->send();
+                return true;
+            } catch (Exception $eFallback) {
+                error_log("Admin notification mailing failed. Error: " . $mailBackup->ErrorInfo);
+                return false;
+            }
+        }
+    }
+}
 ?>

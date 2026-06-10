@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../db_connect.php';
+require_once __DIR__ . '/mailer.php';
 
 // Auth Check (must be logged in as partner)
 if (!isset($_SESSION['partner_id'])) {
@@ -51,6 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (mysqli_stmt_execute($stmt)) {
                     $success = 'Profile details updated successfully!';
                     $_SESSION['partner_email'] = $email; // Update session email
+
+                    // Automatically send email notification to Rentox Admin
+                    send_admin_notification_email($company_name, $partner_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number);
                 } else {
                     $error = 'Failed to update profile: ' . mysqli_error($conn);
                 }
