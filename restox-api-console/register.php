@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../db_connect.php';
+require_once __DIR__ . '/mailer.php';
 
 // If already logged in, redirect to dashboard
 if (isset($_SESSION['partner_id'])) {
@@ -41,35 +42,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 mysqli_stmt_close($check_stmt);
 
+                // Generate 6-digit OTP
+                $otp = (string)rand(100000, 999999);
+                $otp_expiry = time() + 600; // 10 minutes from now
+
                 // Hash password
                 $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-                // Insert pending request
-                $partner_name = $company_name; // Default display name to company name
-                $notes = 'Registered via Redox API Service B2B Console';
-                
-                $stmt = mysqli_prepare($conn, 
-                    "INSERT INTO partners (partner_name, company_name, contact_person, email, password, status, notes)
-                     VALUES (?, ?, ?, ?, ?, 'pending', ?)"
-                );
-                
-                mysqli_stmt_bind_param($stmt, 'ssssss', 
-                    $partner_name, $company_name, $contact_person, $email, $hashed_password, $notes
-                );
+                // Store in temporary session
+                $_SESSION['temp_reg'] = [
+                    'company_name'   => $company_name,
+                    'contact_person' => $contact_person,
+                    'email'          => $email,
+                    'password'       => $hashed_password,
+                    'otp'            => $otp,
+                    'otp_expiry'     => $otp_expiry
+                ];
 
-                if (mysqli_stmt_execute($stmt)) {
-                    $new_id = mysqli_insert_id($conn);
-                    
-                    // Auto login
-                    $_SESSION['partner_id'] = $new_id;
-                    $_SESSION['partner_email'] = $email;
-                    
-                    header("Location: dashboard.php");
+                // Send OTP Email
+                if (send_otp_email($email, $otp, $contact_person)) {
+                    header("Location: verify-otp.php");
                     exit();
                 } else {
-                    $error = 'Failed to submit request: ' . mysqli_error($conn);
+                    $error = 'Failed to send verification email. Please check your email address or try again.';
+                    unset($_SESSION['temp_reg']);
                 }
-                mysqli_stmt_close($stmt);
             }
         } catch (Exception $e) {
             $error = 'An error occurred: ' . $e->getMessage();
