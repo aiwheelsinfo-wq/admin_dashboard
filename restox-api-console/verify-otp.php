@@ -250,6 +250,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background-color: rgba(255, 255, 255, 0.05);
         }
 
+        .d-none {
+            display: none !important;
+        }
+
         .alert {
             border-radius: 12px;
             padding: 16px;
