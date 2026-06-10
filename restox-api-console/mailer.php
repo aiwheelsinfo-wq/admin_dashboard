@@ -36,20 +36,29 @@ function get_email_body($otp, $to_name) {
  */
 function send_otp_email($to_email, $otp, $to_name = 'Partner') {
     try {
-        // Tier 1: Try direct Brevo SMTP connection
+        // Detect if running on local development environment
+        $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) 
+                 || (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] === 'localhost');
+        
+        if (!$is_local) {
+            // Bypass Gmail SMTP on live host to prevent the 4-second connection timeout hang
+            throw new Exception("Bypassing Gmail SMTP on live server");
+        }
+
+        // Tier 1: Try direct SMTP connection (with 4-second timeout limit to prevent hanging)
+        // This is ideal for local development or servers that don't block outbound port 587.
         $mail = new PHPMailer(true);
         $mail->isSMTP();
-        $mail->Host       = 'smtp-relay.brevo.com';
+        $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'ae314e001@smtp-brevo.com';
-        $mail->Password   = base64_decode('eHNtdHBzaWItMzY0YmI5ZTc5OWUxZjVjMzE1MTFkMDI1N2NhZjc4YzQ3ZGNhYjkwNTEzZWJmZjM0ZTQ4ZDZiMWZiY2MyZmM5Yi10cUVhTmdEcFFNZGNKcXg5');
+        $mail->Username   = 'ai.wheels.info@gmail.com';
+        $mail->Password   = 'tuol rtte tllu cmtk';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
-        $mail->Timeout    = 5; 
+        $mail->Timeout    = 4; 
 
-        // Recipients (From must be Brevo verified sender: agnicarrental@gmail.com)
-        $mail->setFrom('agnicarrental@gmail.com', 'Redox API Service');
-        $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+        // Recipients
+        $mail->setFrom('ai.wheels.info@gmail.com', 'Redox API Service');
         $mail->addAddress($to_email, $to_name);
 
         // Content
@@ -60,7 +69,6 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         $mail->send();
         return true;
     } catch (Exception $e) {
-        error_log("PHPMailer Tier 1 (Brevo SMTP) failed: " . $e->getMessage() . " (PHPMailer ErrorInfo: " . $mail->ErrorInfo . ")");
         // Tier 2: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
         // This is the most reliable method on GoDaddy shared hosting, utilizing the local Exim server.
         try {
@@ -172,19 +180,25 @@ function get_admin_notification_body($company_name, $partner_name, $company_owne
 function send_admin_notification_email($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
     $mail = new PHPMailer(true);
     try {
-        // Tier 1: Try direct Brevo SMTP connection
+        // Try direct SMTP connection if running locally
+        $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) 
+                 || (isset($_SERVER['SERVER_NAME']) && $_SERVER['SERVER_NAME'] === 'localhost');
+        
+        if (!$is_local) {
+            throw new Exception("Bypassing Gmail SMTP on live server");
+        }
+
         $mail->isSMTP();
-        $mail->Host       = 'smtp-relay.brevo.com';
+        $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'ae314e001@smtp-brevo.com';
-        $mail->Password   = base64_decode('eHNtdHBzaWItMzY0YmI5ZTc5OWUxZjVjMzE1MTFkMDI1N2NhZjc4YzQ3ZGNhYjkwNTEzZWJmZjM0ZTQ4ZDZiMWZiY2MyZmM5Yi10cUVhTmdEcFFNZGNKcXg5');
+        $mail->Username   = 'ai.wheels.info@gmail.com';
+        $mail->Password   = 'tuol rtte tllu cmtk';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
-        $mail->Timeout    = 5; 
+        $mail->Timeout    = 4; 
 
-        // Recipients (From must be Brevo verified sender: agnicarrental@gmail.com)
-        $mail->setFrom('agnicarrental@gmail.com', 'Redox API Service');
-        $mail->addReplyTo($business_email, $contact_person);
+        // Recipients
+        $mail->setFrom('ai.wheels.info@gmail.com', 'Redox API Service');
         $mail->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
 
         // Content
@@ -195,7 +209,6 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
         $mail->send();
         return true;
     } catch (Exception $e) {
-        error_log("PHPMailer Admin Tier 1 (Brevo SMTP) failed: " . $e->getMessage() . " (PHPMailer ErrorInfo: " . $mail->ErrorInfo . ")");
         // Fallback: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
         try {
             $mailLocal = new PHPMailer(true);
