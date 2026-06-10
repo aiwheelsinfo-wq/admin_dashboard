@@ -174,9 +174,6 @@ function get_admin_notification_body($company_name, $partner_name, $company_owne
     ';
 }
 
-/**
- * Sends a notification email to Rentox Admin when a B2B partner submits/completes their API Access profile details.
- */
 function send_admin_notification_email($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
     $mail = new PHPMailer(true);
     try {
@@ -200,6 +197,9 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
         // Recipients
         $mail->setFrom('ai.wheels.info@gmail.com', 'Redox API Service');
         $mail->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+        if (!empty($business_email)) {
+            $mail->addAddress($business_email, $contact_person);
+        }
 
         // Content
         $mail->isHTML(true);
@@ -223,6 +223,9 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
             $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
             $mailLocal->addReplyTo($business_email, $contact_person);
             $mailLocal->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+            if (!empty($business_email)) {
+                $mailLocal->addAddress($business_email, $contact_person);
+            }
             $mailLocal->isHTML(true);
             $mailLocal->Subject = 'New Partner API Access Request - Action Required';
             $mailLocal->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
@@ -237,6 +240,9 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
                 $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
                 $mailBackup->addReplyTo($business_email, $contact_person);
                 $mailBackup->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+                if (!empty($business_email)) {
+                    $mailBackup->addAddress($business_email, $contact_person);
+                }
                 $mailBackup->isHTML(true);
                 $mailBackup->Subject = 'New Partner API Access Request - Action Required';
                 $mailBackup->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
