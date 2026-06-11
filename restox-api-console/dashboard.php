@@ -22,9 +22,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $contact_number     = trim($_POST['contact_number'] ?? '');
     $email              = trim($_POST['email'] ?? '');
     $gst_number         = trim($_POST['gst_number'] ?? '');
+    $address            = trim($_POST['address'] ?? '');
+    $bank_details       = trim($_POST['bank_details'] ?? '');
 
-    if (!$partner_name || !$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number) {
-        $error = 'All fields are required to complete your profile.';
+    // Check if document already exists in DB
+    $db_stmt = mysqli_prepare($conn, "SELECT documents FROM partners WHERE id = ? LIMIT 1");
+    mysqli_stmt_bind_param($db_stmt, 'i', $id);
+    mysqli_stmt_execute($db_stmt);
+    $db_res = mysqli_stmt_get_result($db_stmt);
+    $db_p = mysqli_fetch_assoc($db_res);
+    mysqli_stmt_close($db_stmt);
+    $existing_doc = $db_p['documents'] ?? '';
+
+    $has_uploaded_file = (isset($_FILES['documents_file']) && $_FILES['documents_file']['error'] === UPLOAD_ERR_OK);
+
+    if (!$partner_name || !$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number || !$address || !$bank_details || (!$existing_doc && !$has_uploaded_file)) {
+        $error = 'All fields (including Document Upload) are required to complete your profile.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid business email address.';
     } else {
@@ -40,25 +53,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             mysqli_stmt_close($check_stmt);
 
             if (empty($error)) {
-                $stmt = mysqli_prepare($conn, 
-                    "UPDATE partners 
-                     SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ? 
-                     WHERE id = ?"
-                );
-                mysqli_stmt_bind_param($stmt, 'sssssssi', 
-                    $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $id
-                );
-
-                if (mysqli_stmt_execute($stmt)) {
-                    $success = 'Profile details updated successfully!';
-                    $_SESSION['partner_email'] = $email; // Update session email
-
-                    // Automatically send email notification to Rentox Admin
-                    send_admin_notification_email($company_name, $partner_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number);
-                } else {
-                    $error = 'Failed to update profile: ' . mysqli_error($conn);
+                $uploaded_filename = null;
+                if ($has_uploaded_file) {
+                    $file_tmp = $_FILES['documents_file']['tmp_name'];
+                    $file_name = $_FILES['documents_file']['name'];
+                    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                    
+                    $allowed_exts = ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'];
+                    if (!in_array($file_ext, $allowed_exts)) {
+                        $error = 'Invalid document file type. Only PDF, DOC/X, and images (JPG/PNG) are allowed.';
+                    } else {
+                        $upload_dir = __DIR__ . '/uploads';
+                        if (!is_dir($upload_dir)) {
+                            @mkdir($upload_dir, 0755, true);
+                        }
+                        $new_filename = 'doc_' . $id . '_' . time() . '.' . $file_ext;
+                        if (move_uploaded_file($file_tmp, $upload_dir . '/' . $new_filename)) {
+                            $uploaded_filename = $new_filename;
+                        } else {
+                            $error = 'Failed to upload document file.';
+                        }
+                    }
                 }
-                mysqli_stmt_close($stmt);
+
+                if (empty($error)) {
+                    if ($uploaded_filename !== null) {
+                        $stmt = mysqli_prepare($conn, 
+                            "UPDATE partners 
+                             SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ?, address = ?, bank_details = ?, documents = ? 
+                             WHERE id = ?"
+                        );
+                        mysqli_stmt_bind_param($stmt, 'ssssssssssi', 
+                            $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $address, $bank_details, $uploaded_filename, $id
+                        );
+                    } else {
+                        $stmt = mysqli_prepare($conn, 
+                            "UPDATE partners 
+                             SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ?, address = ?, bank_details = ? 
+                             WHERE id = ?"
+                        );
+                        mysqli_stmt_bind_param($stmt, 'sssssssssi', 
+                            $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $address, $bank_details, $id
+                        );
+                    }
+
+                    if (mysqli_stmt_execute($stmt)) {
+                        $success = 'Profile details updated successfully!';
+                        $_SESSION['partner_email'] = $email; // Update session email
+                    } else {
+                        $error = 'Failed to update profile: ' . mysqli_error($conn);
+                    }
+                    mysqli_stmt_close($stmt);
+                }
             }
         } catch (Exception $e) {
             $error = 'Database error: ' . $e->getMessage();
@@ -75,6 +121,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Request API Access Request
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request_api_access') {
+    try {
+        // Fetch latest partner details
+        $stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        mysqli_stmt_execute($stmt);
+        $p = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt));
+        mysqli_stmt_close($stmt);
+
+        if (!$p) {
+            $error = 'Partner account not found.';
+        } else {
+            $profile_incomplete = empty($p['partner_name']) || empty($p['company_name']) || empty($p['company_owner_name']) 
+                               || empty($p['contact_person']) || empty($p['mobile_number']) || empty($p['email']) 
+                               || empty($p['gst_number']) || empty($p['address']) || empty($p['bank_details']) 
+                               || empty($p['documents']);
+
+            if ($profile_incomplete) {
+                $error = 'Your profile is incomplete. Please complete all fields before requesting API access.';
+            } elseif ($p['status'] !== 'pending_profile') {
+                $error = 'You have already submitted a request or your connection is already active.';
+            } else {
+                // Update status to 'pending'
+                $upd_stmt = mysqli_prepare($conn, "UPDATE partners SET status = 'pending' WHERE id = ?");
+                mysqli_stmt_bind_param($upd_stmt, 'i', $id);
+                if (mysqli_stmt_execute($upd_stmt)) {
+                    // Send admin email notification
+                    send_admin_notification_email(
+                        $p['company_name'],
+                        $p['partner_name'],
+                        $p['company_owner_name'],
+                        $p['contact_person'],
+                        $p['mobile_number'],
+                        $p['email'],
+                        $p['gst_number']
+                    );
+                    $success = 'Your API access request has been submitted successfully. Status: Pending Approval.';
+                } else {
+                    $error = 'Failed to submit request: ' . mysqli_error($conn);
+                }
+                mysqli_stmt_close($upd_stmt);
+            }
+        }
+    } catch (Exception $e) {
+        $error = 'Error processing request: ' . $e->getMessage();
+    }
+
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        echo json_encode([
+            'success' => empty($error),
+            'message' => empty($error) ? $success : $error
+        ]);
+        exit;
+    }
+}
+
 // Fetch latest partner details
 $stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
 mysqli_stmt_bind_param($stmt, 'i', $id);
@@ -82,6 +185,23 @@ mysqli_stmt_execute($stmt);
 $res = mysqli_stmt_get_result($stmt);
 $p = mysqli_fetch_assoc($res);
 mysqli_stmt_close($stmt);
+
+// Calculate profile completion percentage
+$total_fields = 10;
+$completed_fields = 0;
+if (!empty($p['company_name'])) $completed_fields++;
+if (!empty($p['partner_name'])) $completed_fields++;
+if (!empty($p['company_owner_name'])) $completed_fields++;
+if (!empty($p['contact_person'])) $completed_fields++;
+if (!empty($p['email'])) $completed_fields++;
+if (!empty($p['mobile_number'])) $completed_fields++;
+if (!empty($p['gst_number'])) $completed_fields++;
+if (!empty($p['address'])) $completed_fields++;
+if (!empty($p['bank_details'])) $completed_fields++;
+if (!empty($p['documents'])) $completed_fields++;
+
+$completion_percentage = ($completed_fields / $total_fields) * 100;
+$profile_complete = ($completed_fields === $total_fields);
 
 if (!$p) {
     session_destroy();
