@@ -10,13 +10,14 @@ require_once __DIR__ . '/PHPMailer/Exception.php';
 require_once __DIR__ . '/PHPMailer/PHPMailer.php';
 require_once __DIR__ . '/PHPMailer/SMTP.php';
 
-echo "<h2>PHPMailer Debugger</h2>";
+echo "<h2>PHPMailer Performance Debugger</h2>";
 
 $to = isset($_GET['email']) ? $_GET['email'] : 'ai.wheels.info@gmail.com';
 echo "<p>Sending test email to: <strong>" . htmlspecialchars($to) . "</strong> (use <code>?email=your-email@domain.com</code> to change this)</p>";
 
 // ── Test 1: Direct SMTP via Gmail ─────────────────────────────────────────────
 echo "<h3>Test 1: Direct SMTP via Gmail (Port 587)</h3>";
+$start = microtime(true);
 $mail = new PHPMailer(true);
 try {
     $mail->isSMTP();
@@ -44,9 +45,12 @@ try {
 } catch (Exception $e) {
     echo "<p style='color:red;font-weight:bold;'>❌ Test 1 SMTP Failed: " . htmlspecialchars($mail->ErrorInfo) . "</p>";
 }
+$end = microtime(true);
+echo "<p>Time taken: <strong>" . round($end - $start, 4) . " seconds</strong></p>";
 
 // ── Test 2: PHP mail() function via PHPMailer ────────────────────────────────
 echo "<h3>Test 2: PHP native mail() via PHPMailer (From: ai.wheels.info@gmail.com)</h3>";
+$start = microtime(true);
 $mail2 = new PHPMailer(true);
 try {
     $mail2->isMail();
@@ -60,9 +64,12 @@ try {
 } catch (Exception $e) {
     echo "<p style='color:red;font-weight:bold;'>❌ Test 2 native mail() Failed: " . htmlspecialchars($mail2->ErrorInfo) . "</p>";
 }
+$end = microtime(true);
+echo "<p>Time taken: <strong>" . round($end - $start, 4) . " seconds</strong></p>";
 
 // ── Test 3: PHP mail() function (From: local domain noreply@agnicarrental.com) ──
 echo "<h3>Test 3: PHP native mail() via PHPMailer (From: noreply@agnicarrental.com)</h3>";
+$start = microtime(true);
 $mail3 = new PHPMailer(true);
 try {
     $mail3->isMail();
@@ -77,9 +84,12 @@ try {
 } catch (Exception $e) {
     echo "<p style='color:red;font-weight:bold;'>❌ Test 3 local mail() Failed: " . htmlspecialchars($mail3->ErrorInfo) . "</p>";
 }
+$end = microtime(true);
+echo "<p>Time taken: <strong>" . round($end - $start, 4) . " seconds</strong></p>";
 
 // ── Test 4: Gmail SMTP via Port 465 (SSL) ──────────────────────────────────────
 echo "<h3>Test 4: Gmail SMTP via Port 465 (SSL)</h3>";
+$start = microtime(true);
 $mail4 = new PHPMailer(true);
 try {
     $mail4->isSMTP();
@@ -106,9 +116,12 @@ try {
 } catch (Exception $e) {
     echo "<p style='color:red;font-weight:bold;'>❌ Test 4 SMTP Port 465 SSL Failed: " . htmlspecialchars($mail4->ErrorInfo) . "</p>";
 }
+$end = microtime(true);
+echo "<p>Time taken: <strong>" . round($end - $start, 4) . " seconds</strong></p>";
 
 // ── Test 5: GoDaddy SMTP Relay (relay-hosting.secureserver.net) ─────────────────
 echo "<h3>Test 5: GoDaddy SMTP Relay (relay-hosting.secureserver.net:25)</h3>";
+$start = microtime(true);
 $mail5 = new PHPMailer(true);
 try {
     $mail5->isSMTP();
@@ -135,9 +148,12 @@ try {
 } catch (Exception $e) {
     echo "<p style='color:red;font-weight:bold;'>❌ Test 5 GoDaddy SMTP Relay Failed: " . htmlspecialchars($mail5->ErrorInfo) . "</p>";
 }
+$end = microtime(true);
+echo "<p>Time taken: <strong>" . round($end - $start, 4) . " seconds</strong></p>";
 
 // ── Test 6: GoDaddy Localhost SMTP Relay (localhost:25) ─────────────────────────
 echo "<h3>Test 6: GoDaddy Localhost SMTP Relay (localhost:25)</h3>";
+$start = microtime(true);
 $mail6 = new PHPMailer(true);
 try {
     $mail6->isSMTP();
@@ -164,4 +180,6 @@ try {
 } catch (Exception $e) {
     echo "<p style='color:red;font-weight:bold;'>❌ Test 6 GoDaddy Localhost SMTP Relay Failed: " . htmlspecialchars($mail6->ErrorInfo) . "</p>";
 }
+$end = microtime(true);
+echo "<p>Time taken: <strong>" . round($end - $start, 4) . " seconds</strong></p>";
 ?>
