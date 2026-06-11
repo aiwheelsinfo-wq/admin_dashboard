@@ -69,43 +69,42 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
         $mail->send();
         return true;
     } catch (Exception $e) {
-        // Tier 2: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
-        // This is the most reliable method on GoDaddy shared hosting, utilizing the local Exim server.
+        // Tier 2: Try PHP native mail() function via PHPMailer (extremely fast, no network socket blocking)
         try {
-            $mailLocal = new PHPMailer(true);
-            $mailLocal->isSMTP();
-            $mailLocal->Host       = 'localhost';
-            $mailLocal->SMTPAuth   = false;
-            $mailLocal->SMTPAutoTLS = false;
-            $mailLocal->SMTPSecure = false;
-            $mailLocal->Port       = 25;
-            $mailLocal->Timeout    = 4;
-
-            $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-            $mailLocal->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
-            $mailLocal->addAddress($to_email, $to_name);
-            $mailLocal->isHTML(true);
-            $mailLocal->Subject = 'Email Verification OTP - Redox API Service';
-            $mailLocal->Body    = get_email_body($otp, $to_name);
+            $mailBackup = new PHPMailer(true);
+            $mailBackup->isMail(); 
+            $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+            $mailBackup->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+            $mailBackup->addAddress($to_email, $to_name);
+            $mailBackup->isHTML(true);
+            $mailBackup->Subject = 'Email Verification OTP - Redox API Service';
+            $mailBackup->Body    = get_email_body($otp, $to_name);
             
-            $mailLocal->send();
+            $mailBackup->send();
             return true;
-        } catch (Exception $eLocalhost) {
-            // Tier 3: Fallback to PHP native mail() function via PHPMailer
+        } catch (Exception $eMail) {
+            // Tier 3: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
             try {
-                $mailBackup = new PHPMailer(true);
-                $mailBackup->isMail(); 
-                $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-                $mailBackup->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
-                $mailBackup->addAddress($to_email, $to_name);
-                $mailBackup->isHTML(true);
-                $mailBackup->Subject = 'Email Verification OTP - Redox API Service';
-                $mailBackup->Body    = get_email_body($otp, $to_name);
+                $mailLocal = new PHPMailer(true);
+                $mailLocal->isSMTP();
+                $mailLocal->Host       = 'localhost';
+                $mailLocal->SMTPAuth   = false;
+                $mailLocal->SMTPAutoTLS = false;
+                $mailLocal->SMTPSecure = false;
+                $mailLocal->Port       = 25;
+                $mailLocal->Timeout    = 4;
+
+                $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+                $mailLocal->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+                $mailLocal->addAddress($to_email, $to_name);
+                $mailLocal->isHTML(true);
+                $mailLocal->Subject = 'Email Verification OTP - Redox API Service';
+                $mailLocal->Body    = get_email_body($otp, $to_name);
                 
-                $mailBackup->send();
+                $mailLocal->send();
                 return true;
             } catch (Exception $eFallback) {
-                error_log("PHPMailer all tiers failed. Error: " . $mailBackup->ErrorInfo);
+                error_log("PHPMailer all tiers failed. Error: " . $mailLocal->ErrorInfo);
                 return false;
             }
         }
@@ -209,48 +208,48 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
         $mail->send();
         return true;
     } catch (Exception $e) {
-        // Fallback: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
+        // Fallback Tier 2: PHP native mail() function (extremely fast, no network socket blocking)
         try {
-            $mailLocal = new PHPMailer(true);
-            $mailLocal->isSMTP();
-            $mailLocal->Host       = 'localhost';
-            $mailLocal->SMTPAuth   = false;
-            $mailLocal->SMTPAutoTLS = false;
-            $mailLocal->SMTPSecure = false;
-            $mailLocal->Port       = 25;
-            $mailLocal->Timeout    = 4;
-
-            $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-            $mailLocal->addReplyTo($business_email, $contact_person);
-            $mailLocal->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+            $mailBackup = new PHPMailer(true);
+            $mailBackup->isMail(); 
+            $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+            $mailBackup->addReplyTo($business_email, $contact_person);
+            $mailBackup->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
             if (!empty($business_email)) {
-                $mailLocal->addAddress($business_email, $contact_person);
+                $mailBackup->addAddress($business_email, $contact_person);
             }
-            $mailLocal->isHTML(true);
-            $mailLocal->Subject = 'New Partner API Access Request - Action Required';
-            $mailLocal->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
+            $mailBackup->isHTML(true);
+            $mailBackup->Subject = 'New Partner API Access Request - Action Required';
+            $mailBackup->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
             
-            $mailLocal->send();
+            $mailBackup->send();
             return true;
-        } catch (Exception $eLocalhost) {
-            // Fallback: PHP native mail() function
+        } catch (Exception $eMail) {
+            // Fallback Tier 3: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
             try {
-                $mailBackup = new PHPMailer(true);
-                $mailBackup->isMail(); 
-                $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-                $mailBackup->addReplyTo($business_email, $contact_person);
-                $mailBackup->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
+                $mailLocal = new PHPMailer(true);
+                $mailLocal->isSMTP();
+                $mailLocal->Host       = 'localhost';
+                $mailLocal->SMTPAuth   = false;
+                $mailLocal->SMTPAutoTLS = false;
+                $mailLocal->SMTPSecure = false;
+                $mailLocal->Port       = 25;
+                $mailLocal->Timeout    = 4;
+
+                $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+                $mailLocal->addReplyTo($business_email, $contact_person);
+                $mailLocal->addAddress('ai.wheels.info@gmail.com', 'Rentox Admin');
                 if (!empty($business_email)) {
-                    $mailBackup->addAddress($business_email, $contact_person);
+                    $mailLocal->addAddress($business_email, $contact_person);
                 }
-                $mailBackup->isHTML(true);
-                $mailBackup->Subject = 'New Partner API Access Request - Action Required';
-                $mailBackup->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
+                $mailLocal->isHTML(true);
+                $mailLocal->Subject = 'New Partner API Access Request - Action Required';
+                $mailLocal->Body    = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
                 
-                $mailBackup->send();
+                $mailLocal->send();
                 return true;
             } catch (Exception $eFallback) {
-                error_log("Admin notification mailing failed. Error: " . $mailBackup->ErrorInfo);
+                error_log("Admin notification mailing failed. Error: " . $mailLocal->ErrorInfo);
                 return false;
             }
         }
