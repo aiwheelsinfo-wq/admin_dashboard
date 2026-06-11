@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         if (!$partner) {
             $error = 'Partner account not found.';
-        } elseif ($partner['status'] !== 'pending_profile') {
+        } elseif (!in_array($partner['status'], ['pending_profile', 'pending'])) {
             $error = 'Your account status does not permit this request.';
         } else {
             // Validate all fields are complete
@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (mysqli_stmt_execute($update_stmt)) {
                     $success = 'Your API Access Request has been submitted successfully!';
                     
-                    // Dispatch email notification to Rentox Admin
+                    // Dispatch email notification to Rentox Admin (spooled)
                     send_admin_notification_email(
                         $partner['company_name'],
                         $partner['partner_name'],
@@ -163,6 +163,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         $partner['email'],
                         $partner['gst_number']
                     );
+
+                    // Trigger mail_runner server-side to flush the spool immediately
+                    $runner_url = 'https://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['PHP_SELF']) . '/mail_runner.php';
+                    $ch = curl_init($runner_url);
+                    if ($ch) {
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        curl_exec($ch);
+                        curl_close($ch);
+                    }
                 } else {
                     $error = 'Failed to submit request: ' . mysqli_error($conn);
                 }
@@ -1305,7 +1316,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     </div>
 
                     <!-- Profile Access Request & Progress Indicator Panel -->
-                    <?php if ($p['status'] === 'pending_profile'): ?>
+                    <?php if (in_array($p['status'], ['pending_profile', 'pending'])): ?>
                         <div class="panel-card" style="border: 1px solid rgba(99, 102, 241, 0.25); background: rgba(99, 102, 241, 0.03); padding: 24px;">
                             <div class="card-header-flex" style="margin-bottom: 16px;">
                                 <h3 class="card-title"><i class="fa-solid fa-user-check"></i> Profile Completion</h3>
