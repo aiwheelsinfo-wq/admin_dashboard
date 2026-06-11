@@ -24,7 +24,20 @@ $trip_type   = trim($body['trip_type']    ?? 'One-way');
 $car_type    = trim($body['car_type']     ?? '');
 $distance_km = (float)($body['distance_km'] ?? 0);
 
-if (empty($from) || empty($car_type) || $distance_km <= 0) {
+// Normalize car type for matching in database
+$car_key = strtolower(str_replace([' ', '-'], '', $car_type));
+$car_type_normalized = 'Sedan';
+if (strpos($car_key, 'sedan') !== false || strpos($car_key, 'dzire') !== false) {
+    $car_type_normalized = 'Sedan';
+} elseif (strpos($car_key, 'ertiga') !== false) {
+    $car_type_normalized = 'Ertiga';
+} elseif (strpos($car_key, 'crysta') !== false) {
+    $car_type_normalized = 'Crysta';
+} elseif (strpos($car_key, 'innova') !== false) {
+    $car_type_normalized = 'Innova';
+}
+
+if (empty($from) || empty($car_type) || ($trip_type !== 'Local-Duty' && $distance_km <= 0)) {
     log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'from_address, car_type, and distance_km are required'], 'error');
     api_error('from_address, car_type (e.g. Sedan), and distance_km are required', 400);
 }
@@ -94,7 +107,7 @@ switch ($trip_type) {
         $stmt_cost = mysqli_prepare($conn, $sql);
         $final_row = null;
         if ($stmt_cost) {
-            mysqli_stmt_bind_param($stmt_cost, 's', $car_type);
+            mysqli_stmt_bind_param($stmt_cost, 's', $car_type_normalized);
             mysqli_stmt_execute($stmt_cost);
             $res_cost = mysqli_stmt_get_result($stmt_cost);
             
@@ -133,7 +146,7 @@ switch ($trip_type) {
                 'innova' => 19.0,
                 'crysta' => 24.0,
             ];
-            $car_key = strtolower(str_replace(' ', '', $car_type));
+            $car_key = strtolower(str_replace(' ', '', $car_type_normalized));
             $km_rate = $base_rates[$car_key] ?? 13.0;
         }
 
@@ -151,7 +164,7 @@ switch ($trip_type) {
         $km_rate = null;
         $driver_allowance_db = null;
         if ($stmt_cost) {
-            mysqli_stmt_bind_param($stmt_cost, 's', $car_type);
+            mysqli_stmt_bind_param($stmt_cost, 's', $car_type_normalized);
             mysqli_stmt_execute($stmt_cost);
             $res_cost = mysqli_stmt_get_result($stmt_cost);
             if ($row = mysqli_fetch_assoc($res_cost)) {
@@ -168,7 +181,7 @@ switch ($trip_type) {
                 'innova' => 19.0,
                 'crysta' => 24.0,
             ];
-            $car_key = strtolower(str_replace(' ', '', $car_type));
+            $car_key = strtolower(str_replace(' ', '', $car_type_normalized));
             $km_rate = $base_rates[$car_key] ?? 13.0;
         }
 
@@ -218,7 +231,7 @@ switch ($trip_type) {
         }
 
         if ($selected_fare) {
-            $car_key = strtolower(str_replace(' ', '', $car_type));
+            $car_key = strtolower(str_replace(' ', '', $car_type_normalized));
             $col_name = 'Sedan';
             if (strpos($car_key, 'hatchback') !== false) {
                 $col_name = 'Hatchback';
@@ -252,7 +265,7 @@ switch ($trip_type) {
         $extraKMAmount = 0;
         $extraHoursAmount = 0;
         if ($stmt_cost) {
-            mysqli_stmt_bind_param($stmt_cost, 's', $car_type);
+            mysqli_stmt_bind_param($stmt_cost, 's', $car_type_normalized);
             mysqli_stmt_execute($stmt_cost);
             $res_cost = mysqli_stmt_get_result($stmt_cost);
             if ($row = mysqli_fetch_assoc($res_cost)) {
@@ -272,7 +285,7 @@ switch ($trip_type) {
                 'innova' => 2800.0,
                 'crysta' => 3500.0,
             ];
-            $car_key = strtolower(str_replace(' ', '', $car_type));
+            $car_key = strtolower(str_replace(' ', '', $car_type_normalized));
             $baseAmount = $base_amounts[$car_key] ?? 1800.0;
         }
 
