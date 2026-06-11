@@ -494,6 +494,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $("#resendPromptText").removeClass("d-none");
                 $("#btnResendOtp").removeClass("d-none");
             }, 30000);
+
+            // Trigger background mail runner asynchronously to process the spooled OTP email
+            fetch('mail_runner.php').catch(err => console.error('Mail runner trigger failed:', err));
         });
 
         // AJAX handler for resending OTP
@@ -510,6 +513,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 success: function(res) {
                     if (res.success) {
                         alertBox.removeClass("d-none").addClass("alert-success").find("span").text(res.message);
+                        
+                        // Trigger the mail runner immediately to process the resent OTP
+                        fetch('mail_runner.php').catch(() => {});
+                        
                         // Reload page in 1.5 seconds to refresh the timer countdown easily
                         setTimeout(() => window.location.reload(), 1500);
                     } else {

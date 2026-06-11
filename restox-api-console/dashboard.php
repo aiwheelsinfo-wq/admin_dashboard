@@ -1755,6 +1755,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         window.addEventListener('DOMContentLoaded', () => {
             const activeHash = window.location.hash || '#overview';
             switchTab(activeHash);
+            
+            // Trigger background mail runner asynchronously to process any spooled emails (like admin notifications)
+            fetch('mail_runner.php').catch(err => console.error('Mail runner trigger failed:', err));
         });
 
         // Toggle visibility of credentials
@@ -1855,6 +1858,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     alertDesc.innerText = data.message;
                     alertDesc.style.color = 'var(--text-secondary)';
                     showToast("Profile details saved!");
+                    
+                    // Trigger the mail runner immediately to process the admin notification email
+                    fetch('mail_runner.php').catch(() => {});
+
                     setTimeout(() => {
                         window.location.reload();
                     }, 1500);

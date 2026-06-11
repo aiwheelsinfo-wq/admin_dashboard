@@ -260,35 +260,9 @@ function send_admin_notification_email_sync($company_name, $partner_name, $compa
  * Triggers the background CLI or HTTP mail script to process queued emails immediately.
  */
 function trigger_background_mailer() {
-    // 1. Try local loopback HTTP request via fsockopen (non-blocking, works on GoDaddy shared hosting)
-    $host = $_SERVER['HTTP_HOST'] ?? 'agnicarrental.com';
-    $is_https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] == 443) || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-    $port = $is_https ? 443 : 80;
-    $scheme = $is_https ? 'ssl://' : '';
-    
-    // Path to mail_runner.php
-    $uri = '/admin2025/restox-api-console/mail_runner.php';
-    
-    $fp = @fsockopen($scheme . $host, $port, $errno, $errstr, 2);
-    if ($fp) {
-        $out = "GET $uri HTTP/1.1\r\n";
-        $out .= "Host: $host\r\n";
-        $out .= "Connection: Close\r\n\r\n";
-        @fwrite($fp, $out);
-        @fclose($fp);
-        return;
-    }
-    
-    // 2. Fallback: try cURL with a very short timeout (500ms)
-    $protocol = $is_https ? 'https://' : 'http://';
-    $url = $protocol . $host . $uri;
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_TIMEOUT_MS, 500);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    @curl_exec($ch);
-    @curl_close($ch);
+    // Disable server-side self-loopbacks on GoDaddy shared hosting to prevent 1.56-minute hangs.
+    // Mailing is triggered asynchronously from client-side JavaScript instead.
+    return;
 }
 
 /**
