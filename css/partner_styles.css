@@ -232,10 +232,33 @@
     font-weight: 700;
     text-transform: uppercase;
 }
+.badge-pending {
+    background: rgba(255, 170, 0, 0.15);
+    color: var(--warning-orange);
+    border: 1px solid rgba(255,170,0,0.3);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.badge-pending-profile {
+    background: rgba(108, 99, 255, 0.15);
+    color: #6C63FF;
+    border: 1px solid rgba(108,99,255,0.3);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 .badge-success { background:rgba(0,214,143,0.15); color:var(--active-green); border:1px solid rgba(0,214,143,0.3); padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
 .badge-error   { background:rgba(255,61,113,0.15); color:var(--blocked-red); border:1px solid rgba(255,61,113,0.3); padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
 .badge-rate    { background:rgba(255,170,0,0.15); color:var(--warning-orange); border:1px solid rgba(255,170,0,0.3); padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
 .badge-blocked-log { background:rgba(255,61,113,0.15); color:var(--blocked-red); border:1px solid rgba(255,61,113,0.3); padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; }
+
 
 /* ── Table ────────────────────────────────────── */
 .partner-table {

@@ -1281,7 +1281,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             <p>Monitor your agency integration metrics and access profile details.</p>
                         </div>
                         <div>
-                            <?php if ($p['status'] === 'pending'): ?>
+                            <?php if ($p['status'] === 'pending_profile'): ?>
+                                <span class="status-pill pill-pending" style="background:rgba(108, 99, 255, 0.15); color:#6C63FF; border-color:rgba(108,99,255,0.3);"><i class="fa-solid fa-user-gear"></i> Pending Profile Setup</span>
+                            <?php elseif ($p['status'] === 'pending'): ?>
                                 <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Pending Review</span>
                             <?php elseif ($p['status'] === 'blocked'): ?>
                                 <span class="status-pill pill-blocked"><i class="fa-solid fa-ban"></i> Access Blocked</span>
@@ -1291,19 +1293,92 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         </div>
                     </div>
 
-                    <!-- Incomplete Profile Warning -->
-                    <?php 
-                    $profile_incomplete = empty($p['partner_name']) || empty($p['company_owner_name']) || empty($p['mobile_number']) || empty($p['gst_number']);
-                    if ($profile_incomplete): 
-                    ?>
-                        <div class="alert-banner">
-                            <i class="fa-solid fa-triangle-exclamation alert-banner-icon"></i>
-                            <div class="alert-banner-content">
-                                <h4 class="alert-banner-title">Action Required: Complete Your Partner Profile</h4>
-                                <p class="alert-banner-desc">Before your API access request can be approved and live keys generated, you must complete your registration profile details.</p>
-                                <button class="btn-primary-action" onclick="switchTab('#settings')">
-                                    <i class="fa-solid fa-user-plus"></i> Complete Profile Details
+                    <!-- Profile Completion Progress & Request API Access Section -->
+                    <?php if ($p['status'] === 'pending_profile'): ?>
+                        <div class="panel-card" style="margin-bottom: 24px;">
+                            <h3 class="card-title" style="margin-bottom: 16px;"><i class="fa-solid fa-list-check"></i> API Access Request Checklist</h3>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.9rem;">
+                                    <span style="color:var(--text-secondary);">Profile Onboarding Completion</span>
+                                    <span style="color:#FFF; font-weight:700;"><?= round($completion_percentage) ?>%</span>
+                                </div>
+                                <div style="width:100%; height:10px; background:rgba(255,255,255,0.08); border-radius:5px; overflow:hidden;">
+                                    <div style="width:<?= $completion_percentage ?>%; height:100%; background:linear-gradient(90deg, #6C63FF, var(--primary-accent)); transition:width 0.5s ease;"></div>
+                                </div>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:24px; font-size:0.88rem;">
+                                <div style="color: <?= !empty($p['company_name']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['company_name']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Company Name
+                                </div>
+                                <div style="color: <?= !empty($p['partner_name']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['partner_name']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Partner Legal Name
+                                </div>
+                                <div style="color: <?= !empty($p['company_owner_name']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['company_owner_name']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Company Owner Name
+                                </div>
+                                <div style="color: <?= !empty($p['contact_person']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['contact_person']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Contact Person
+                                </div>
+                                <div style="color: <?= !empty($p['email']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['email']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Email Address
+                                </div>
+                                <div style="color: <?= !empty($p['mobile_number']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['mobile_number']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Mobile Number
+                                </div>
+                                <div style="color: <?= !empty($p['gst_number']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['gst_number']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> GST Number
+                                </div>
+                                <div style="color: <?= !empty($p['address']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['address']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Business Address
+                                </div>
+                                <div style="color: <?= !empty($p['bank_details']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['bank_details']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Bank Details
+                                </div>
+                                <div style="color: <?= !empty($p['documents']) ? 'var(--success-color)' : 'var(--text-secondary)' ?>;">
+                                    <i class="fa-solid <?= !empty($p['documents']) ? 'fa-circle-check' : 'fa-circle-dot' ?>"></i> Uploaded Documents
+                                </div>
+                            </div>
+
+                            <?php if ($profile_complete): ?>
+                                <div style="background:rgba(16, 185, 129, 0.08); border:1px solid rgba(16, 185, 129, 0.2); border-radius:12px; padding:16px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+                                    <i class="fa-solid fa-circle-check" style="color:var(--success-color); font-size:1.5rem;"></i>
+                                    <div>
+                                        <h4 style="color:#FFF; margin-bottom:4px; font-size:0.95rem; font-weight:600;">Your profile is complete. You can now request API access.</h4>
+                                        <p style="color:var(--text-secondary); margin:0; font-size:0.85rem;">Click the button below to submit your profile for administrator review.</p>
+                                    </div>
+                                </div>
+                                <button id="btnRequestApiAccess" class="btn-primary-action" style="width:100%; justify-content:center; padding:12px; font-size:0.95rem;">
+                                    <i class="fa-solid fa-paper-plane"></i> Request API Access
                                 </button>
+                            <?php else: ?>
+                                <div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.2); border-radius:12px; padding:16px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+                                    <i class="fa-solid fa-circle-exclamation" style="color:var(--danger-color); font-size:1.5rem;"></i>
+                                    <div>
+                                        <h4 style="color:#FFF; margin-bottom:4px; font-size:0.95rem; font-weight:600;">Profile Incomplete</h4>
+                                        <p style="color:var(--text-secondary); margin:0; font-size:0.85rem;">You must fill out all the mandatory fields on the Account Settings page before you can request API access.</p>
+                                    </div>
+                                </div>
+                                <button class="btn-primary-action" onclick="switchTab('#settings')" style="width:100%; justify-content:center; padding:12px; font-size:0.95rem;">
+                                    <i class="fa-solid fa-user-pen"></i> Go to Settings to Complete Profile
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    <?php elseif ($p['status'] === 'pending'): ?>
+                        <div style="background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.2); border-radius:12px; padding:20px; margin-bottom:24px; display:flex; gap:16px; align-items:flex-start;">
+                            <i class="fa-solid fa-hourglass-half" style="color:var(--warning-color); font-size:1.8rem; margin-top:2px;"></i>
+                            <div>
+                                <h3 style="color:#FFF; font-size:1.1rem; font-weight:600; margin-bottom:6px;">API Access Request Awaiting Review</h3>
+                                <p style="color:var(--text-secondary); margin:0; font-size:0.9rem; line-height:1.5;">Your profile is under review by our administration team. Once approved, your API credentials (client key and secret) will be generated and accessible under the "API Credentials" tab.</p>
+                            </div>
+                        </div>
+                    <?php elseif ($p['status'] === 'blocked'): ?>
+                        <div style="background:rgba(239, 68, 68, 0.08); border:1px solid rgba(239, 68, 68, 0.2); border-radius:12px; padding:20px; margin-bottom:24px; display:flex; gap:16px; align-items:flex-start;">
+                            <i class="fa-solid fa-ban" style="color:var(--danger-color); font-size:1.8rem; margin-top:2px;"></i>
+                            <div>
+                                <h3 style="color:#FFF; font-size:1.1rem; font-weight:600; margin-bottom:6px;">API Integration Access Blocked</h3>
+                                <p style="color:var(--text-secondary); margin:0; font-size:0.9rem; line-height:1.5;">Your integration account has been disabled or suspended. Please contact the Rentox support desk to resolve this issue.</p>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -1314,7 +1389,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             <div class="metric-card-glow"></div>
                             <span class="metric-label">Integration Status</span>
                             <span class="metric-value" style="font-size:1.3rem; margin-top:6px; font-weight:700;">
-                                <?php if ($p['status'] === 'pending'): ?>
+                                <?php if ($p['status'] === 'pending_profile'): ?>
+                                    Setup Pending
+                                <?php elseif ($p['status'] === 'pending'): ?>
                                     Under Review
                                 <?php elseif ($p['status'] === 'blocked'): ?>
                                     Suspended
@@ -1323,7 +1400,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 <?php endif; ?>
                             </span>
                             <span class="metric-desc">
-                                <?php if ($p['status'] === 'pending'): ?>
+                                <?php if ($p['status'] === 'pending_profile'): ?>
+                                    <i class="fa-solid fa-circle" style="color:#6C63FF"></i> Setup partner profile details
+                                <?php elseif ($p['status'] === 'pending'): ?>
                                     <i class="fa-solid fa-circle" style="color:var(--warning-color)"></i> Pending administrator activation
                                 <?php elseif ($p['status'] === 'blocked'): ?>
                                     <i class="fa-solid fa-circle" style="color:var(--danger-color)"></i> Integration access suspended
@@ -1389,9 +1468,29 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 <span class="info-label">Contact Mobile</span>
                                 <span class="info-value"><?= htmlspecialchars($p['mobile_number'] ?? 'Not set') ?></span>
                             </div>
-                            <div class="info-cell">
+                            <div class="info-cell" style="grid-column: span 2;">
                                 <span class="info-label">Authorized Business Email</span>
                                 <span class="info-value"><?= htmlspecialchars($p['email']) ?></span>
+                            </div>
+                            <div class="info-cell" style="grid-column: span 2;">
+                                <span class="info-label">Business Address</span>
+                                <span class="info-value"><?= nl2br(htmlspecialchars($p['address'] ?? 'Not set')) ?></span>
+                            </div>
+                            <div class="info-cell" style="grid-column: span 2;">
+                                <span class="info-label">Bank Details</span>
+                                <span class="info-value"><?= nl2br(htmlspecialchars($p['bank_details'] ?? 'Not set')) ?></span>
+                            </div>
+                            <div class="info-cell" style="grid-column: span 2;">
+                                <span class="info-label">Uploaded Document</span>
+                                <span class="info-value">
+                                    <?php if (!empty($p['documents'])): ?>
+                                        <a href="uploads/<?= htmlspecialchars($p['documents']) ?>" target="_blank" style="color:var(--primary-accent); font-weight:600; text-decoration:none;">
+                                            <i class="fa-solid fa-file-arrow-down"></i> <?= htmlspecialchars($p['documents']) ?> (View/Download)
+                                        </a>
+                                    <?php else: ?>
+                                        <span style="color:var(--danger-color);"><i class="fa-solid fa-circle-exclamation"></i> Not uploaded yet</span>
+                                    <?php endif; ?>
+                                </span>
                             </div>
                             <div class="info-cell">
                                 <span class="info-label">Partner Account Created</span>
@@ -1411,12 +1510,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     </div>
 
                     <div class="panel-card">
-                        <?php if ($p['status'] !== 'active'): ?>
+                        <?php if ($p['status'] === 'pending_profile'): ?>
                             <div style="text-align: center; padding: 40px 10px;">
                                 <i class="fa-solid fa-lock" style="font-size: 3.5rem; margin-bottom: 20px; color: var(--text-secondary); opacity: 0.35;"></i>
-                                <h3 style="font-size: 1.25rem; margin-bottom: 8px;">API Access Under Review</h3>
-                                <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 24px; font-size: 0.95rem;">Your credential keys will be generated automatically and shown here as soon as the administrator approves your partner request.</p>
-                                <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Awaiting Verification</span>
+                                <h3 style="font-size: 1.25rem; margin-bottom: 8px;">Profile Setup Incomplete</h3>
+                                <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 24px; font-size: 0.95rem;">You must fill out all required details in Account Settings and click "Request API Access" on the Dashboard Overview tab before credentials can be generated.</p>
+                                <button class="btn-primary-action" onclick="switchTab('#settings')">
+                                    <i class="fa-solid fa-user-plus"></i> Go to Settings
+                                </button>
+                            </div>
+                        <?php elseif ($p['status'] === 'pending'): ?>
+                            <div style="text-align: center; padding: 40px 10px;">
+                                <i class="fa-solid fa-lock" style="font-size: 3.5rem; margin-bottom: 20px; color: var(--text-secondary); opacity: 0.35;"></i>
+                                <h3 style="font-size: 1.25rem; margin-bottom: 8px;">API Access Request Under Review</h3>
+                                <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 24px; font-size: 0.95rem;">Your credentials will be generated automatically and shown here as soon as our administrators approve your partner integration request.</p>
+                                <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Awaiting Approval</span>
+                            </div>
+                        <?php elseif ($p['status'] === 'blocked'): ?>
+                            <div style="text-align: center; padding: 40px 10px;">
+                                <i class="fa-solid fa-ban" style="font-size: 3.5rem; margin-bottom: 20px; color: var(--text-secondary); opacity: 0.35;"></i>
+                                <h3 style="font-size: 1.25rem; margin-bottom: 8px;">API Access Blocked</h3>
+                                <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 24px; font-size: 0.95rem;">Your integration connection has been suspended. Please contact the administrator to reactivate your access keys.</p>
+                                <span class="status-pill pill-blocked"><i class="fa-solid fa-circle-exclamation"></i> Suspended</span>
                             </div>
                         <?php else: ?>
                             <h3 class="card-title" style="margin-bottom: 24px;"><i class="fa-solid fa-shield-halved"></i> Live Access Keys</h3>
@@ -1770,7 +1885,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             </div>
                         </div>
 
-                        <form id="settingsProfileForm">
+                        <form id="settingsProfileForm" enctype="multipart/form-data">
                             <input type="hidden" name="action" value="update_profile">
                             
                             <div class="settings-form-grid">
@@ -1801,6 +1916,26 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 <div class="form-group" style="grid-column: span 2;">
                                     <label class="form-label" for="settings_email">Authorized Business Email <span>*</span></label>
                                     <input type="email" id="settings_email" name="email" class="form-control-glass" value="<?= htmlspecialchars($p['email']) ?>" placeholder="api@company.com" required style="width:100%;">
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label class="form-label" for="settings_address">Business Address <span>*</span></label>
+                                    <textarea id="settings_address" name="address" class="form-control-glass" rows="3" placeholder="Full official address of the agency" required style="width:100%; resize:vertical;"><?= htmlspecialchars($p['address'] ?? '') ?></textarea>
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label class="form-label" for="settings_bank">Bank Details <span>*</span></label>
+                                    <textarea id="settings_bank" name="bank_details" class="form-control-glass" rows="3" placeholder="Bank Name, Account Number, IFSC Code, Account Name, etc." required style="width:100%; resize:vertical;"><?= htmlspecialchars($p['bank_details'] ?? '') ?></textarea>
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label class="form-label" for="settings_docs">Document Upload (GST/Company Reg/ID Proof) <span>*</span></label>
+                                    <input type="file" id="settings_docs" name="documents_file" class="form-control-glass" style="width:100%;" <?= empty($p['documents']) ? 'required' : '' ?>>
+                                    <?php if (!empty($p['documents'])): ?>
+                                        <div style="margin-top:8px; font-size:0.85rem;">
+                                            <span style="color:var(--text-secondary);">Currently uploaded:</span>
+                                            <a href="uploads/<?= htmlspecialchars($p['documents']) ?>" target="_blank" style="color:var(--primary-accent); font-weight:600; text-decoration:none;">
+                                                <i class="fa-solid fa-file-arrow-down"></i> <?= htmlspecialchars($p['documents']) ?>
+                                            </a>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -2018,6 +2153,53 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 showToast("Network connection error", true);
             });
         });
+
+        // Request API Access click handler
+        const btnRequest = document.getElementById('btnRequestApiAccess');
+        if (btnRequest) {
+            btnRequest.addEventListener('click', function() {
+                if (!confirm("Are you sure you want to submit your profile details and request API access?")) {
+                    return;
+                }
+                const origHtml = btnRequest.innerHTML;
+                btnRequest.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting Request...';
+                btnRequest.style.pointerEvents = 'none';
+                btnRequest.style.opacity = '0.8';
+
+                const formData = new FormData();
+                formData.append('action', 'request_api_access');
+
+                fetch('dashboard.php', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast("API request submitted successfully!");
+                        // Trigger the mail runner immediately to process the admin notification email
+                        fetch('mail_runner.php').catch(() => {});
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        btnRequest.innerHTML = origHtml;
+                        btnRequest.style.pointerEvents = 'auto';
+                        btnRequest.style.opacity = '1';
+                        alert(data.message);
+                    }
+                })
+                .catch(err => {
+                    btnRequest.innerHTML = origHtml;
+                    btnRequest.style.pointerEvents = 'auto';
+                    btnRequest.style.opacity = '1';
+                    alert("A connection error occurred. Please try again.");
+                });
+            });
+        }
     </script>
 </body>
 </html>

@@ -146,8 +146,25 @@ mysqli_stmt_close($logs_stmt);
             <div class="partner-card h-100">
                 <div class="partner-card-header">
                     <h4><i class="fas fa-building me-2" style="color:#6C63FF"></i>Partner Details</h4>
-                    <span class="badge-<?= $p['status'] === 'active' ? 'active' : 'blocked' ?>" id="status-badge">
-                        <?= ucfirst($p['status']) ?>
+                    <?php
+                    $status_class = 'badge-blocked';
+                    $status_label = ucfirst($p['status']);
+                    if ($p['status'] === 'active') {
+                        $status_class = 'badge-active';
+                        $status_label = 'Active';
+                    } elseif ($p['status'] === 'pending') {
+                        $status_class = 'badge-pending';
+                        $status_label = 'Pending Review';
+                    } elseif ($p['status'] === 'pending_profile') {
+                        $status_class = 'badge-pending-profile';
+                        $status_label = 'Pending Profile';
+                    } elseif ($p['status'] === 'blocked') {
+                        $status_class = 'badge-blocked';
+                        $status_label = 'Blocked';
+                    }
+                    ?>
+                    <span class="<?= $status_class ?>" id="status-badge">
+                        <?= $status_label ?>
                     </span>
                 </div>
                 <div class="info-grid">
@@ -160,6 +177,20 @@ mysqli_stmt_close($logs_stmt);
                     <div class="info-item"><label>GST Number</label><span><code style="font-size:0.85rem; background:rgba(0,0,0,0.15); padding:2px 6px; border-radius:4px; color:#0056b3;"><?= htmlspecialchars($p['gst_number'] ?? 'N/A') ?></code></span></div>
                     <div class="info-item"><label>Rate Limit</label><span><?= $p['rate_limit_per_minute'] ?>/min · <?= number_format($p['rate_limit_per_day']) ?>/day</span></div>
                     <div class="info-item"><label>Member Since</label><span><?= date('d M Y', strtotime($p['created_at'])) ?></span></div>
+                    <div class="info-item" style="grid-column: span 2;"><label>Business Address</label><span><?= nl2br(htmlspecialchars($p['address'] ?? 'N/A')) ?></span></div>
+                    <div class="info-item" style="grid-column: span 2;"><label>Bank Details</label><span><?= nl2br(htmlspecialchars($p['bank_details'] ?? 'N/A')) ?></span></div>
+                    <div class="info-item" style="grid-column: span 2;">
+                        <label>Documents / Uploads</label>
+                        <span>
+                            <?php if (!empty($p['documents'])): ?>
+                                <a href="../restox-api-console/uploads/<?= htmlspecialchars($p['documents']) ?>" target="_blank" class="btn btn-sm btn-outline-primary" style="padding: 2px 8px; font-size: 0.8rem; border: 1px solid #007bff; border-radius:4px; text-decoration:none; display:inline-block;">
+                                    <i class="fas fa-file-download me-1"></i> View Uploaded Document
+                                </a>
+                            <?php else: ?>
+                                <span style="color:#dc3545;"><i class="fas fa-exclamation-circle me-1"></i> No Document Uploaded</span>
+                            <?php endif; ?>
+                        </span>
+                    </div>
                 </div>
 
                 <?php if ($p['notes']): ?>
