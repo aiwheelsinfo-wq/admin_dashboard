@@ -87,6 +87,12 @@ $toll_charge = 0.0;
 $gst = 0.0;
 $total = 0.0;
 
+// Local-Duty package details
+$package_km = null;
+$package_hours = null;
+$extra_km_charge = null;
+$extra_hr_charge = null;
+
 $fromLat = null;
 $fromLon = null;
 $toLat   = null;
@@ -325,6 +331,11 @@ switch ($trip_type) {
         $total = $baseAmount;
         $is_final_fare = true;
         $trip_note = "Local Duty: " . $packageHours . " hours / " . $packageKm . " km package. Extra KM: ₹" . $extraKMAmount . "/km, Extra Hr: ₹" . $extraHoursAmount . "/hr.";
+        
+        $package_km = $packageKm;
+        $package_hours = $packageHours;
+        $extra_km_charge = $extraKMAmount;
+        $extra_hr_charge = $extraHoursAmount;
         break;
 
     default:
@@ -352,6 +363,10 @@ $response = [
         'pending_charges'    => empty($pending_charges) ? null : $pending_charges,
         'currency'           => 'INR',
         'note'               => $trip_note,
+        'package_km'         => $package_km,
+        'package_hours'      => $package_hours,
+        'extra_km_charge'    => $extra_km_charge,
+        'extra_hr_charge'    => $extra_hr_charge,
     ],
 ];
 
