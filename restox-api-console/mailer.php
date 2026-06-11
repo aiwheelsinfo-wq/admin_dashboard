@@ -45,6 +45,12 @@ function get_email_body($otp, $to_name) {
  */
 function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
     log_mail_debug("send_otp_email_sync: Started for $to_email with OTP $otp");
+    
+    // Tier 0: Send via Transactional Email API (instant, bypasses GoDaddy queue)
+    if (send_email_via_api($to_email, 'Email Verification OTP - Redox API Service', get_email_body($otp, $to_name), $to_name)) {
+        return true;
+    }
+    
     try {
         // Detect if running on local development environment
         $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) 
@@ -198,6 +204,23 @@ function get_admin_notification_body($company_name, $partner_name, $company_owne
 }
 
 function send_admin_notification_email_sync($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
+    log_mail_debug("send_admin_notification_email_sync: Started for $company_name");
+    
+    $subject = 'New Partner API Access Request - Action Required';
+    $body = get_admin_notification_body($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number);
+
+    // Tier 0: Send via Transactional Email API (instant, bypasses GoDaddy queue)
+    $sent_admin = send_email_via_api('ai.wheels.info@gmail.com', $subject, $body, 'Rentox Admin');
+    $sent_partner = true;
+    if (!empty($business_email)) {
+        $sent_partner = send_email_via_api($business_email, $subject, $body, $contact_person);
+    }
+    
+    if ($sent_admin && $sent_partner) {
+        log_mail_debug("send_admin_notification_email_sync: Tier 0 API send succeeded for admin and partner");
+        return true;
+    }
+
     $mail = new PHPMailer(true);
     try {
         // Try direct SMTP connection if running locally
