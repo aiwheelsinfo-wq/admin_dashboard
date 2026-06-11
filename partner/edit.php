@@ -27,8 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rate_day           = (int)($_POST['rate_limit_per_day']    ?? 10000);
     $notes              = trim($_POST['notes']                  ?? '');
     $gst_number         = trim($_POST['gst_number']             ?? '');
-    $address            = trim($_POST['address']                ?? '');
-    $bank_details       = trim($_POST['bank_details']           ?? '');
 
     if (!$partner_name || !$company_name || !$contact_person || !$mobile || !$email) {
         $error = 'All required fields must be filled.';
@@ -36,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Invalid email address.';
     } else {
         try {
-            $upd = mysqli_prepare($conn, "UPDATE partners SET partner_name=?, company_name=?, company_owner_name=?, contact_person=?, mobile_number=?, email=?, gst_number=?, address=?, bank_details=?, rate_limit_per_minute=?, rate_limit_per_day=?, notes=? WHERE id=?");
-            mysqli_stmt_bind_param($upd, 'sssssssssiisi', $partner_name, $company_name, $company_owner_name, $contact_person, $mobile, $email, $gst_number, $address, $bank_details, $rate_min, $rate_day, $notes, $id);
+            $upd = mysqli_prepare($conn, "UPDATE partners SET partner_name=?, company_name=?, company_owner_name=?, contact_person=?, mobile_number=?, email=?, gst_number=?, rate_limit_per_minute=?, rate_limit_per_day=?, notes=? WHERE id=?");
+            mysqli_stmt_bind_param($upd, 'ssssssssisi', $partner_name, $company_name, $company_owner_name, $contact_person, $mobile, $email, $gst_number, $rate_min, $rate_day, $notes, $id);
             if (mysqli_stmt_execute($upd)) {
                 $success = 'Partner updated successfully!';
                 // Refresh
@@ -179,24 +177,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label>GST Number</label>
                         <input type="text" name="gst_number" class="form-control" value="<?= htmlspecialchars($p['gst_number'] ?? '') ?>">
                     </div>
-                    <div class="col-12">
-                        <label>Business Address</label>
-                        <textarea name="address" class="form-control" rows="3" placeholder="Official business address..."><?= htmlspecialchars($p['address'] ?? '') ?></textarea>
-                    </div>
-                    <div class="col-12">
-                        <label>Bank Details</label>
-                        <textarea name="bank_details" class="form-control" rows="3" placeholder="Bank Account Number, IFSC, etc..."><?= htmlspecialchars($p['bank_details'] ?? '') ?></textarea>
-                    </div>
-                    <?php if (!empty($p['documents'])): ?>
-                    <div class="col-12">
-                        <label>Uploaded Document</label>
-                        <div>
-                            <a href="../restox-api-console/uploads/<?= htmlspecialchars($p['documents']) ?>" target="_blank" class="btn-partner-info btn-sm" style="text-decoration:none;">
-                                <i class="fas fa-file-download me-1"></i> View Document (<?= htmlspecialchars($p['documents']) ?>)
-                            </a>
-                        </div>
-                    </div>
-                    <?php endif; ?>
                     <div class="col-md-6">
                         <label>Requests per Minute</label>
                         <input type="number" name="rate_limit_per_minute" class="form-control" value="<?= $p['rate_limit_per_minute'] ?>" min="1">

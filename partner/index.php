@@ -227,25 +227,8 @@ while ($row = mysqli_fetch_assoc($result)) {
                             </code>
                         </td>
                         <td>
-                            <?php
-                            $badge_class = 'badge-blocked';
-                            $badge_label = ucfirst($p['status']);
-                            if ($p['status'] === 'active') {
-                                $badge_class = 'badge-active';
-                                $badge_label = 'Active';
-                            } elseif ($p['status'] === 'pending') {
-                                $badge_class = 'badge-pending';
-                                $badge_label = 'Pending Approval';
-                            } elseif ($p['status'] === 'pending_profile') {
-                                $badge_class = 'badge-pending-profile';
-                                $badge_label = 'Pending Profile';
-                            } elseif ($p['status'] === 'blocked') {
-                                $badge_class = 'badge-blocked';
-                                $badge_label = 'Blocked';
-                            }
-                            ?>
-                            <span class="<?= $badge_class ?>" id="badge-<?= $p['id'] ?>">
-                                <?= $badge_label ?>
+                            <span class="badge-<?= $p['status'] === 'active' ? 'active' : 'blocked' ?>" id="badge-<?= $p['id'] ?>">
+                                <?= ucfirst($p['status']) ?>
                             </span>
                         </td>
                         <td><?= number_format($p['total_requests']) ?></td>
