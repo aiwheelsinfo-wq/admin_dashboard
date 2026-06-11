@@ -112,8 +112,8 @@ if (strpos($car_key, 'sedan') !== false || strpos($car_key, 'dzire') !== false) 
 }
 $car_type = $car_type_normalized;
 
-// Enforce One-way short distance block unless it's a special route
-if ($trip_type === 'One-way') {
+// Enforce One-way / Round-Trip short distance block unless it's a special route
+if ($trip_type === 'One-way' || $trip_type === 'Round-Trip') {
     $from_coords = get_geocode_coords($from);
     $to_coords   = get_geocode_coords($to);
 
