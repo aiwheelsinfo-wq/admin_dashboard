@@ -22,10 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $contact_number     = trim($_POST['contact_number'] ?? '');
     $email              = trim($_POST['email'] ?? '');
     $gst_number         = trim($_POST['gst_number'] ?? '');
-    $address            = trim($_POST['address'] ?? '');
-    $bank_details       = trim($_POST['bank_details'] ?? '');
 
-    if (!$partner_name || !$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number || !$address || !$bank_details) {
+    if (!$partner_name || !$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number) {
         $error = 'All fields are required to complete your profile.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid business email address.';
@@ -81,11 +79,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (empty($error)) {
                     $stmt = mysqli_prepare($conn, 
                         "UPDATE partners 
-                         SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ?, address = ?, bank_details = ?, documents = ?
+                         SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ?, documents = ?
                          WHERE id = ?"
                     );
-                    mysqli_stmt_bind_param($stmt, 'ssssssssssi', 
-                        $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $address, $bank_details, $documents, $id
+                    mysqli_stmt_bind_param($stmt, 'sssssssi', 
+                        $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $documents, $id
                     );
 
                     if (mysqli_stmt_execute($stmt)) {
@@ -137,8 +135,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'mobile_number',
                 'email',
                 'gst_number',
-                'address',
-                'bank_details',
                 'documents'
             ];
 
@@ -204,7 +200,7 @@ if (!$p) {
     exit();
 }
 
-// Calculate profile completion percentage (out of 10 fields)
+// Calculate profile completion percentage (out of 8 fields)
 $fields_to_check = [
     'partner_name',
     'company_name',
@@ -213,8 +209,6 @@ $fields_to_check = [
     'mobile_number',
     'email',
     'gst_number',
-    'address',
-    'bank_details',
     'documents'
 ];
 
@@ -1336,7 +1330,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                         <h4 style="color: var(--warning-color); font-weight: 700; margin-bottom: 4px; font-size: 1rem;">
                                             <i class="fa-solid fa-circle-exclamation"></i> Action Required: Complete Profile Settings
                                         </h4>
-                                        <p style="font-size: 0.88rem; color: var(--text-secondary);">Please complete all profile details (Address, Bank Details, and Verification Document) in the Account Settings tab.</p>
+                                        <p style="font-size: 0.88rem; color: var(--text-secondary);">Please complete all profile details and upload a Verification Document in the Account Settings tab.</p>
                                     <?php endif; ?>
                                 </div>
                                 <div>
