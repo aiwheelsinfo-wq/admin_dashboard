@@ -8,6 +8,15 @@ require_once __DIR__ . '/PHPMailer/PHPMailer.php';
 require_once __DIR__ . '/PHPMailer/SMTP.php';
 
 /**
+ * Write a timestamped debug log message.
+ */
+function log_mail_debug($msg) {
+    $log_file = __DIR__ . '/mail_debug.log';
+    $timestamp = date('Y-m-d H:i:s') . '.' . sprintf('%03d', (microtime(true) - floor(microtime(true))) * 1000);
+    @file_put_contents($log_file, "[$timestamp] $msg\n", FILE_APPEND);
+}
+
+/**
  * Returns the HTML email template for the OTP code.
  */
 function get_email_body($otp, $to_name) {
@@ -35,6 +44,7 @@ function get_email_body($otp, $to_name) {
  * @return bool True if successfully sent, false otherwise.
  */
 function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
+    log_mail_debug("send_otp_email_sync: Started for $to_email with OTP $otp");
     try {
         // Detect if running on local development environment
         $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) 
@@ -67,10 +77,14 @@ function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
         $mail->Body    = get_email_body($otp, $to_name);
 
         $mail->send();
+        log_mail_debug("send_otp_email_sync: Tier 1 (Gmail SMTP) succeeded");
         return true;
     } catch (Exception $e) {
+        log_mail_debug("send_otp_email_sync: Gmail SMTP bypassed or failed: " . $e->getMessage());
         // Tier 2: Try PHP native mail() function via PHPMailer (extremely fast, no network socket blocking)
+        $start_t = microtime(true);
         try {
+            log_mail_debug("send_otp_email_sync: Trying Tier 2 (PHP native mail())");
             $mailBackup = new PHPMailer(true);
             $mailBackup->isMail(); 
             $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
@@ -81,10 +95,16 @@ function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
             $mailBackup->Body    = get_email_body($otp, $to_name);
             
             $mailBackup->send();
+            $duration = round(microtime(true) - $start_t, 4);
+            log_mail_debug("send_otp_email_sync: Tier 2 (PHP native mail()) succeeded in $duration seconds");
             return true;
         } catch (Exception $eMail) {
+            $duration = round(microtime(true) - $start_t, 4);
+            log_mail_debug("send_otp_email_sync: Tier 2 (PHP native mail()) failed in $duration seconds with error: " . $eMail->getMessage());
             // Tier 3: Try GoDaddy's Localhost SMTP Relay (Port 25, no auth)
+            $start_t2 = microtime(true);
             try {
+                log_mail_debug("send_otp_email_sync: Trying Tier 3 (GoDaddy Localhost SMTP Relay:25)");
                 $mailLocal = new PHPMailer(true);
                 $mailLocal->isSMTP();
                 $mailLocal->Host       = 'localhost';
@@ -102,8 +122,12 @@ function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
                 $mailLocal->Body    = get_email_body($otp, $to_name);
                 
                 $mailLocal->send();
+                $duration2 = round(microtime(true) - $start_t2, 4);
+                log_mail_debug("send_otp_email_sync: Tier 3 (Localhost SMTP Relay) succeeded in $duration2 seconds");
                 return true;
             } catch (Exception $eFallback) {
+                $duration2 = round(microtime(true) - $start_t2, 4);
+                log_mail_debug("send_otp_email_sync: Tier 3 (Localhost SMTP Relay) failed in $duration2 seconds with error: " . $eFallback->getMessage());
                 error_log("PHPMailer all tiers failed. Error: " . $mailLocal->ErrorInfo);
                 return false;
             }
@@ -283,6 +307,7 @@ function send_otp_email($to_email, $otp, $to_name = 'Partner') {
     
     $file = $spool_dir . '/mail_otp_' . microtime(true) . '_' . rand(1000, 9999) . '.json';
     @file_put_contents($file, json_encode($payload));
+    log_mail_debug("send_otp_email: Spooled OTP email file " . basename($file) . " for $to_email");
     
     trigger_background_mailer();
     return true;
@@ -310,6 +335,7 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
     
     $file = $spool_dir . '/mail_admin_' . microtime(true) . '_' . rand(1000, 9999) . '.json';
     @file_put_contents($file, json_encode($payload));
+    log_mail_debug("send_admin_notification_email: Spooled admin notification email file " . basename($file));
     
     trigger_background_mailer();
     return true;
