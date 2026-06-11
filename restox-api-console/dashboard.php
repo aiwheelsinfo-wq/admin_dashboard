@@ -72,8 +72,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             $error = 'Failed to save uploaded file.';
                         }
                     }
-                } elseif (empty($documents)) {
-                    $error = 'A verification document is required.';
                 }
 
                 if (empty($error)) {
