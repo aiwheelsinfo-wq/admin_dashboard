@@ -27,14 +27,14 @@ function get_email_body($otp, $to_name) {
 }
 
 /**
- * Sends a registration verification OTP email to a B2B partner applicant.
+ * Sends a registration verification OTP email to a B2B partner applicant (Synchronous).
  *
  * @param string $to_email
  * @param string $otp
  * @param string $to_name
  * @return bool True if successfully sent, false otherwise.
  */
-function send_otp_email($to_email, $otp, $to_name = 'Partner') {
+function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
     try {
         // Detect if running on local development environment
         $is_local = in_array($_SERVER['REMOTE_ADDR'] ?? '', ['127.0.0.1', '::1']) 
@@ -173,7 +173,7 @@ function get_admin_notification_body($company_name, $partner_name, $company_owne
     ';
 }
 
-function send_admin_notification_email($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
+function send_admin_notification_email_sync($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
     $mail = new PHPMailer(true);
     try {
         // Try direct SMTP connection if running locally
@@ -254,5 +254,67 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
             }
         }
     }
+}
+
+/**
+ * Triggers the background CLI mail script to process queued emails immediately.
+ */
+function trigger_background_mailer() {
+    $runner = __DIR__ . '/mail_runner.php';
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        pclose(popen("start /B php " . escapeshellarg($runner), "r"));
+    } else {
+        exec("php " . escapeshellarg($runner) . " > /dev/null 2>&1 &");
+    }
+}
+
+/**
+ * Asynchronous wrapper to send registration verification OTP email.
+ */
+function send_otp_email($to_email, $otp, $to_name = 'Partner') {
+    $spool_dir = __DIR__ . '/mail_spool';
+    if (!is_dir($spool_dir)) {
+        @mkdir($spool_dir, 0755, true);
+    }
+    
+    $payload = [
+        'type' => 'otp',
+        'to_email' => $to_email,
+        'otp' => $otp,
+        'to_name' => $to_name
+    ];
+    
+    $file = $spool_dir . '/mail_otp_' . microtime(true) . '_' . rand(1000, 9999) . '.json';
+    @file_put_contents($file, json_encode($payload));
+    
+    trigger_background_mailer();
+    return true;
+}
+
+/**
+ * Asynchronous wrapper to send admin API access request notification email.
+ */
+function send_admin_notification_email($company_name, $partner_name, $company_owner, $contact_person, $contact_mobile, $business_email, $gst_number) {
+    $spool_dir = __DIR__ . '/mail_spool';
+    if (!is_dir($spool_dir)) {
+        @mkdir($spool_dir, 0755, true);
+    }
+    
+    $payload = [
+        'type' => 'admin_notification',
+        'company_name' => $company_name,
+        'partner_name' => $partner_name,
+        'company_owner' => $company_owner,
+        'contact_person' => $contact_person,
+        'contact_mobile' => $contact_mobile,
+        'business_email' => $business_email,
+        'gst_number' => $gst_number
+    ];
+    
+    $file = $spool_dir . '/mail_admin_' . microtime(true) . '_' . rand(1000, 9999) . '.json';
+    @file_put_contents($file, json_encode($payload));
+    
+    trigger_background_mailer();
+    return true;
 }
 ?>
