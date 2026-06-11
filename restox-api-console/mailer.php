@@ -260,34 +260,12 @@ function send_admin_notification_email_sync($company_name, $partner_name, $compa
  * Triggers the background CLI mail script to process queued emails immediately.
  */
 function trigger_background_mailer() {
-    $host = $_SERVER['HTTP_HOST'] ?? 'agnicarrental.com';
-    $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
-    $uri = str_replace('\\', '/', dirname($_SERVER['REQUEST_URI'] ?? '/admin2025/restox-api-console/register.php'));
-    if ($uri === '/' || $uri === '\\') {
-        $uri = '';
+    $runner = __DIR__ . '/mail_runner.php';
+    if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+        pclose(popen("start /B php " . escapeshellarg($runner), "r"));
+    } else {
+        exec("php " . escapeshellarg($runner) . " > /dev/null 2>&1 &");
     }
-    
-    // 1. Try fsockopen (ultra fast non-blocking TCP socket trigger)
-    $port = ($scheme === 'https') ? 443 : 80;
-    $socket_host = ($scheme === 'https') ? 'ssl://' . $host : $host;
-    $fp = @fsockopen($socket_host, $port, $errno, $errstr, 1);
-    if ($fp) {
-        $out = "GET " . $uri . "/mail_runner.php HTTP/1.1\r\n";
-        $out .= "Host: " . $host . "\r\n";
-        $out .= "Connection: Close\r\n\r\n";
-        @fwrite($fp, $out);
-        @fclose($fp);
-        return;
-    }
-    
-    // 2. Fallback to short timeout cURL trigger
-    $url = $scheme . "://" . $host . $uri . "/mail_runner.php";
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 1); // 1 second timeout
-    @curl_exec($ch);
-    @curl_close($ch);
 }
 
 /**

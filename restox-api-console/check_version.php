@@ -1,7 +1,9 @@
 <?php
-if (function_exists('fastcgi_finish_request')) {
-    echo "FPM_SUPPORTED";
+// check_version.php - Checks if the live mailer.php is updated
+$content = file_get_contents(__DIR__ . '/mailer.php');
+if (strpos($content, 'extremely fast, no network socket blocking') !== false) {
+    echo "UPDATED";
 } else {
-    echo "FPM_NOT_SUPPORTED";
+    echo "OLD";
 }
 ?>
