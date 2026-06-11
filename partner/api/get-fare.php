@@ -159,6 +159,11 @@ switch ($trip_type) {
         break;
 
     case 'Round-Trip':
+        if ($distance_km < 50) {
+            log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Distance is less than 50km. Please choose Local Taxi or Local Duty.'], 'error');
+            api_error('Distance is less than 50km. Please choose Local Taxi or Local Duty.', 400);
+        }
+
         $sql = "SELECT * FROM tripCostTable WHERE tripType = 'Round-Trip' AND carType = ? LIMIT 1";
         $stmt_cost = mysqli_prepare($conn, $sql);
         $km_rate = null;
