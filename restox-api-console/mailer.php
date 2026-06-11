@@ -17,6 +17,122 @@ function log_mail_debug($msg) {
 }
 
 /**
+ * Sends an email using an external transactional email provider (Resend, Brevo, or SendGrid) via HTTPS API on Port 443.
+ *
+ * @param string $to_email
+ * @param string $subject
+ * @param string $body
+ * @param string $to_name
+ * @return bool True if successfully sent, false otherwise.
+ */
+function send_email_via_api($to_email, $subject, $body, $to_name = 'Partner') {
+    $config_file = __DIR__ . '/email_config.php';
+    if (!file_exists($config_file)) {
+        log_mail_debug("send_email_via_api: Configuration file email_config.php not found. Falling back to native/local mail.");
+        return false;
+    }
+    require_once $config_file;
+
+    if (!defined('EMAIL_PROVIDER') || EMAIL_PROVIDER === 'local') {
+        log_mail_debug("send_email_via_api: Provider set to local. Falling back to native/local mail.");
+        return false;
+    }
+
+    $provider = strtolower(EMAIL_PROVIDER);
+    $api_key = EMAIL_API_KEY;
+    $sender_email = EMAIL_SENDER_EMAIL;
+    $sender_name = EMAIL_SENDER_NAME;
+
+    if (empty($api_key) || strpos($api_key, 'YOUR_KEY') !== false) {
+        log_mail_debug("send_email_via_api: API key not configured in email_config.php. Falling back to native/local mail.");
+        return false;
+    }
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POST, true);
+
+    $headers = [];
+    $payload = [];
+    $url = '';
+
+    if ($provider === 'resend') {
+        $url = 'https://api.resend.com/emails';
+        $headers = [
+            'Authorization: Bearer ' . $api_key,
+            'Content-Type: application/json'
+        ];
+        $payload = [
+            'from' => "$sender_name <$sender_email>",
+            'to' => [$to_email],
+            'subject' => $subject,
+            'html' => $body
+        ];
+    } elseif ($provider === 'brevo') {
+        $url = 'https://api.brevo.com/v3/smtp/email';
+        $headers = [
+            'api-key: ' . $api_key,
+            'Content-Type: application/json'
+        ];
+        $payload = [
+            'sender' => ['name' => $sender_name, 'email' => $sender_email],
+            'to' => [['email' => $to_email, 'name' => $to_name]],
+            'subject' => $subject,
+            'htmlContent' => $body
+        ];
+    } elseif ($provider === 'sendgrid') {
+        $url = 'https://api.sendgrid.com/v3/mail/send';
+        $headers = [
+            'Authorization: Bearer ' . $api_key,
+            'Content-Type: application/json'
+        ];
+        $payload = [
+            'personalizations' => [
+                [
+                    'to' => [['email' => $to_email, 'name' => $to_name]]
+                ]
+            ],
+            'from' => ['email' => $sender_email, 'name' => $sender_name],
+            'subject' => $subject,
+            'content' => [
+                [
+                    'type' => 'text/html',
+                    'value' => $body
+                ]
+            ]
+        ];
+    } else {
+        log_mail_debug("send_email_via_api: Unknown provider '$provider'");
+        curl_close($ch);
+        return false;
+    }
+
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    curl_close($ch);
+
+    if ($curl_error) {
+        log_mail_debug("send_email_via_api: curl error: " . $curl_error);
+        return false;
+    }
+
+    if ($http_code >= 200 && $http_code < 300) {
+        log_mail_debug("send_email_via_api: Successfully sent email via $provider (HTTP code $http_code)");
+        return true;
+    } else {
+        log_mail_debug("send_email_via_api: Failed to send email via $provider. HTTP code: $http_code, Response: " . $response);
+        return false;
+    }
+}
+
+/**
  * Returns the HTML email template for the OTP code.
  */
 function get_email_body($otp, $to_name) {
