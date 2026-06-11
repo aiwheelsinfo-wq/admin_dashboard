@@ -22,8 +22,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $contact_number     = trim($_POST['contact_number'] ?? '');
     $email              = trim($_POST['email'] ?? '');
     $gst_number         = trim($_POST['gst_number'] ?? '');
+    $address            = trim($_POST['address'] ?? '');
+    $bank_details       = trim($_POST['bank_details'] ?? '');
 
-    if (!$partner_name || !$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number) {
+    if (!$partner_name || !$company_name || !$company_owner_name || !$contact_person || !$contact_number || !$email || !$gst_number || !$address || !$bank_details) {
         $error = 'All fields are required to complete your profile.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid business email address.';
@@ -40,25 +42,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             mysqli_stmt_close($check_stmt);
 
             if (empty($error)) {
-                $stmt = mysqli_prepare($conn, 
-                    "UPDATE partners 
-                     SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ? 
-                     WHERE id = ?"
-                );
-                mysqli_stmt_bind_param($stmt, 'sssssssi', 
-                    $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $id
-                );
+                // Fetch current partner info to keep existing document if no new file is uploaded
+                $curr_stmt = mysqli_prepare($conn, "SELECT documents FROM partners WHERE id = ? LIMIT 1");
+                mysqli_stmt_bind_param($curr_stmt, 'i', $id);
+                mysqli_stmt_execute($curr_stmt);
+                $curr_res = mysqli_stmt_get_result($curr_stmt);
+                $curr_partner = mysqli_fetch_assoc($curr_res);
+                mysqli_stmt_close($curr_stmt);
+                
+                $documents = $curr_partner['documents'] ?? '';
 
-                if (mysqli_stmt_execute($stmt)) {
-                    $success = 'Profile details updated successfully!';
-                    $_SESSION['partner_email'] = $email; // Update session email
-
-                    // Automatically send email notification to Rentox Admin
-                    send_admin_notification_email($company_name, $partner_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number);
-                } else {
-                    $error = 'Failed to update profile: ' . mysqli_error($conn);
+                // Handle file upload if present
+                if (isset($_FILES['documents_file']) && $_FILES['documents_file']['error'] === UPLOAD_ERR_OK) {
+                    $filename = $_FILES['documents_file']['name'];
+                    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                    $allowed_exts = ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'];
+                    
+                    if (!in_array($ext, $allowed_exts)) {
+                        $error = 'Invalid file type. Allowed formats: PDF, DOC, DOCX, PNG, JPG, JPEG.';
+                    } else {
+                        // Ensure uploads directory exists
+                        $upload_dir = __DIR__ . '/uploads';
+                        if (!is_dir($upload_dir)) {
+                            mkdir($upload_dir, 0755, true);
+                        }
+                        
+                        $new_filename = uniqid('doc_') . '.' . $ext;
+                        if (move_uploaded_file($_FILES['documents_file']['tmp_name'], $upload_dir . '/' . $new_filename)) {
+                            $documents = $new_filename;
+                        } else {
+                            $error = 'Failed to save uploaded file.';
+                        }
+                    }
+                } elseif (empty($documents)) {
+                    $error = 'A verification document is required.';
                 }
-                mysqli_stmt_close($stmt);
+
+                if (empty($error)) {
+                    $stmt = mysqli_prepare($conn, 
+                        "UPDATE partners 
+                         SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ?, address = ?, bank_details = ?, documents = ?
+                         WHERE id = ?"
+                    );
+                    mysqli_stmt_bind_param($stmt, 'ssssssssssi', 
+                        $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $address, $bank_details, $documents, $id
+                    );
+
+                    if (mysqli_stmt_execute($stmt)) {
+                        $success = 'Profile details updated successfully!';
+                        $_SESSION['partner_email'] = $email; // Update session email
+                    } else {
+                        $error = 'Failed to update profile: ' . mysqli_error($conn);
+                    }
+                    mysqli_stmt_close($stmt);
+                }
             }
         } catch (Exception $e) {
             $error = 'Database error: ' . $e->getMessage();
@@ -75,6 +112,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Handle Request API Access Request (AJAX POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'request_api_access') {
+    try {
+        // Fetch latest partner details
+        $stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        $partner = mysqli_fetch_assoc($res);
+        mysqli_stmt_close($stmt);
+
+        if (!$partner) {
+            $error = 'Partner account not found.';
+        } elseif ($partner['status'] !== 'pending_profile') {
+            $error = 'Your account status does not permit this request.';
+        } else {
+            // Validate all fields are complete
+            $required_fields = [
+                'partner_name',
+                'company_name',
+                'company_owner_name',
+                'contact_person',
+                'mobile_number',
+                'email',
+                'gst_number',
+                'address',
+                'bank_details',
+                'documents'
+            ];
+
+            $incomplete = false;
+            foreach ($required_fields as $field) {
+                if (empty(trim($partner[$field] ?? ''))) {
+                    $incomplete = true;
+                    break;
+                }
+            }
+
+            if ($incomplete) {
+                $error = 'Please complete all profile fields and upload verification documents first.';
+            } else {
+                // Update status to pending
+                $update_stmt = mysqli_prepare($conn, "UPDATE partners SET status = 'pending' WHERE id = ?");
+                mysqli_stmt_bind_param($update_stmt, 'i', $id);
+                if (mysqli_stmt_execute($update_stmt)) {
+                    $success = 'Your API Access Request has been submitted successfully!';
+                    
+                    // Dispatch email notification to Rentox Admin
+                    send_admin_notification_email(
+                        $partner['company_name'],
+                        $partner['partner_name'],
+                        $partner['company_owner_name'],
+                        $partner['contact_person'],
+                        $partner['mobile_number'],
+                        $partner['email'],
+                        $partner['gst_number']
+                    );
+                } else {
+                    $error = 'Failed to submit request: ' . mysqli_error($conn);
+                }
+                mysqli_stmt_close($update_stmt);
+            }
+        }
+    } catch (Exception $e) {
+        $error = 'Database error: ' . $e->getMessage();
+    }
+
+    // Return JSON response if AJAX request
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        echo json_encode([
+            'success' => empty($error),
+            'message' => empty($error) ? $success : $error
+        ]);
+        exit;
+    }
+}
+
+
 // Fetch latest partner details
 $stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
 mysqli_stmt_bind_param($stmt, 'i', $id);
@@ -88,6 +203,30 @@ if (!$p) {
     header("Location: login.php");
     exit();
 }
+
+// Calculate profile completion percentage (out of 10 fields)
+$fields_to_check = [
+    'partner_name',
+    'company_name',
+    'company_owner_name',
+    'contact_person',
+    'mobile_number',
+    'email',
+    'gst_number',
+    'address',
+    'bank_details',
+    'documents'
+];
+
+$completed_count = 0;
+foreach ($fields_to_check as $field) {
+    if (!empty(trim($p[$field] ?? ''))) {
+        $completed_count++;
+    }
+}
+$completion_percent = ($completed_count / count($fields_to_check)) * 100;
+$all_completed = ($completed_count === count($fields_to_check));
+
 
 // Query Partner Log Stats
 $total_requests = 0;
@@ -1161,7 +1300,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             <p>Monitor your agency integration metrics and access profile details.</p>
                         </div>
                         <div>
-                            <?php if ($p['status'] === 'pending'): ?>
+                            <?php if ($p['status'] === 'pending_profile'): ?>
+                                <span class="status-pill pill-pending" style="color:#94A3B8; background:rgba(148,163,184,0.1); border:1px solid rgba(148,163,184,0.2);"><i class="fa-solid fa-user-pen"></i> Profile Incomplete</span>
+                            <?php elseif ($p['status'] === 'pending'): ?>
                                 <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Pending Review</span>
                             <?php elseif ($p['status'] === 'blocked'): ?>
                                 <span class="status-pill pill-blocked"><i class="fa-solid fa-ban"></i> Access Blocked</span>
@@ -1171,19 +1312,44 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         </div>
                     </div>
 
-                    <!-- Incomplete Profile Warning -->
-                    <?php 
-                    $profile_incomplete = empty($p['partner_name']) || empty($p['company_owner_name']) || empty($p['mobile_number']) || empty($p['gst_number']);
-                    if ($profile_incomplete): 
-                    ?>
-                        <div class="alert-banner">
-                            <i class="fa-solid fa-triangle-exclamation alert-banner-icon"></i>
-                            <div class="alert-banner-content">
-                                <h4 class="alert-banner-title">Action Required: Complete Your Partner Profile</h4>
-                                <p class="alert-banner-desc">Before your API access request can be approved and live keys generated, you must complete your registration profile details.</p>
-                                <button class="btn-primary-action" onclick="switchTab('#settings')">
-                                    <i class="fa-solid fa-user-plus"></i> Complete Profile Details
-                                </button>
+                    <!-- Profile Access Request & Progress Indicator Panel -->
+                    <?php if ($p['status'] === 'pending_profile'): ?>
+                        <div class="panel-card" style="border: 1px solid rgba(99, 102, 241, 0.25); background: rgba(99, 102, 241, 0.03); padding: 24px;">
+                            <div class="card-header-flex" style="margin-bottom: 16px;">
+                                <h3 class="card-title"><i class="fa-solid fa-user-check"></i> Profile Completion</h3>
+                                <span style="font-weight: 700; color: var(--primary-accent); font-size: 1.05rem;"><?= round($completion_percent) ?>% Complete</span>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div style="width: 100%; height: 10px; background: rgba(255, 255, 255, 0.05); border-radius: 99px; overflow: hidden; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.03);">
+                                <div style="width: <?= $completion_percent ?>%; height: 100%; background: linear-gradient(90deg, var(--primary-accent), var(--secondary-accent)); border-radius: 99px; transition: width 0.5s ease-in-out;"></div>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 280px;">
+                                    <?php if ($all_completed): ?>
+                                        <h4 style="color: var(--success-color); font-weight: 700; margin-bottom: 4px; font-size: 1rem;">
+                                            <i class="fa-solid fa-circle-check"></i> Your profile is complete. You can now request API access.
+                                        </h4>
+                                        <p style="font-size: 0.88rem; color: var(--text-secondary);">Your integration details are fully updated. Submit your request to generate credentials.</p>
+                                    <?php else: ?>
+                                        <h4 style="color: var(--warning-color); font-weight: 700; margin-bottom: 4px; font-size: 1rem;">
+                                            <i class="fa-solid fa-circle-exclamation"></i> Action Required: Complete Profile Settings
+                                        </h4>
+                                        <p style="font-size: 0.88rem; color: var(--text-secondary);">Please complete all profile details (Address, Bank Details, and Verification Document) in the Account Settings tab.</p>
+                                    <?php endif; ?>
+                                </div>
+                                <div>
+                                    <?php if ($all_completed): ?>
+                                        <button class="btn-primary-action" id="btnRequestApiAccess" onclick="submitApiAccessRequest()">
+                                            <i class="fa-solid fa-paper-plane"></i> Request API Access
+                                        </button>
+                                    <?php else: ?>
+                                        <button class="btn-primary-action" disabled style="opacity: 0.45; cursor: not-allowed; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: none;" onclick="switchTab('#settings')">
+                                            <i class="fa-solid fa-lock"></i> Request API Access
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
                     <?php endif; ?>
@@ -1194,7 +1360,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             <div class="metric-card-glow"></div>
                             <span class="metric-label">Integration Status</span>
                             <span class="metric-value" style="font-size:1.3rem; margin-top:6px; font-weight:700;">
-                                <?php if ($p['status'] === 'pending'): ?>
+                                <?php if ($p['status'] === 'pending_profile'): ?>
+                                    Profile Setup
+                                <?php elseif ($p['status'] === 'pending'): ?>
                                     Under Review
                                 <?php elseif ($p['status'] === 'blocked'): ?>
                                     Suspended
@@ -1203,7 +1371,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 <?php endif; ?>
                             </span>
                             <span class="metric-desc">
-                                <?php if ($p['status'] === 'pending'): ?>
+                                <?php if ($p['status'] === 'pending_profile'): ?>
+                                    <i class="fa-solid fa-circle" style="color:var(--text-secondary)"></i> Profile incomplete
+                                <?php elseif ($p['status'] === 'pending'): ?>
                                     <i class="fa-solid fa-circle" style="color:var(--warning-color)"></i> Pending administrator activation
                                 <?php elseif ($p['status'] === 'blocked'): ?>
                                     <i class="fa-solid fa-circle" style="color:var(--danger-color)"></i> Integration access suspended
@@ -1294,9 +1464,15 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         <?php if ($p['status'] !== 'active'): ?>
                             <div style="text-align: center; padding: 40px 10px;">
                                 <i class="fa-solid fa-lock" style="font-size: 3.5rem; margin-bottom: 20px; color: var(--text-secondary); opacity: 0.35;"></i>
-                                <h3 style="font-size: 1.25rem; margin-bottom: 8px;">API Access Under Review</h3>
-                                <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 24px; font-size: 0.95rem;">Your credential keys will be generated automatically and shown here as soon as the administrator approves your partner request.</p>
-                                <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Awaiting Verification</span>
+                                <?php if ($p['status'] === 'pending_profile'): ?>
+                                    <h3 style="font-size: 1.25rem; margin-bottom: 8px;">Profile Verification Required</h3>
+                                    <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 24px; font-size: 0.95rem;">Please complete your profile details and submit a request for API access from the main dashboard tab first.</p>
+                                    <button class="btn-primary-action" onclick="switchTab('#overview')"><i class="fa-solid fa-chart-line"></i> Go to Dashboard</button>
+                                <?php else: ?>
+                                    <h3 style="font-size: 1.25rem; margin-bottom: 8px;">API Access Under Review</h3>
+                                    <p style="color: var(--text-secondary); max-width: 460px; margin: 0 auto 24px; font-size: 0.95rem;">Your credential keys will be generated automatically and shown here as soon as the administrator approves your partner request.</p>
+                                    <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Awaiting Verification</span>
+                                <?php endif; ?>
                             </div>
                         <?php else: ?>
                             <h3 class="card-title" style="margin-bottom: 24px;"><i class="fa-solid fa-shield-halved"></i> Live Access Keys</h3>
@@ -1898,6 +2074,53 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 showToast("Network connection error", true);
             });
         });
+
+        // Submit API Access request inline via AJAX
+        function submitApiAccessRequest() {
+            const btn = document.getElementById('btnRequestApiAccess');
+            if (!btn) return;
+            
+            const origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Submitting...';
+            btn.style.pointerEvents = 'none';
+            btn.style.opacity = '0.8';
+            
+            const formData = new FormData();
+            formData.append('action', 'request_api_access');
+            
+            fetch('dashboard.php', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast("API Access Request Submitted!");
+                    
+                    // Trigger the mail runner immediately to process the spooled email
+                    fetch('mail_runner.php').catch(() => {});
+                    
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    btn.innerHTML = origHtml;
+                    btn.style.pointerEvents = 'auto';
+                    btn.style.opacity = '1';
+                    showToast(data.message, true);
+                }
+            })
+            .catch(err => {
+                btn.innerHTML = origHtml;
+                btn.style.pointerEvents = 'auto';
+                btn.style.opacity = '1';
+                showToast("Network error occurred.", true);
+            });
+        }
     </script>
 </body>
 </html>
+
