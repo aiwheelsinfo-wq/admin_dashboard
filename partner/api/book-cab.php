@@ -104,12 +104,128 @@ if (!$stmt) {
     api_error('Booking creation failed: ' . $err, 500);
 }
 
-$zero = 0.0;
+// ── Helper: Geocode Address using Google API ────────────────────────────────
+if (!function_exists('get_geocode_coords')) {
+    function get_geocode_coords($address) {
+        $apiKey = 'AIzaSyBz4vqQWuT-s_3UEWk6pnSMxSIt7QOZEqk';
+        $url = "https://maps.googleapis.com/maps/api/geocode/json?address=" . urlencode($address) . "&key=" . $apiKey;
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        if (!$response) {
+            return null;
+        }
+        
+        $data = json_decode($response, true);
+        if (isset($data['status']) && $data['status'] === 'OK' && isset($data['results'][0]['geometry']['location'])) {
+            return [
+                'lat' => (float)$data['results'][0]['geometry']['location']['lat'],
+                'lng' => (float)$data['results'][0]['geometry']['location']['lng']
+            ];
+        }
+        return null;
+    }
+}
+
+// ── Helper: Check Coordinate Bounding Box ──────────────────────────────────
+if (!function_exists('is_within_bounds')) {
+    function is_within_bounds($lat, $lng, $minLat, $maxLat, $minLng, $maxLng) {
+        if ($lat === null || $lng === null || $minLat === null || $maxLat === null || $minLng === null || $maxLng === null) {
+            return false;
+        }
+        return ($lat >= $minLat && $lat <= $maxLat && $lng >= $minLng && $lng <= $maxLng);
+    }
+}
+
+// ── Calculate dynamic revenue splits ───────────────────────────────────────
+$vendor_amount = $amount;
+$agni_amount = 0.0;
+
+if ($trip_type === 'One-way') {
+    $from_coords = get_geocode_coords($from);
+    $to_coords   = get_geocode_coords($to);
+
+    $fromLat = $from_coords ? $from_coords['lat'] : null;
+    $fromLon = $from_coords ? $from_coords['lng'] : null;
+    $toLat   = $to_coords ? $to_coords['lat'] : null;
+    $toLon   = $to_coords ? $to_coords['lng'] : null;
+
+    // Query tripCostTable with bounding box check
+    $sql_cost = "SELECT * FROM tripCostTable WHERE tripType = 'One-way' AND carType = ?";
+    $stmt_cost = mysqli_prepare($conn, $sql_cost);
+    $final_row = null;
+    if ($stmt_cost) {
+        mysqli_stmt_bind_param($stmt_cost, 's', $car_type);
+        mysqli_stmt_execute($stmt_cost);
+        $res_cost = mysqli_stmt_get_result($stmt_cost);
+        
+        $fallback_row = null;
+        while ($row = mysqli_fetch_assoc($res_cost)) {
+            $hasCoords = ($row['minLat'] !== null && $row['maxLat'] !== null && $row['minLon'] !== null && $row['maxLon'] !== null);
+            $match = false;
+            if ($hasCoords) {
+                if (($fromLat !== null && $fromLon !== null && is_within_bounds($fromLat, $fromLon, $row['minLat'], $row['maxLat'], $row['minLon'], $row['maxLon']))
+                    ||
+                    ($toLat !== null && $toLon !== null && is_within_bounds($toLat, $toLon, $row['minLat'], $row['maxLat'], $row['minLon'], $row['maxLon']))) {
+                    $match = true;
+                }
+            }
+            if ($match) {
+                $final_row = $row;
+                break;
+            }
+            if (!$hasCoords && !$fallback_row) {
+                $fallback_row = $row;
+            }
+        }
+        mysqli_stmt_close($stmt_cost);
+        if (!$final_row) {
+            $final_row = $fallback_row;
+        }
+    }
+
+    if ($final_row) {
+        $km_rate = (float)$final_row['kmRate'];
+    } else {
+        // Fallback default base rates
+        $base_rates = [
+            'sedan'  => 13.0,
+            'ertiga' => 16.0,
+            'innova' => 19.0,
+            'crysta' => 24.0,
+        ];
+        $car_key = strtolower(str_replace(' ', '', $car_type));
+        $km_rate = $base_rates[$car_key] ?? 13.0;
+    }
+
+    $agni_amount = $km_rate * $distance * 0.20;
+    $vendor_amount = $amount - $agni_amount;
+
+} elseif ($trip_type === 'Local-Duty') {
+    $sql_cost = "SELECT * FROM tripCostTable WHERE tripType = 'Local-Duty' AND carType = ? LIMIT 1";
+    $stmt_cost = mysqli_prepare($conn, $sql_cost);
+    if ($stmt_cost) {
+        mysqli_stmt_bind_param($stmt_cost, 's', $car_type);
+        mysqli_stmt_execute($stmt_cost);
+        $res_cost = mysqli_stmt_get_result($stmt_cost);
+        if ($row = mysqli_fetch_assoc($res_cost)) {
+            $agni_amount = (float)$row['agni_share'];
+            $vendor_amount = (float)$row['driverRate'];
+        }
+        mysqli_stmt_close($stmt_cost);
+    }
+}
+
 mysqli_stmt_bind_param($stmt, 'ssssssssssddssdd',
     $booking_id, $from, $to, $trip_type, $car_type,
     $date, $time, $user_mobile, $user_mobile, $otp,
     $distance, $amount, $ret_date, $ret_time,
-    $amount, $zero
+    $vendor_amount, $agni_amount
 );
 
 if (!mysqli_stmt_execute($stmt)) {
