@@ -28,14 +28,8 @@ require_once __DIR__ . '/logger.php';
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
-$trip_type_check = trim($body['trip_type'] ?? '');
-
 // Required fields
-$required = ['from_address','trip_type','car_type','date','time','user_name','user_mobile'];
-if ($trip_type_check !== 'Local-Duty') {
-    $required[] = 'to_address';
-}
-
+$required = ['from_address','to_address','trip_type','car_type','date','time','user_name','user_mobile'];
 foreach ($required as $field) {
     if (empty(trim($body[$field] ?? ''))) {
         $msg = "Field '{$field}' is required.";
@@ -45,40 +39,20 @@ foreach ($required as $field) {
 }
 
 // Sanitize
-$from        = mysqli_real_escape_string($conn, trim($body['from_address'] ?? ''));
-$to          = mysqli_real_escape_string($conn, trim($body['to_address'] ?? ''));
-$trip_type   = mysqli_real_escape_string($conn, trim($body['trip_type'] ?? ''));
-$car_type    = mysqli_real_escape_string($conn, trim($body['car_type'] ?? ''));
-$date        = mysqli_real_escape_string($conn, trim($body['date'] ?? ''));
-$time        = mysqli_real_escape_string($conn, trim($body['time'] ?? ''));
-$user_name   = mysqli_real_escape_string($conn, trim($body['user_name'] ?? ''));
-$user_mobile = mysqli_real_escape_string($conn, trim($body['user_mobile'] ?? ''));
+$from        = mysqli_real_escape_string($conn, trim($body['from_address']));
+$to          = mysqli_real_escape_string($conn, trim($body['to_address']));
+$trip_type   = mysqli_real_escape_string($conn, trim($body['trip_type']));
+$car_type    = mysqli_real_escape_string($conn, trim($body['car_type']));
+$date        = mysqli_real_escape_string($conn, trim($body['date']));
+$time        = mysqli_real_escape_string($conn, trim($body['time']));
+$user_name   = mysqli_real_escape_string($conn, trim($body['user_name']));
+$user_mobile = mysqli_real_escape_string($conn, trim($body['user_mobile']));
 $user_email  = mysqli_real_escape_string($conn, trim($body['user_email']  ?? ''));
 $distance    = (float)($body['distance_km']   ?? 0);
 $amount      = (float)($body['total_amount']  ?? 0);
 $ret_date    = mysqli_real_escape_string($conn, trim($body['return_date'] ?? ''));
 $ret_time    = mysqli_real_escape_string($conn, trim($body['return_time'] ?? ''));
 $partner_ref = mysqli_real_escape_string($conn, trim($body['partner_booking_ref'] ?? ''));
-
-// Normalize car type for database queries
-$car_key = strtolower(str_replace([' ', '-'], '', $car_type));
-$car_type_normalized = 'Sedan';
-if (strpos($car_key, 'sedan') !== false || strpos($car_key, 'dzire') !== false) {
-    $car_type_normalized = 'Sedan';
-} elseif (strpos($car_key, 'ertiga') !== false) {
-    $car_type_normalized = 'Ertiga';
-} elseif (strpos($car_key, 'crysta') !== false) {
-    $car_type_normalized = 'Crysta';
-} elseif (strpos($car_key, 'innova') !== false) {
-    $car_type_normalized = 'Innova';
-}
-
-// Validate short distance for outstation trips
-if (($trip_type === 'One-way' || $trip_type === 'Round-Trip') && $distance < 50) {
-    $msg = "Distance is less than 50km. Please choose Local Taxi or Local Duty.";
-    log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>$msg], 'error');
-    api_error($msg, 400);
-}
 
 // Generate booking ID
 $booking_id = 'PB' . strtoupper(substr(md5(uniqid($partner['api_key'], true)), 0, 10));
@@ -186,7 +160,7 @@ if ($trip_type === 'One-way') {
     $stmt_cost = mysqli_prepare($conn, $sql_cost);
     $final_row = null;
     if ($stmt_cost) {
-        mysqli_stmt_bind_param($stmt_cost, 's', $car_type_normalized);
+        mysqli_stmt_bind_param($stmt_cost, 's', $car_type);
         mysqli_stmt_execute($stmt_cost);
         $res_cost = mysqli_stmt_get_result($stmt_cost);
         
@@ -225,8 +199,8 @@ if ($trip_type === 'One-way') {
             'innova' => 19.0,
             'crysta' => 24.0,
         ];
-        $car_key_fallback = strtolower(str_replace(' ', '', $car_type_normalized));
-        $km_rate = $base_rates[$car_key_fallback] ?? 13.0;
+        $car_key = strtolower(str_replace(' ', '', $car_type));
+        $km_rate = $base_rates[$car_key] ?? 13.0;
     }
 
     $agni_amount = $km_rate * $distance * 0.20;
@@ -236,7 +210,7 @@ if ($trip_type === 'One-way') {
     $sql_cost = "SELECT * FROM tripCostTable WHERE tripType = 'Local-Duty' AND carType = ? LIMIT 1";
     $stmt_cost = mysqli_prepare($conn, $sql_cost);
     if ($stmt_cost) {
-        mysqli_stmt_bind_param($stmt_cost, 's', $car_type_normalized);
+        mysqli_stmt_bind_param($stmt_cost, 's', $car_type);
         mysqli_stmt_execute($stmt_cost);
         $res_cost = mysqli_stmt_get_result($stmt_cost);
         if ($row = mysqli_fetch_assoc($res_cost)) {
@@ -248,7 +222,7 @@ if ($trip_type === 'One-way') {
 }
 
 mysqli_stmt_bind_param($stmt, 'ssssssssssddssdd',
-    $booking_id, $from, $to, $trip_type, $car_type_normalized,
+    $booking_id, $from, $to, $trip_type, $car_type,
     $date, $time, $user_mobile, $user_mobile, $otp,
     $distance, $amount, $ret_date, $ret_time,
     $vendor_amount, $agni_amount
@@ -282,7 +256,7 @@ $response = [
         'from_address'       => $from,
         'to_address'         => $to,
         'trip_type'          => $trip_type,
-        'car_type'           => $car_type_normalized,
+        'car_type'           => $car_type,
         'date'               => $date,
         'time'               => $time,
         'passenger_name'     => $user_name,
