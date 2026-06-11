@@ -132,8 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'contact_person',
                 'mobile_number',
                 'email',
-                'gst_number',
-                'documents'
+                'gst_number'
             ];
 
             $incomplete = false;
@@ -209,7 +208,7 @@ if (!$p) {
     exit();
 }
 
-// Calculate profile completion percentage (out of 8 fields)
+// Calculate profile completion percentage (out of 7 fields)
 $fields_to_check = [
     'partner_name',
     'company_name',
@@ -217,8 +216,7 @@ $fields_to_check = [
     'contact_person',
     'mobile_number',
     'email',
-    'gst_number',
-    'documents'
+    'gst_number'
 ];
 
 $completed_count = 0;
@@ -1339,7 +1337,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                         <h4 style="color: var(--warning-color); font-weight: 700; margin-bottom: 4px; font-size: 1rem;">
                                             <i class="fa-solid fa-circle-exclamation"></i> Action Required: Complete Profile Settings
                                         </h4>
-                                        <p style="font-size: 0.88rem; color: var(--text-secondary);">Please complete all profile details and upload a Verification Document in the Account Settings tab.</p>
+                                        <p style="font-size: 0.88rem; color: var(--text-secondary);">Please complete all profile fields in the Account Settings tab to enable API access.</p>
                                     <?php endif; ?>
                                 </div>
                                 <div>
