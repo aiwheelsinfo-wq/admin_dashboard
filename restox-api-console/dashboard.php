@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                          SET partner_name = ?, company_name = ?, company_owner_name = ?, contact_person = ?, mobile_number = ?, email = ?, gst_number = ?, documents = ?
                          WHERE id = ?"
                     );
-                    mysqli_stmt_bind_param($stmt, 'sssssssi', 
+                    mysqli_stmt_bind_param($stmt, 'ssssssssi', 
                         $partner_name, $company_name, $company_owner_name, $contact_person, $contact_number, $email, $gst_number, $documents, $id
                     );
 
