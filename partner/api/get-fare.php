@@ -89,11 +89,6 @@ $total = 0.0;
 
 switch ($trip_type) {
     case 'One-way':
-        if ($distance_km < 50) {
-            log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Distance is less than 50km. Please choose Local Taxi or Local Duty.'], 'error');
-            api_error('Distance is less than 50km. Please choose Local Taxi or Local Duty.', 400);
-        }
-
         $from_coords = get_geocode_coords($from);
         $to_coords   = get_geocode_coords($to);
 
@@ -101,6 +96,32 @@ switch ($trip_type) {
         $fromLon = $from_coords ? $from_coords['lng'] : null;
         $toLat   = $to_coords ? $to_coords['lat'] : null;
         $toLon   = $to_coords ? $to_coords['lng'] : null;
+
+        // Check if this is a special route
+        $is_special = false;
+        if ($fromLat !== null && $fromLon !== null && $toLat !== null && $toLon !== null) {
+            $sql_spec = "SELECT tripType FROM special_routes
+                    WHERE ? BETWEEN minLat_from AND maxLat_from
+                      AND ? BETWEEN minLon_from AND maxLon_from
+                      AND ? BETWEEN minLat_to AND maxLat_to
+                      AND ? BETWEEN minLon_to AND maxLon_to
+                    LIMIT 1";
+            $stmt_spec = mysqli_prepare($conn, $sql_spec);
+            if ($stmt_spec) {
+                mysqli_stmt_bind_param($stmt_spec, "dddd", $fromLat, $fromLon, $toLat, $toLon);
+                mysqli_stmt_execute($stmt_spec);
+                mysqli_stmt_store_result($stmt_spec);
+                if (mysqli_stmt_num_rows($stmt_spec) > 0) {
+                    $is_special = true;
+                }
+                mysqli_stmt_close($stmt_spec);
+            }
+        }
+
+        if (!$is_special && $distance_km <= 75) {
+            log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Distance is less than 75km. Please choose Local Taxi or Local Duty.'], 'error');
+            api_error('Distance is less than 75km. Please choose Local Taxi or Local Duty.', 400);
+        }
 
         // Query tripCostTable with bounding box check
         $sql = "SELECT * FROM tripCostTable WHERE tripType = 'One-way' AND carType = ?";

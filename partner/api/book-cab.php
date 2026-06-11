@@ -28,8 +28,52 @@ require_once __DIR__ . '/logger.php';
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
-// Required fields
-$required = ['from_address','to_address','trip_type','car_type','date','time','user_name','user_mobile'];
+// ── Helper: Geocode Address using Google API ────────────────────────────────
+if (!function_exists('get_geocode_coords')) {
+    function get_geocode_coords($address) {
+        $apiKey = 'AIzaSyBz4vqQWuT-s_3UEWk6pnSMxSIt7QOZEqk';
+        $url = "https://maps.googleapis.com/maps/api/geocode/json?address=" . urlencode($address) . "&key=" . $apiKey;
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        if (!$response) {
+            return null;
+        }
+        
+        $data = json_decode($response, true);
+        if (isset($data['status']) && $data['status'] === 'OK' && isset($data['results'][0]['geometry']['location'])) {
+            return [
+                'lat' => (float)$data['results'][0]['geometry']['location']['lat'],
+                'lng' => (float)$data['results'][0]['geometry']['location']['lng']
+            ];
+        }
+        return null;
+    }
+}
+
+// ── Helper: Check Coordinate Bounding Box ──────────────────────────────────
+if (!function_exists('is_within_bounds')) {
+    function is_within_bounds($lat, $lng, $minLat, $maxLat, $minLng, $maxLng) {
+        if ($lat === null || $lng === null || $minLat === null || $maxLat === null || $minLng === null || $maxLng === null) {
+            return false;
+        }
+        return ($lat >= $minLat && $lat <= $maxLat && $lng >= $minLng && $lng <= $maxLng);
+    }
+}
+
+$trip_type = trim($body['trip_type'] ?? '');
+
+// Required fields validation
+$required = ['from_address','trip_type','car_type','date','time','user_name','user_mobile'];
+if ($trip_type !== 'Local-Duty') {
+    $required[] = 'to_address';
+}
+
 foreach ($required as $field) {
     if (empty(trim($body[$field] ?? ''))) {
         $msg = "Field '{$field}' is required.";
@@ -40,8 +84,8 @@ foreach ($required as $field) {
 
 // Sanitize
 $from        = mysqli_real_escape_string($conn, trim($body['from_address']));
-$to          = mysqli_real_escape_string($conn, trim($body['to_address']));
-$trip_type   = mysqli_real_escape_string($conn, trim($body['trip_type']));
+$to          = mysqli_real_escape_string($conn, trim($body['to_address'] ?? ''));
+$trip_type   = mysqli_real_escape_string($conn, $trip_type);
 $car_type    = mysqli_real_escape_string($conn, trim($body['car_type']));
 $date        = mysqli_real_escape_string($conn, trim($body['date']));
 $time        = mysqli_real_escape_string($conn, trim($body['time']));
@@ -53,6 +97,56 @@ $amount      = (float)($body['total_amount']  ?? 0);
 $ret_date    = mysqli_real_escape_string($conn, trim($body['return_date'] ?? ''));
 $ret_time    = mysqli_real_escape_string($conn, trim($body['return_time'] ?? ''));
 $partner_ref = mysqli_real_escape_string($conn, trim($body['partner_booking_ref'] ?? ''));
+
+// Normalize car type for matching in database
+$car_key = strtolower(str_replace([' ', '-'], '', $car_type));
+$car_type_normalized = 'Sedan';
+if (strpos($car_key, 'sedan') !== false || strpos($car_key, 'dzire') !== false) {
+    $car_type_normalized = 'Sedan';
+} elseif (strpos($car_key, 'ertiga') !== false) {
+    $car_type_normalized = 'Ertiga';
+} elseif (strpos($car_key, 'crysta') !== false) {
+    $car_type_normalized = 'Crysta';
+} elseif (strpos($car_key, 'innova') !== false) {
+    $car_type_normalized = 'Innova';
+}
+$car_type = $car_type_normalized;
+
+// Enforce One-way short distance block unless it's a special route
+if ($trip_type === 'One-way') {
+    $from_coords = get_geocode_coords($from);
+    $to_coords   = get_geocode_coords($to);
+
+    $fromLat = $from_coords ? $from_coords['lat'] : null;
+    $fromLon = $from_coords ? $from_coords['lng'] : null;
+    $toLat   = $to_coords ? $to_coords['lat'] : null;
+    $toLon   = $to_coords ? $to_coords['lng'] : null;
+
+    $is_special = false;
+    if ($fromLat !== null && $fromLon !== null && $toLat !== null && $toLon !== null) {
+        $sql_spec = "SELECT tripType FROM special_routes
+                WHERE ? BETWEEN minLat_from AND maxLat_from
+                  AND ? BETWEEN minLon_from AND maxLon_from
+                  AND ? BETWEEN minLat_to AND maxLat_to
+                  AND ? BETWEEN minLon_to AND maxLon_to
+                LIMIT 1";
+        $stmt_spec = mysqli_prepare($conn, $sql_spec);
+        if ($stmt_spec) {
+            mysqli_stmt_bind_param($stmt_spec, "dddd", $fromLat, $fromLon, $toLat, $toLon);
+            mysqli_stmt_execute($stmt_spec);
+            mysqli_stmt_store_result($stmt_spec);
+            if (mysqli_stmt_num_rows($stmt_spec) > 0) {
+                $is_special = true;
+            }
+            mysqli_stmt_close($stmt_spec);
+        }
+    }
+
+    if (!$is_special && $distance <= 75) {
+        log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Distance is less than 75km. Please choose Local Taxi or Local Duty.'], 'error');
+        api_error('Distance is less than 75km. Please choose Local Taxi or Local Duty.', 400);
+    }
+}
 
 // Generate booking ID
 $booking_id = 'PB' . strtoupper(substr(md5(uniqid($partner['api_key'], true)), 0, 10));
@@ -102,44 +196,6 @@ if (!$stmt) {
     $err = mysqli_error($conn);
     log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>$err], 'error');
     api_error('Booking creation failed: ' . $err, 500);
-}
-
-// ── Helper: Geocode Address using Google API ────────────────────────────────
-if (!function_exists('get_geocode_coords')) {
-    function get_geocode_coords($address) {
-        $apiKey = 'AIzaSyBz4vqQWuT-s_3UEWk6pnSMxSIt7QOZEqk';
-        $url = "https://maps.googleapis.com/maps/api/geocode/json?address=" . urlencode($address) . "&key=" . $apiKey;
-        
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        if (!$response) {
-            return null;
-        }
-        
-        $data = json_decode($response, true);
-        if (isset($data['status']) && $data['status'] === 'OK' && isset($data['results'][0]['geometry']['location'])) {
-            return [
-                'lat' => (float)$data['results'][0]['geometry']['location']['lat'],
-                'lng' => (float)$data['results'][0]['geometry']['location']['lng']
-            ];
-        }
-        return null;
-    }
-}
-
-// ── Helper: Check Coordinate Bounding Box ──────────────────────────────────
-if (!function_exists('is_within_bounds')) {
-    function is_within_bounds($lat, $lng, $minLat, $maxLat, $minLng, $maxLng) {
-        if ($lat === null || $lng === null || $minLat === null || $maxLat === null || $minLng === null || $maxLng === null) {
-            return false;
-        }
-        return ($lat >= $minLat && $lat <= $maxLat && $lng >= $minLng && $lng <= $maxLng);
-    }
 }
 
 // ── Calculate dynamic revenue splits ───────────────────────────────────────
