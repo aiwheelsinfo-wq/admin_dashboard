@@ -27,8 +27,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->bind_param("s", $phone_number);
     $stmt->execute();
     $stmt->store_result();
+    
+    $phone_exists = $stmt->num_rows > 0;
+    $stmt->close();
 
-    if ($stmt->num_rows > 0) {
+    if ($phone_exists) {
         // ✅ Phone found → Always update token (even if empty)
         $update_stmt = $conn->prepare("UPDATE drivers SET fcm_token = ? WHERE phone_number = ?");
         $update_stmt->bind_param("ss", $fcm_token, $phone_number);
@@ -46,7 +49,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     } else {
         // 🆕 Insert new record
-        $stmt->close();
         $insert_stmt = $conn->prepare("
             INSERT INTO drivers (phone_number, fcm_token, driver_code, created_at)
             VALUES (?, ?, ?, ?)
@@ -64,8 +66,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         $insert_stmt->close();
     }
-
-    $stmt->close();
 
 } else {
     $response["message"] = "Invalid request method!";
