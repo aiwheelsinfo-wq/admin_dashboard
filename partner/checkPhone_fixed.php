@@ -1,5 +1,5 @@
 <?php
-include '../2025/db_connect.php'; // Include database connection
+include __DIR__ . '/../db_connect.php'; // Include database connection
 
 date_default_timezone_set("Asia/Kolkata"); // set PHP timezone
 

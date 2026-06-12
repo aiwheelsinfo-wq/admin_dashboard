@@ -2,8 +2,8 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Connect to database (assuming path relative to driver2025 directory on server)
-include('../2025/db_connect.php');
+// Connect to database
+include __DIR__ . '/../db_connect.php';
 header('Content-Type: application/json');
 
 $response = ["success" => false, "message" => "Something went wrong!"];
