@@ -46,6 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     } else {
         // 🆕 Insert new record
+        $stmt->close();
         $insert_stmt = $conn->prepare("
             INSERT INTO drivers (phone_number, fcm_token, driver_code, created_at)
             VALUES (?, ?, ?, ?)
