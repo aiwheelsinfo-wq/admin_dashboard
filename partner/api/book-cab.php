@@ -203,14 +203,6 @@ $vendor_amount = $amount;
 $agni_amount = 0.0;
 
 if ($trip_type === 'One-way') {
-    $from_coords = get_geocode_coords($from);
-    $to_coords   = get_geocode_coords($to);
-
-    $fromLat = $from_coords ? $from_coords['lat'] : null;
-    $fromLon = $from_coords ? $from_coords['lng'] : null;
-    $toLat   = $to_coords ? $to_coords['lat'] : null;
-    $toLon   = $to_coords ? $to_coords['lng'] : null;
-
     // Query tripCostTable with bounding box check
     $sql_cost = "SELECT * FROM tripCostTable WHERE tripType = 'One-way' AND carType = ?";
     $stmt_cost = mysqli_prepare($conn, $sql_cost);
