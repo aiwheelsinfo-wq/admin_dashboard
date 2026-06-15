@@ -49,7 +49,7 @@ async function initMap() {
     const lat = parseFloat(driver.latitude);
     const lng = parseFloat(driver.longitude);
 
-    if (lat !== 0 && lng !== 0) {
+    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
 
       const marker = L.marker([lat, lng], { icon: carIcon }).addTo(map);
 
