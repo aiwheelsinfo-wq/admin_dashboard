@@ -32,6 +32,39 @@ const carIcon = L.icon({
   iconSize: [40, 40]
 });
 
+function formatDateTime(dateTimeStr) {
+  if (!dateTimeStr || dateTimeStr === 'N/A' || dateTimeStr === '0000-00-00 00:00:00') {
+    return 'N/A';
+  }
+  try {
+    const parts = dateTimeStr.split(' ');
+    if (parts.length < 2) return dateTimeStr;
+    
+    const dateParts = parts[0].split('-');
+    const timeParts = parts[1].split(':');
+    
+    if (dateParts.length === 3 && timeParts.length >= 2) {
+      const year = dateParts[0];
+      const month = dateParts[1];
+      const day = dateParts[2];
+      
+      let hours = parseInt(timeParts[0], 10);
+      const minutes = timeParts[1];
+      const seconds = timeParts[2] || '00';
+      
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 hour should be 12
+      const strTime = `${hours.toString().padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+      
+      return `${day}-${month}-${year} ${strTime}`;
+    }
+  } catch (e) {
+    console.error("Error formatting date time:", e);
+  }
+  return dateTimeStr;
+}
+
 async function initMap() {
   // Initialize map
   map = L.map('map').setView([20.5937, 78.9629], 5);
@@ -68,7 +101,7 @@ async function updateDriverLocations() {
         const popupContent = `
           <strong>Driver:</strong> ${driver.full_name || 'No Name'}<br>
           <strong>Phone:</strong> ${driver.phone_number}<br>
-          <strong>Last Update:</strong> ${driver.timestamp || 'N/A'}
+          <strong>Last Update:</strong> ${formatDateTime(driver.timestamp)}
         `;
 
         if (markers[driverId]) {
