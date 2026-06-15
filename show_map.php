@@ -76,20 +76,32 @@ function formatDateTime(dateTimeStr) {
     const timeParts = parts[1].split(':');
     
     if (dateParts.length === 3 && timeParts.length >= 2) {
-      const year = dateParts[0];
-      const month = dateParts[1];
-      const day = dateParts[2];
+      const year = parseInt(dateParts[0], 10);
+      const monthIndex = parseInt(dateParts[1], 10) - 1;
+      const day = parseInt(dateParts[2], 10);
       
-      let hours = parseInt(timeParts[0], 10);
-      const minutes = timeParts[1];
-      const seconds = timeParts[2] || '00';
+      const hours = parseInt(timeParts[0], 10);
+      const minutes = parseInt(timeParts[1], 10);
+      const seconds = parseInt(timeParts[2] || '0', 10);
       
-      const ampm = hours >= 12 ? 'PM' : 'AM';
-      hours = hours % 12;
-      hours = hours ? hours : 12; // 0 hour should be 12
-      const strTime = `${hours.toString().padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+      const dateObj = new Date(year, monthIndex, day, hours, minutes, seconds);
       
-      return `${day}-${month}-${year} ${strTime}`;
+      const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      
+      const dayName = weekdays[dateObj.getDay()];
+      const monthName = months[dateObj.getMonth()];
+      const dayStr = day.toString().padStart(2, '0');
+      
+      let hrs = hours;
+      const ampm = hrs >= 12 ? 'PM' : 'AM';
+      hrs = hrs % 12;
+      hrs = hrs ? hrs : 12; // 0 hour should be 12
+      const minsStr = minutes.toString().padStart(2, '0');
+      const secsStr = seconds.toString().padStart(2, '0');
+      const strTime = `${hrs.toString().padStart(2, '0')}:${minsStr}:${secsStr} ${ampm}`;
+      
+      return `${dayName}, ${dayStr} ${monthName} ${year} ${strTime}`;
     }
   } catch (e) {
     console.error("Error formatting date time:", e);
