@@ -10,14 +10,46 @@
     html, body {
       height: 100%;
       margin: 0;
+      position: relative;
     }
     #map {
       height: 100%;
+      z-index: 1;
+    }
+    #search-container {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      width: 340px;
+      max-width: 90%;
+    }
+    #search-input {
+      width: 100%;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      border-radius: 25px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      outline: none;
+      box-sizing: border-box;
+      background-color: white;
+      transition: all 0.3s ease;
+    }
+    #search-input:focus {
+      border-color: #007bff;
+      box-shadow: 0 4px 20px rgba(0, 123, 255, 0.25);
     }
   </style>
 </head>
 
 <body>
+
+<div id="search-container">
+  <input type="text" id="search-input" placeholder="Search driver by name or phone..."/>
+</div>
 
 <div id="map"></div>
 
@@ -65,6 +97,36 @@ function formatDateTime(dateTimeStr) {
   return dateTimeStr;
 }
 
+function filterDrivers() {
+  const query = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  let matchedMarker = null;
+  let matchCount = 0;
+
+  for (const id in markers) {
+    const marker = markers[id];
+    const name = marker.driverData.name;
+    const phone = marker.driverData.phone;
+
+    if (name.includes(query) || phone.includes(query)) {
+      if (!map.hasLayer(marker)) {
+        marker.addTo(map);
+      }
+      matchedMarker = marker;
+      matchCount++;
+    } else {
+      if (map.hasLayer(marker)) {
+        map.removeLayer(marker);
+      }
+    }
+  }
+
+  // If there is exactly one match, zoom to it and open its popup
+  if (matchCount === 1 && query.length > 0 && matchedMarker) {
+    map.setView(matchedMarker.getLatLng(), 14);
+    matchedMarker.openPopup();
+  }
+}
+
 async function initMap() {
   // Initialize map
   map = L.map('map').setView([20.5937, 78.9629], 5);
@@ -73,6 +135,9 @@ async function initMap() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
+
+  // Add search input listener
+  document.getElementById('search-input').addEventListener('input', filterDrivers);
 
   // Initial load
   await updateDriverLocations();
@@ -108,10 +173,18 @@ async function updateDriverLocations() {
           // Update existing marker position and popup
           markers[driverId].setLatLng(newLatLng);
           markers[driverId].getPopup().setContent(popupContent);
+          markers[driverId].driverData = {
+            name: (driver.full_name || '').toLowerCase(),
+            phone: (driver.phone_number || '')
+          };
         } else {
           // Create new marker
           const marker = L.marker(newLatLng, { icon: carIcon }).addTo(map);
           marker.bindPopup(popupContent);
+          marker.driverData = {
+            name: (driver.full_name || '').toLowerCase(),
+            phone: (driver.phone_number || '')
+          };
           markers[driverId] = marker;
         }
       }
@@ -124,6 +197,9 @@ async function updateDriverLocations() {
         delete markers[id];
       }
     }
+
+    // Apply search filter to new/updated markers
+    filterDrivers();
   } catch (error) {
     console.error("Error updating driver locations:", error);
   }
