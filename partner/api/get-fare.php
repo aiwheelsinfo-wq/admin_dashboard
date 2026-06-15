@@ -44,7 +44,7 @@ if (empty($from) || empty($car_type) || ($trip_type !== 'Local-Duty' && $distanc
 
 // ── Helper: Geocode Address using Google API ────────────────────────────────
 function get_geocode_coords($address) {
-    $apiKey = 'AIzaSyBz4vqQWuT-s_3UEWk6pnSMxSIt7QOZEqk';
+    $apiKey = 'AIzaSyC41U3p08LqY8G15ruxDCEfTvBLkG_OrsM';
     $url = "https://maps.googleapis.com/maps/api/geocode/json?address=" . urlencode($address) . "&key=" . $apiKey;
     
     $ch = curl_init();

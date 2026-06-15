@@ -31,7 +31,7 @@ $body = json_decode(file_get_contents('php://input'), true) ?? [];
 // ── Helper: Geocode Address using Google API ────────────────────────────────
 if (!function_exists('get_geocode_coords')) {
     function get_geocode_coords($address) {
-        $apiKey = 'AIzaSyBz4vqQWuT-s_3UEWk6pnSMxSIt7QOZEqk';
+        $apiKey = 'AIzaSyC41U3p08LqY8G15ruxDCEfTvBLkG_OrsM';
         $url = "https://maps.googleapis.com/maps/api/geocode/json?address=" . urlencode($address) . "&key=" . $apiKey;
         
         $ch = curl_init();
