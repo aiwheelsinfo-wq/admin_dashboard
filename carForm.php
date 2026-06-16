@@ -32,11 +32,37 @@
             background: linear-gradient(135deg, #2b6cb0, #1e40af);
             padding: 20px 30px;
             color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         header h1 {
             font-size: 24px;
             font-weight: 600;
+        }
+
+        .close-btn {
+            color: white;
+            font-size: 28px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .close-btn:hover {
+            color: #f3f4f6;
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.1);
         }
 
         .form-content {
@@ -131,6 +157,7 @@
     <div class="container">
         <header>
             <h1 id="formTitle">Car Registration Form</h1>
+            <a href="dashboard.php" class="close-btn" id="closeBtn" title="Back to Dashboard">&times;</a>
         </header>
         <div class="form-content">
             <form id="carForm">
@@ -247,6 +274,17 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        const closeBtn = document.getElementById('closeBtn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.close();
+                setTimeout(() => {
+                    window.location.href = 'dashboard.php';
+                }, 100);
+            });
+        }
+
         const urlParams = new URLSearchParams(window.location.search);
         const vehicleNumber = urlParams.get('vehicle_number');
 
