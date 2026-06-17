@@ -374,7 +374,7 @@ if (!isset($_SESSION['admin_id'])) {
         </div>
     </div>
 
-    <script src="javascripts/Dasboardscripts.js"></script>
+    <script src="javascripts/Dasboardscripts.js?v=<?php echo time(); ?>"></script>
     <script>
 function viewDriverOnMap(lat, lng) {
     if (!lat || !lng) {
