@@ -35,6 +35,21 @@ if (!isset($_SESSION['admin_id'])) {
             <a href="dashboard.php" class="home-btn"><i class="fas fa-home me-2"></i> Home</a>
         </div>
         <div class="right-nav">
+            <div class="header-notification-container">
+                <button id="notificationBellBtn" class="notification-bell-btn" title="Notifications">
+                    <i class="fas fa-bell"></i>
+                    <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+                </button>
+                <div id="notificationDropdown" class="notification-dropdown">
+                    <div class="notification-dropdown-header">
+                        <span>Recent Bookings</span>
+                        <button id="clearNotificationsBtn" class="clear-notifications-btn">Clear</button>
+                    </div>
+                    <div id="notificationDropdownList" class="notification-dropdown-list">
+                        <div class="notification-empty-state">No new notifications</div>
+                    </div>
+                </div>
+            </div>
             <form action="logout.php" method="POST" class="logout-form">
                 <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </form>

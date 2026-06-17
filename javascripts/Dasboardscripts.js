@@ -24,6 +24,7 @@ $(document).ready(function () {
     let currentBlocked_CustomerPage=1;
     let newUserNotificationCount = 0; // New variable for notification count
     let lastMaxBookingId = 0;
+    let unreadNotifications = [];
     function formatDate(dateStr) {
         const [year, month, day] = dateStr.split('-');
         return `${day}-${month}-${year}`;
@@ -1506,10 +1507,14 @@ function renderDriverTable(drivers, page = currentDriverPage) {
             if (newBookingsFound.length > 0) {
                 lastMaxBookingId = currentMaxId;
                 
-                // Show notification for each new booking
+                // Show notification for each new booking and prepend to unread list
                 newBookingsFound.forEach(b => {
+                    unreadNotifications.unshift(b);
                     showNewBookingNotification(b);
                 });
+
+                // Update UI badge and dropdown list
+                updateNotificationUI();
 
                 // Play pleasant notification sound
                 playNotificationSound();
@@ -1522,14 +1527,110 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         });
     }
 
+    // Toggle notification dropdown
+    $("#notificationBellBtn").on("click", function (e) {
+        e.stopPropagation();
+        $("#notificationDropdown").toggleClass("active");
+    });
+
+    // Close dropdown when clicking outside
+    $(document).on("click", function (e) {
+        if (!$(e.target).closest(".header-notification-container").length) {
+            $("#notificationDropdown").removeClass("active");
+        }
+    });
+
+    // Clear all notifications
+    $("#clearNotificationsBtn").on("click", function (e) {
+        e.stopPropagation();
+        unreadNotifications = [];
+        updateNotificationUI();
+    });
+
+    // Open booking from dropdown list
+    $(document).on("click", ".notification-dropdown-item", function () {
+        const bookingId = $(this).data("booking-id");
+        if (bookingId === 'TEST') {
+            unreadNotifications = unreadNotifications.filter(n => n.booking_id !== 'TEST');
+            updateNotificationUI();
+            $("#notificationDropdown").removeClass("active");
+            return;
+        }
+        
+        $('#modalDetails').html('<p>Loading...</p>');
+        $('#bookingModal').fadeIn();
+        fetchBookingById(bookingId).then(booking => {
+            if (booking) {
+                showBookingModal(booking);
+            } else {
+                $('#modalDetails').html('<p>Error loading details.</p>');
+            }
+        });
+
+        // Mark as read
+        unreadNotifications = unreadNotifications.filter(n => n.booking_id != bookingId);
+        updateNotificationUI();
+        $("#notificationDropdown").removeClass("active");
+    });
+
+    // Update Notification badge and dropdown content
+    function updateNotificationUI() {
+        const badge = $("#notificationBadge");
+        const list = $("#notificationDropdownList");
+        
+        const count = unreadNotifications.length;
+        if (count > 0) {
+            badge.text(count).show();
+            
+            // Build dropdown items
+            let itemsHtml = "";
+            unreadNotifications.forEach(n => {
+                const bookingId = n.booking_id;
+                if (bookingId === 'TEST') {
+                    itemsHtml += `
+                        <div class="notification-dropdown-item" data-booking-id="TEST">
+                            <div class="notification-item-title">
+                                <span>System Alert</span>
+                                <span class="notification-item-time">Just now</span>
+                            </div>
+                            <div class="notification-item-details">
+                                Notification system active and listening.
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const fromLoc = n.from_address ? n.from_address.split(',').slice(-3).join(',') : 'N/A';
+                    const toLoc = n.to_address ? n.to_address.split(',').slice(-3).join(',') : 'N/A';
+                    itemsHtml += `
+                        <div class="notification-dropdown-item" data-booking-id="${bookingId}">
+                            <div class="notification-item-title">
+                                <span>New Booking #${bookingId}</span>
+                                <span class="notification-item-time">Just now</span>
+                            </div>
+                            <div class="notification-item-details">
+                                <strong>Customer:</strong> ${n.user_name || 'N/A'}<br>
+                                <strong>Route:</strong> ${fromLoc} &rarr; ${toLoc}
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            list.html(itemsHtml);
+        } else {
+            badge.hide();
+            list.html('<div class="notification-empty-state">No new notifications</div>');
+        }
+    }
+
     // Run polling check every 10 seconds
     setInterval(checkForNewBookings, 10000);
 
     // Show a test notification 2 seconds after load to confirm the container and CSS are working perfectly
     setTimeout(() => {
-        showNewBookingNotification({
-            booking_id: 'TEST'
-        });
+        const testAlert = { booking_id: 'TEST' };
+        unreadNotifications.unshift(testAlert);
+        updateNotificationUI();
+        showNewBookingNotification(testAlert);
     }, 2000);
 });
 
