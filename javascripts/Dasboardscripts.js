@@ -1435,20 +1435,35 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         const toLoc = booking.to_address ? booking.to_address.split(',').slice(-3).join(',') : 'N/A';
         const customer = booking.user_name || 'N/A';
 
-        const toastHtml = `
-            <div class="notification-toast" id="toast-${bookingId}">
-                <div class="notification-toast-header">
-                    <span>🔔 New Booking Received</span>
-                    <button class="notification-toast-close">&times;</button>
+        let toastHtml = '';
+        if (bookingId === 'TEST') {
+            toastHtml = `
+                <div class="notification-toast" id="toast-test" style="border-left-color: #3498db; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 15px rgba(52, 152, 219, 0.25);">
+                    <div class="notification-toast-header">
+                        <span style="color: #3498db; font-weight: bold;">🔔 Notification System Active</span>
+                        <button class="notification-toast-close">&times;</button>
+                    </div>
+                    <div class="notification-toast-body" style="color: #ecf0f1;">
+                        Real-time system is active! Dashboard will alert and play sound automatically when new bookings are received.
+                    </div>
                 </div>
-                <div class="notification-toast-body">
-                    <strong>Booking ID:</strong> #${bookingId}<br>
-                    <strong>Customer:</strong> ${customer}<br>
-                    <strong>From:</strong> ${fromLoc}<br>
-                    <strong>To:</strong> ${toLoc}
+            `;
+        } else {
+            toastHtml = `
+                <div class="notification-toast" id="toast-${bookingId}">
+                    <div class="notification-toast-header">
+                        <span>🔔 New Booking Received</span>
+                        <button class="notification-toast-close">&times;</button>
+                    </div>
+                    <div class="notification-toast-body">
+                        <strong>Booking ID:</strong> #${bookingId}<br>
+                        <strong>Customer:</strong> ${customer}<br>
+                        <strong>From:</strong> ${fromLoc}<br>
+                        <strong>To:</strong> ${toLoc}
+                    </div>
                 </div>
-            </div>
-        `;
+            `;
+        }
 
         const toastElement = $(toastHtml);
         container.append(toastElement);
@@ -1509,6 +1524,13 @@ function renderDriverTable(drivers, page = currentDriverPage) {
 
     // Run polling check every 10 seconds
     setInterval(checkForNewBookings, 10000);
+
+    // Show a test notification 2 seconds after load to confirm the container and CSS are working perfectly
+    setTimeout(() => {
+        showNewBookingNotification({
+            booking_id: 'TEST'
+        });
+    }, 2000);
 });
 
 // Booking confirmation toggle
