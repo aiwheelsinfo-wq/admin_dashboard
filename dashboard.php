@@ -24,6 +24,7 @@ if (!isset($_SESSION['admin_id'])) {
     
 </head>
 <body>
+    <div id="notificationContainer" class="notification-container"></div>
     <nav class="top-nav">
         
         <div class="logo-container">

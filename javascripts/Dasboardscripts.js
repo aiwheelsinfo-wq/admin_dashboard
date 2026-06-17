@@ -23,6 +23,7 @@ $(document).ready(function () {
     let currentnewUserPage=1;
     let currentBlocked_CustomerPage=1;
     let newUserNotificationCount = 0; // New variable for notification count
+    let lastMaxBookingId = 0;
     function formatDate(dateStr) {
         const [year, month, day] = dateStr.split('-');
         return `${day}-${month}-${year}`;
@@ -821,6 +822,10 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     function fetchBookings() {
         $.getJSON("https://agnicarrental.com/admin2025/admin_booking_list_Agni.php", function (data) {
             allBookings = data.bookingsdata || [];
+            if (lastMaxBookingId === 0 && allBookings.length > 0) {
+                lastMaxBookingId = Math.max(...allBookings.map(b => parseInt(b.booking_id) || 0));
+                console.log("Initial max booking ID set to:", lastMaxBookingId);
+            }
             let todayCount = 0;
             let tomorrowCount = 0;
             allBookings.forEach(booking => {
@@ -1379,6 +1384,131 @@ function renderDriverTable(drivers, page = currentDriverPage) {
             $("#Extract_Data").click();
         }
     }
+
+    // Play pleasant notification chime using Web Audio API
+    function playNotificationSound() {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const ctx = new AudioContext();
+            
+            const playNote = (frequency, startTime, duration) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(frequency, startTime);
+                
+                gain.gain.setValueAtTime(0.35, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+            
+            const now = ctx.currentTime;
+            playNote(659.25, now, 0.25); // E5 note
+            playNote(880.00, now + 0.1, 0.35); // A5 note
+        } catch (e) {
+            console.warn("AudioContext failed to play sound:", e);
+        }
+    }
+
+    // Dismiss a toast alert
+    function dismissToastElement(element) {
+        element.addClass("hide");
+        setTimeout(() => {
+            element.remove();
+        }, 400);
+    }
+
+    // Build and slide down a new booking toast notification
+    function showNewBookingNotification(booking) {
+        const container = $("#notificationContainer");
+        if (container.length === 0) return;
+
+        const bookingId = booking.booking_id || 'N/A';
+        const fromLoc = booking.from_address ? booking.from_address.split(',').slice(-3).join(',') : 'N/A';
+        const toLoc = booking.to_address ? booking.to_address.split(',').slice(-3).join(',') : 'N/A';
+        const customer = booking.user_name || 'N/A';
+
+        const toastHtml = `
+            <div class="notification-toast" id="toast-${bookingId}">
+                <div class="notification-toast-header">
+                    <span>🔔 New Booking Received</span>
+                    <button class="notification-toast-close">&times;</button>
+                </div>
+                <div class="notification-toast-body">
+                    <strong>Booking ID:</strong> #${bookingId}<br>
+                    <strong>Customer:</strong> ${customer}<br>
+                    <strong>From:</strong> ${fromLoc}<br>
+                    <strong>To:</strong> ${toLoc}
+                </div>
+            </div>
+        `;
+
+        const toastElement = $(toastHtml);
+        container.append(toastElement);
+
+        // Slide/fade in transition
+        setTimeout(() => {
+            toastElement.addClass("show");
+        }, 50);
+
+        // Bind manual dismiss click
+        toastElement.find(".notification-toast-close").on("click", function() {
+            dismissToastElement(toastElement);
+        });
+
+        // Automatically dismiss toast after 8 seconds
+        setTimeout(() => {
+            dismissToastElement(toastElement);
+        }, 8000);
+    }
+
+    // Poll the backend periodically and compare with lastMaxBookingId to find new bookings
+    function checkForNewBookings() {
+        $.getJSON("https://agnicarrental.com/admin2025/admin_booking_list_Agni.php", function (data) {
+            const bookings = data.bookingsdata || [];
+            if (bookings.length === 0) return;
+
+            let newBookingsFound = [];
+            let currentMaxId = lastMaxBookingId;
+
+            bookings.forEach(booking => {
+                const bookingId = parseInt(booking.booking_id) || 0;
+                if (lastMaxBookingId > 0 && bookingId > lastMaxBookingId) {
+                    newBookingsFound.push(booking);
+                    if (bookingId > currentMaxId) {
+                        currentMaxId = bookingId;
+                    }
+                }
+            });
+
+            if (newBookingsFound.length > 0) {
+                lastMaxBookingId = currentMaxId;
+                
+                // Show notification for each new booking
+                newBookingsFound.forEach(b => {
+                    showNewBookingNotification(b);
+                });
+
+                // Play pleasant notification sound
+                playNotificationSound();
+
+                // Automatically update current bookings list if user is on the bookings tab
+                fetchBookings();
+            }
+        }).fail(function (err) {
+            console.error("Error checking for new bookings:", err);
+        });
+    }
+
+    // Run polling check every 10 seconds
+    setInterval(checkForNewBookings, 10000);
 });
 
 // Booking confirmation toggle
