@@ -142,7 +142,13 @@ $(document).ready(function () {
                         </td>
                         <td>${booking.formattedDate}</td>
                         <td>${booking.formattedTime}</td>
-                        <td>${booking.user_name}</td>
+                        <td>
+                            <div><strong>${booking.user_name || 'N/A'}</strong></div>
+                            <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                                ${booking.accountType ? booking.accountType.toUpperCase() : 'CUSTOMER'}
+                                ${booking.user_agency && booking.user_agency !== 'N/A' && booking.user_agency !== '' ? ` - ${booking.user_agency}` : ''}
+                            </div>
+                        </td>
                         <td>${booking.booker_id}</td>
                         <td>${booking.booking_status}</td>
                         <td>
@@ -232,6 +238,8 @@ function showBookingModal(booking) {
             <p><strong>Name:</strong> ${booking.user_name || 'N/A'}</p>
             <p><strong>Email:</strong> ${booking.email || 'N/A'}</p>
             <p><strong>Mobile:</strong> ${booking.booker_id || 'N/A'}</p>
+            <p><strong>Account Type:</strong> ${booking.accountType ? booking.accountType.toUpperCase() : 'CUSTOMER'}</p>
+            ${booking.user_agency && booking.user_agency !== 'N/A' && booking.user_agency !== '' ? `<p><strong>Agency:</strong> ${booking.user_agency}</p>` : ''}
             <hr>
             <h4>Estimated Charges</h4>
             ${priceHtml}
@@ -334,6 +342,8 @@ function showBookingModal(booking) {
             <p><strong>Name:</strong> ${booking.user_name || 'N/A'}</p>
             <p><strong>Email:</strong> ${booking.email || 'N/A'}</p>
             <p><strong>Mobile:</strong> ${booking.booker_id || 'N/A'}</p>
+            <p><strong>Account Type:</strong> ${booking.accountType ? booking.accountType.toUpperCase() : 'CUSTOMER'}</p>
+            ${booking.user_agency && booking.user_agency !== 'N/A' && booking.user_agency !== '' ? `<p><strong>Agency:</strong> ${booking.user_agency}</p>` : ''}
         `;
         if (!['Not Confirmed', 'Pending', 'Deleted', 'temp'].includes(booking.booking_status)) {
             html += `
@@ -687,7 +697,13 @@ function renderDriverTable(drivers, page = currentDriverPage) {
                         <td>${onride.booking_id}</td>
                         <td>${onride.driver_name}</td>
                         <td>${onride.driver_id || 'N/A'}</td>
-                        <td>${onride.user_name || 'N/A'}</td>
+                        <td>
+                            <div><strong>${onride.user_name || 'N/A'}</strong></div>
+                            <div style="font-size: 11px; color: #666; margin-top: 2px;">
+                                ${onride.accountType ? onride.accountType.toUpperCase() : 'CUSTOMER'}
+                                ${onride.user_agency && onride.user_agency !== 'N/A' && onride.user_agency !== '' ? ` - ${onride.user_agency}` : ''}
+                            </div>
+                        </td>
                         <td>${onride.mobile || 'N/A'}</td>
                         <td>${mapButton}</td>
                         <td><strong>${onride.booking_status || 'N/A'}</strong></td>
