@@ -139,6 +139,7 @@
             left: 0;
             height: calc(100vh - 65px);
             z-index: 1000;
+            overflow-y: auto;
         }
 
         .sidebar ul {
