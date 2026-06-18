@@ -380,6 +380,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                             <label class="form-label" style="font-weight:600; color:#555;">Apply Scope <span class="text-danger">*</span></label>
                             <select name="apply_scope" class="form-select" style="border-radius:10px; padding:10px 14px;">
                                 <option value="One-way">One-way</option>
+                                <option value="Local-taxi">Local-taxi</option>
                             </select>
                         </div>
 
@@ -539,6 +540,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                         <label class="form-label" style="font-weight:600; color:#555;">Apply Scope <span class="text-danger">*</span></label>
                         <select name="apply_scope" id="edit-apply_scope" class="form-select" style="border-radius:10px; padding:10px 14px;">
                             <option value="One-way">One-way</option>
+                            <option value="Local-taxi">Local-taxi</option>
                         </select>
                     </div>
 
