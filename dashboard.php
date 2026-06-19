@@ -94,7 +94,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-percent me-2"></i> Discount Management
   </a>
 </li>
-            
+                <li><a href="payment_control.php" id="payment_control_menu">
+    <i class="fas fa-wallet me-2"></i> Payment Control
+  </a>
+</li>
             </ul>
         </nav>
 
