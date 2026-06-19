@@ -603,7 +603,6 @@ while ($row = mysqli_fetch_assoc($trends_monthly_res)) {
             <li><a href="monitor.php" id="partner_monitor" style="background-color: #465c71;"><i class="fas fa-desktop me-2"></i> Partner Monitor</a></li>
             <li><a href="../car_categories.php" id="car_categories_menu"><i class="fas fa-tags me-2"></i> Car Categories</a></li>
             <li><a href="../discount_management.php" id="discount_management_menu"><i class="fas fa-percent me-2"></i> Discount Management</a></li>
-            <li><a href="../payment_control.php" id="payment_control_menu"><i class="fas fa-wallet me-2"></i> Payment Control</a></li>
         </ul>
     </nav>
 
