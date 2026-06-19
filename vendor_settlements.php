@@ -6,6 +6,10 @@ if (!isset($_SESSION['admin_id'])) {
 }
 require_once __DIR__ . '/db_connect.php';
 
+// Auto-run database migrations to ensure target columns exist
+require_once __DIR__ . '/../2025/MigrationRunner.php';
+MigrationRunner::run($conn);
+
 // --- Action Handlers ---
 
 // 1. Status Update via GET (Approve, Hold, Reject, Processing)
