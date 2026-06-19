@@ -94,6 +94,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-percent me-2"></i> Discount Management
   </a>
 </li>
+                <li><a href="vendor_settlements.php" id="vendor_settlements_menu">
+    <i class="fas fa-wallet me-2"></i> Vendor Settlements
+  </a>
+</li>
             
             </ul>
         </nav>
