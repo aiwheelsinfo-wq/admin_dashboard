@@ -337,7 +337,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                             <th>Customer</th>
                             <th>Vendor</th>
                             <th>Advance Paid</th>
-                            <th>Vendor Share (66%)</th>
+                            <th>Vendor Share (60%)</th>
                             <th>Trip Status</th>
                             <th>Settlement Status</th>
                             <th>Settlement Date</th>
@@ -354,7 +354,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                             <?php foreach ($settlements as $s): ?>
                                 <?php 
                                     $advance = floatval($s['paid_amount']);
-                                    $eligible = $advance * 0.66;
+                                    $eligible = $advance * 0.60;
                                     $trip_status = $s['booking_status'];
                                     $settlement_status = $s['settlement_status'] ?: 'Pending';
                                 ?>
