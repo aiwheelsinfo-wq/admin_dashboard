@@ -316,6 +316,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
             text-transform: uppercase;
         }
         .status-pill.pending { background-color: rgba(255, 193, 7, 0.15); color: #d39e00; }
+        .status-pill.pending-approval { background-color: rgba(255, 152, 0, 0.15); color: #e65100; border: 1px solid rgba(255,152,0,0.3); }
         .status-pill.processing { background-color: rgba(0, 123, 255, 0.15); color: #007bff; }
         .status-pill.completed { background-color: rgba(40, 167, 69, 0.15); color: #28a745; }
         .form-section-title {
@@ -563,8 +564,12 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                                             <td style="font-size:0.8rem;"><?= htmlspecialchars($b['cancelled_at']) ?></td>
                                             <td style="font-weight:600;">₹<?= htmlspecialchars($b['paid_amount']) ?></td>
                                             <td>
-                                                <span class="status-pill <?= strtolower($b['refund_status']) ?>">
-                                                    <?= htmlspecialchars($b['refund_status'] ?: 'Processing') ?>
+                                                <?php 
+                                                    $rStatus = $b['refund_status'] ?: 'Pending';
+                                                    $rCssClass = strtolower(str_replace(' ', '-', $rStatus));
+                                                ?>
+                                                <span class="status-pill <?= $rCssClass ?>">
+                                                    <?= htmlspecialchars($rStatus) ?>
                                                 </span>
                                             </td>
                                             <td style="font-size:0.8rem; line-height: 1.4;">
