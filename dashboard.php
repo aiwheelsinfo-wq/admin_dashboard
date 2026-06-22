@@ -98,6 +98,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-wallet me-2"></i> Vendor Settlements
   </a>
 </li>
+                <li><a href="cancellation_policy_management.php" id="cancellation_policy_menu">
+    <i class="fas fa-ban me-2"></i> Cancellation Policy
+  </a>
+</li>
             
             </ul>
         </nav>

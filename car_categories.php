@@ -295,6 +295,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
             <li><a href="car_categories.php" id="car_categories_menu" style="background-color: #465c71;"><i class="fas fa-tags me-2"></i> Car Categories</a></li>
             <li><a href="discount_management.php" id="discount_management_menu"><i class="fas fa-percent me-2"></i> Discount Management</a></li>
             <li><a href="vendor_settlements.php" id="vendor_settlements_menu"><i class="fas fa-wallet me-2"></i> Vendor Settlements</a></li>
+            <li><a href="cancellation_policy_management.php" id="cancellation_policy_menu"><i class="fas fa-ban me-2"></i> Cancellation Policy</a></li>
         </ul>
     </nav>
 
