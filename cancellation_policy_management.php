@@ -181,13 +181,14 @@ $res = $conn->query("SELECT b.*, u.name AS user_name, d.full_name AS driver_name
                      FROM bookings b 
                      LEFT JOIN users u ON b.booker_id = u.phone_number 
                      LEFT JOIN drivers d ON b.driver_id = d.phone_number
-                     WHERE b.booking_status IN ('Cancellation Requested', 'Cancelled') 
+                     WHERE b.booking_status IN ('Cancellation Requested', 'Cancelled', 'Customer Cancelled') 
                      ORDER BY b.id DESC");
 if ($res) {
     while ($row = $res->fetch_assoc()) {
         if ($row['booking_status'] === 'Cancellation Requested') {
             $requests[] = $row;
         } else {
+            // Both 'Cancelled' and 'Customer Cancelled' go into cancelled list
             $cancelled_bookings[] = $row;
         }
     }
