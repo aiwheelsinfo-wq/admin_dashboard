@@ -373,6 +373,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
             <li><a href="discount_management.php" id="discount_management_menu"><i class="fas fa-percent me-2"></i> Discount Management</a></li>
             <li><a href="vendor_settlements.php" id="vendor_settlements_menu"><i class="fas fa-wallet me-2"></i> Vendor Settlements</a></li>
             <li><a href="cancellation_policy_management.php" id="cancellation_policy_menu" style="background-color: #465c71;"><i class="fas fa-ban me-2"></i> Cancellation Policy</a></li>
+            <li><a href="cancellation_report.php" id="cancellation_report_menu"><i class="fas fa-chart-bar me-2"></i> Cancellation Report</a></li>
         </ul>
     </nav>
 
@@ -392,6 +393,19 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         <?php endif; ?>
+
+        <!-- Page Header with Report Button -->
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div>
+                <h4 style="font-size:1.25rem;font-weight:800;color:#1a1a2e;margin:0;">
+                    <i class="fas fa-ban me-2" style="color:#FFB300;"></i>Cancellation &amp; Refund Policy
+                </h4>
+                <small style="color:#888;">Manage refund brackets, vendor compensation &amp; workflow settings</small>
+            </div>
+            <a href="cancellation_report.php" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;border:none;padding:9px 20px;border-radius:10px;font-weight:700;font-size:.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                <i class="fas fa-chart-bar"></i> View Cancellation Report
+            </a>
+        </div>
 
         <div class="row g-4">
             <!-- Left Side: Config Form -->
