@@ -62,7 +62,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'approve' && isset($_GET['id']
         $policyResult = $conn->query("SELECT auto_refund FROM cancellation_policy ORDER BY id DESC LIMIT 1");
         $policy = $policyResult ? $policyResult->fetch_assoc() : ['auto_refund' => 1];
         
-        $new_refund_status = ($policy['auto_refund'] == 1) ? 'Completed' : 'Processing';
+        $new_refund_status = ($policy['auto_refund'] == 1) ? 'Completed' : 'Pending Approval';
         
         $stmt = $conn->prepare("UPDATE bookings SET booking_status = 'Cancelled', refund_status = ? WHERE id = ?");
         $stmt->bind_param("si", $new_refund_status, $booking_id);
@@ -100,6 +100,23 @@ if (isset($_GET['action']) && $_GET['action'] === 'reject' && isset($_GET['id'])
             $_SESSION['error_msg'] = "Database error: " . $conn->error;
         }
         $stmt2->close();
+    }
+    header("Location: cancellation_policy_management.php");
+    exit();
+}
+
+// 3b. Mark Refund Processing
+if (isset($_GET['action']) && $_GET['action'] === 'process_refund' && isset($_GET['id'])) {
+    $booking_id = intval($_GET['id']);
+    if ($booking_id > 0) {
+        $stmt = $conn->prepare("UPDATE bookings SET refund_status = 'Processing' WHERE id = ?");
+        $stmt->bind_param("i", $booking_id);
+        if ($stmt->execute()) {
+            $_SESSION['success_msg'] = "Refund status marked as PROCESSING.";
+        } else {
+            $_SESSION['error_msg'] = "Database error: " . $conn->error;
+        }
+        $stmt->close();
     }
     header("Location: cancellation_policy_management.php");
     exit();
@@ -556,10 +573,16 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                                             </td>
                                             <td>
                                                 <div class="d-flex flex-column gap-1">
-                                                    <?php if ($b['refund_amount'] > 0 && strtolower($b['refund_status']) !== 'completed'): ?>
-                                                        <a href="cancellation_policy_management.php?action=complete_refund&id=<?= $b['id'] ?>" class="btn-action btn-approve py-1 px-2" style="font-size:0.75rem;">
-                                                            <i class="fas fa-hand-holding-usd"></i> Refund Completed
-                                                        </a>
+                                                    <?php if ($b['refund_amount'] > 0): ?>
+                                                        <?php if (empty($b['refund_status']) || strtolower($b['refund_status']) === 'pending approval'): ?>
+                                                            <a href="cancellation_policy_management.php?action=process_refund&id=<?= $b['id'] ?>" class="btn-action btn-approve py-1 px-2" style="background-color:rgba(255,193,7,0.1); color:#d39e00; font-size:0.75rem; border:1px solid rgba(255,193,7,0.3);">
+                                                                <i class="fas fa-spinner fa-spin"></i> Process Refund
+                                                            </a>
+                                                        <?php elseif (strtolower($b['refund_status']) === 'processing'): ?>
+                                                            <a href="cancellation_policy_management.php?action=complete_refund&id=<?= $b['id'] ?>" class="btn-action btn-approve py-1 px-2" style="font-size:0.75rem;">
+                                                                <i class="fas fa-hand-holding-usd"></i> Refund Completed
+                                                            </a>
+                                                        <?php endif; ?>
                                                     <?php endif; ?>
                                                     <?php if ($b['vendor_compensation'] > 0 && strtolower($b['vendor_compensation_status']) !== 'paid'): ?>
                                                         <a href="cancellation_policy_management.php?action=pay_vendor&id=<?= $b['id'] ?>" class="btn-action btn-approve py-1 px-2" style="background-color:rgba(0,123,255,0.1); color:#007bff; font-size:0.75rem;">
