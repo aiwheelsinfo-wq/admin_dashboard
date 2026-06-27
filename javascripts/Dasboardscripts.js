@@ -845,10 +845,13 @@ function renderDriverTable(drivers, page = currentDriverPage) {
             currentFilter = "all";
             currentBookingPage = 1;
             filterBookings();
-            $("#bookingTableContainer").removeClass("hidden");
-            $("#driverTableContainer").addClass("hidden");
-            $("#carTableContainer").addClass("hidden");
-            $("#waitingforapprovalTableContainer").addClass("hidden");
+            const urlParamsLocal = new URLSearchParams(window.location.search);
+            if (!urlParamsLocal.get('tab')) {
+                $("#bookingTableContainer").removeClass("hidden");
+                $("#driverTableContainer").addClass("hidden");
+                $("#carTableContainer").addClass("hidden");
+                $("#waitingforapprovalTableContainer").addClass("hidden");
+            }
             $("#latestBooking").text(todayCount + tomorrowCount);
             $("#refreshBookings").show();
         }).fail(function () {
