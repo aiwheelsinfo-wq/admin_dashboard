@@ -374,7 +374,6 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
             <li><a href="vendor_settlements.php" id="vendor_settlements_menu"><i class="fas fa-wallet me-2"></i> Vendor Settlements</a></li>
             <li><a href="cancellation_policy_management.php" id="cancellation_policy_menu" style="background-color: #465c71;"><i class="fas fa-ban me-2"></i> Cancellation Policy</a></li>
             <li><a href="cancellation_report.php" id="cancellation_report_menu"><i class="fas fa-chart-bar me-2"></i> Cancellation Report</a></li>
-            <li><a href="dashboard.php?tab=shared_onboardings" id="shared_onboardings_menu"><i class="fa-solid fa-share-nodes me-2"></i> Shared Fleet</a></li>
         </ul>
     </nav>
 

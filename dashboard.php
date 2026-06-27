@@ -102,10 +102,6 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-ban me-2"></i> Cancellation Policy
   </a>
 </li>
-                <li><a href="dashboard.php?tab=shared_onboardings" id="shared_onboardings_menu">
-    <i class="fa-solid fa-share-nodes me-2"></i> Shared Fleet
-  </a>
-</li>
             
             </ul>
         </nav>
@@ -386,45 +382,6 @@ if (!isset($_SESSION['admin_id'])) {
                     <tbody id="Blocked_CustomerTable"></tbody>
                 </table>
                 <div id="Blocked_CustomerTablePagination" class="pagination"></div>
-            </div>
-
-            <div class="table-container hidden" id="sharedOnboardingsTableContainer">
-                <h4 class="mb-3 d-flex justify-content-center align-items-center position-relative">
-                    Shared Registration Requests
-                    <button id="refreshSharedOnboardings" class="btn btn-link p-0 position-absolute start-0" title="Refresh Requests">
-                        <i class="bi bi-arrow-clockwise fs-5"></i>
-                    </button>
-                </h4>
-                <div class="mb-3 d-flex justify-content-between align-items-center">
-                    <div class="search-container flex-grow-1 me-3">
-                        <div class="input-group">
-                            <input type="text" id="sharedOnboardingsSearchInput" class="form-control" placeholder="Search requests...">
-                            <span class="input-group-text"><i class="fas fa-search"></i></span>
-                        </div>
-                    </div>
-                    <button id="copyRegLinkBtn" class="btn btn-warning fw-bold text-dark">
-                        <i class="fas fa-copy me-2"></i> Copy Onboard Link
-                    </button>
-                </div>
-                <table class="table table-striped table-hover text-center">
-                    <thead>
-                        <tr>
-                            <th>Sr.No</th>
-                            <th>Car No</th>
-                            <th>Car Type</th>
-                            <th>Owner Name</th>
-                            <th>Owner Mobile</th>
-                            <th>Driver Name</th>
-                            <th>Driver Mobile</th>
-                            <th>Location</th>
-                            <th>Date</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sharedOnboardingsTable"></tbody>
-                </table>
-                <div id="sharedOnboardingsTablePagination" class="pagination"></div>
             </div>
         </main>
 
