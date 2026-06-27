@@ -76,6 +76,93 @@ function is_within_bounds($lat, $lng, $minLat, $maxLat, $minLng, $maxLng) {
     return ($lat >= $minLat && $lat <= $maxLat && $lng >= $minLng && $lng <= $maxLng);
 }
 
+// ── Helper: Validate Local Taxi Boundaries ─────────────────────────────────
+function validate_local_taxi_boundary($from, $to) {
+    $city_boxes = [
+        'pune' => ['min_lat' => 18.41, 'max_lat' => 18.65, 'min_lng' => 73.72, 'max_lng' => 73.98],
+        'mumbai' => ['min_lat' => 18.89, 'max_lat' => 19.30, 'min_lng' => 72.75, 'max_lng' => 73.02],
+    ];
+
+    $city_keywords = [
+        'pune' => ['pune', 'pcmc', 'pimpri', 'chinchwad', 'hadapsar', 'hinjewadi', 'baner', 'kothrud', 'wagholi', 'lohegaon'],
+        'mumbai' => ['mumbai', 'thane', 'navi mumbai', 'mulund', 'borivali', 'bandra', 'chembur', 'dadar', 'andheri', 'panvel', 'mira road', 'bhayandar', 'kalyan', 'dombivli'],
+        'nashik' => ['nashik', 'nasik', 'deolali'],
+        'nagpur' => ['nagpur', 'kamptee'],
+        'aurangabad' => ['aurangabad', 'chhatrapati sambhajinagar'],
+    ];
+
+    $from_coords = get_geocode_coords($from);
+    $to_coords   = get_geocode_coords($to);
+
+    $from_lat = $from_coords ? $from_coords['lat'] : null;
+    $from_lng = $from_coords ? $from_coords['lng'] : null;
+    $to_lat   = $to_coords ? $to_coords['lat'] : null;
+    $to_lng   = $to_coords ? $to_coords['lng'] : null;
+
+    $from_city_coords = null;
+    $to_city_coords = null;
+
+    if ($from_lat !== null && $from_lng !== null) {
+        foreach ($city_boxes as $city => $box) {
+            if ($from_lat >= $box['min_lat'] && $from_lat <= $box['max_lat'] &&
+                $from_lng >= $box['min_lng'] && $from_lng <= $box['max_lng']) {
+                $from_city_coords = $city;
+                break;
+            }
+        }
+    }
+
+    if ($to_lat !== null && $to_lng !== null) {
+        foreach ($city_boxes as $city => $box) {
+            if ($to_lat >= $box['min_lat'] && $to_lat <= $box['max_lat'] &&
+                $to_lng >= $box['min_lng'] && $to_lng <= $box['max_lng']) {
+                $to_city_coords = $city;
+                break;
+            }
+        }
+    }
+
+    if ($from_city_coords !== null && $to_city_coords !== null) {
+        return ($from_city_coords === $to_city_coords);
+    }
+
+    $from_lower = strtolower($from);
+    $to_lower   = strtolower($to);
+
+    $from_city_keyword = null;
+    $to_city_keyword = null;
+
+    foreach ($city_keywords as $city => $keywords) {
+        foreach ($keywords as $kw) {
+            if (strpos($from_lower, $kw) !== false) {
+                $from_city_keyword = $city;
+                break 2;
+            }
+        }
+    }
+
+    foreach ($city_keywords as $city => $keywords) {
+        foreach ($keywords as $kw) {
+            if (strpos($to_lower, $kw) !== false) {
+                $to_city_keyword = $city;
+                break 2;
+            }
+        }
+    }
+
+    if ($from_city_keyword !== null && $to_city_keyword !== null) {
+        return ($from_city_keyword === $to_city_keyword);
+    }
+
+    foreach (array_keys($city_keywords) as $city) {
+        if (strpos($from_lower, $city) !== false && strpos($to_lower, $city) !== false) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 $effective_km = $distance_km;
 $trip_note    = '';
 $is_final_fare   = true;
@@ -246,6 +333,11 @@ switch ($trip_type) {
         if ($distance_km > 80) {
             log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Distance exceeds 80km. Please use our One-Way service for long trips.'], 'error');
             api_error('Distance exceeds 80km. Please use our One-Way service for long trips.', 400);
+        }
+
+        if (!validate_local_taxi_boundary($from, $to)) {
+            log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Local Taxi rides must stay within the same city boundaries (e.g. Pune City limits). Please book One-way for intercity trips.'], 'error');
+            api_error('Local Taxi rides must stay within the same city boundaries (e.g. Pune City limits). Please book One-way for intercity trips.', 400);
         }
 
         $sql = "SELECT * FROM local_texi_fare_chart ORDER BY km ASC";
