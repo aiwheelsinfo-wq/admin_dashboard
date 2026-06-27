@@ -102,7 +102,7 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-ban me-2"></i> Cancellation Policy
   </a>
 </li>
-                <li><a href="#" id="shared_onboardings_menu">
+                <li><a href="dashboard.php?tab=shared_onboardings" id="shared_onboardings_menu">
     <i class="fa-solid fa-share-nodes me-2"></i> Shared Fleet
   </a>
 </li>
@@ -424,6 +424,7 @@ if (!isset($_SESSION['admin_id'])) {
                     </thead>
                     <tbody id="sharedOnboardingsTable"></tbody>
                 </table>
+                <div id="sharedOnboardingsTablePagination" class="pagination"></div>
             </div>
         </main>
 

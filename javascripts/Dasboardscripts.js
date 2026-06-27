@@ -956,6 +956,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#onrideTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
         $("#Blocked_CustomerTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
 
         $("#refreshBookings").show();
     });
@@ -971,6 +972,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     $("#onrideTableContainer").addClass("hidden");
     $("#driverTableContainer").addClass("hidden");
     $("#Blocked_CustomerTableContainer").addClass("hidden");
+    $("#sharedOnboardingsTableContainer").addClass("hidden");
     $("#refreshnewUser").show();
     // Reset notification count
     newUserNotificationCount = 0;
@@ -990,6 +992,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     $("#waitingforapprovalTableContainer").addClass("hidden");
     $("#onrideTableContainer").addClass("hidden");
     $("#driverTableContainer").addClass("hidden");
+    $("#sharedOnboardingsTableContainer").addClass("hidden");
 });
    
     // driver sidebar link
@@ -1003,6 +1006,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#onrideTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
         $("#Blocked_CustomerTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
     });
     
     // car sidebar link
@@ -1016,6 +1020,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#onrideTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
         $("#Blocked_CustomerTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
     });
     
     
@@ -1032,6 +1037,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#onrideTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
         $("#Blocked_CustomerTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
         $("#refreshBookings").show();
     });
 
@@ -1046,6 +1052,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#onrideTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
         $("#Blocked_CustomerTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
 
     });
 
@@ -1060,6 +1067,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#onrideTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
         $("#Blocked_CustomerTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
 
     });
     
@@ -1076,6 +1084,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#onrideTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
         $("#Blocked_CustomerTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
 
     });
 
@@ -1090,6 +1099,7 @@ function renderDriverTable(drivers, page = currentDriverPage) {
         $("#bookingTableContainer").addClass("hidden");
         $("#waitingforapprovalTableContainer").addClass("hidden");
         $("#newuserTableContainer").addClass("hidden");
+        $("#sharedOnboardingsTableContainer").addClass("hidden");
     });
     
 
@@ -1389,6 +1399,8 @@ function renderDriverTable(drivers, page = currentDriverPage) {
             $("#Blocked_Customer").click();
         } else if (tabParam === 'extract_data') {
             $("#Extract_Data").click();
+        } else if (tabParam === 'shared_onboardings') {
+            $("#shared_onboardings_menu").click();
         }
     }
 
