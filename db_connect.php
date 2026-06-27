@@ -15,6 +15,9 @@ $conn = mysqli_connect($host, $username, $password, $dbname);
 if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
 }
+// Set MySQL connection charset to utf8mb4
+mysqli_set_charset($conn, "utf8mb4");
+
 // Set MySQL session timezone to IST
 mysqli_query($conn, "SET time_zone = '+05:30'");
 ?>

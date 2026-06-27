@@ -242,6 +242,7 @@ switch ($trip_type) {
         break;
 
     case 'Local-taxi':
+    case 'Local-Taxi':
         if ($distance_km > 80) {
             log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Distance exceeds 80km. Please use our One-Way service for long trips.'], 'error');
             api_error('Distance exceeds 80km. Please use our One-Way service for long trips.', 400);
