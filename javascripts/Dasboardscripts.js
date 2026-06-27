@@ -13,6 +13,7 @@ $(document).ready(function () {
     let allonRide = [];
     let allnewUser=[];
     let allBlocked_Customers=[];
+    let allSharedOnboardings = [];
     let currentFilter = "all";
     const rowsPerPage = 7;
     let currentBookingPage = 1;
@@ -22,6 +23,7 @@ $(document).ready(function () {
     let currentonRidePage = 1;
     let currentnewUserPage=1;
     let currentBlocked_CustomerPage=1;
+    let currentSharedPage = 1;
     let newUserNotificationCount = 0; // New variable for notification count
     let lastMaxBookingId = 0;
     let unreadNotifications = [];
@@ -107,6 +109,10 @@ $(document).ready(function () {
                 }
                 else if (tableId === 'newuserTable') {
                     currentnewUserPage = newPage;
+                    renderFunction();
+                }
+                else if (tableId === 'sharedOnboardingsTable') {
+                    currentSharedPage = newPage;
                     renderFunction();
                 }
             }
@@ -1803,6 +1809,157 @@ $(document).on('click', '.confirmBtn2', function () {
             alert('Server error. Please try again.');
         }
     });
+
+    // Fetch and render Shared Onboarding Requests
+    function fetchSharedOnboardings(searchTerm = '') {
+        $.getJSON("https://agnicarrental.com/admin2025/get_shared_onboardings.php", { search: searchTerm }, function (response) {
+            if (response.status) {
+                allSharedOnboardings = response.data || [];
+                renderSharedOnboardingsTable(allSharedOnboardings);
+            } else {
+                $("#sharedOnboardingsTable").html("<tr><td colspan='11'>Error: " + response.message + "</td></tr>");
+            }
+            $("#refreshSharedOnboardings").show();
+        }).fail(function () {
+            $("#sharedOnboardingsTable").html("<tr><td colspan='11'>Error loading onboarding requests</td></tr>");
+            $("#refreshSharedOnboardings").show();
+        });
+    }
+
+    function renderSharedOnboardingsTable(requests, page = currentSharedPage) {
+        currentSharedPage = page;
+        const start = (page - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const paginatedRequests = requests.slice(start, end);
+
+        let tableBody = "";
+        if (paginatedRequests.length === 0) {
+            tableBody = `<tr><td colspan="11">No registration requests found</td></tr>`;
+        } else {
+            paginatedRequests.forEach((req, index) => {
+                let statusBadge = "";
+                if (req.status === "Approved") {
+                    statusBadge = `<span class="badge bg-success">Approved</span>`;
+                } else if (req.status === "Rejected") {
+                    statusBadge = `<span class="badge bg-danger">Rejected</span>`;
+                } else {
+                    statusBadge = `<span class="badge bg-warning text-dark">Pending</span>`;
+                }
+
+                let actions = "";
+                if (req.status === "Pending") {
+                    actions = `
+                        <button class="btn btn-success btn-sm approveOnboardBtn me-1" data-id="${req.id}">
+                            <i class="fas fa-check"></i> Approve
+                        </button>
+                        <button class="btn btn-danger btn-sm rejectOnboardBtn" data-id="${req.id}">
+                            <i class="fas fa-times"></i> Reject
+                        </button>
+                    `;
+                } else {
+                    actions = `<span class="text-muted">Processed</span>`;
+                }
+
+                tableBody += `
+                    <tr>
+                        <td>${start + index + 1}</td>
+                        <td><strong>${req.car_no}</strong></td>
+                        <td>${req.car_type}</td>
+                        <td>${req.owner_name}</td>
+                        <td>${req.owner_mobile}</td>
+                        <td>${req.driver_name}</td>
+                        <td>${req.driver_mobile}</td>
+                        <td>${req.location}</td>
+                        <td>${formatDate(req.created_at.split(' ')[0])}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actions}</td>
+                    </tr>
+                `;
+            });
+        }
+        $("#sharedOnboardingsTable").html(tableBody);
+        renderPagination(requests.length, currentSharedPage, 'sharedOnboardingsTable', () => renderSharedOnboardingsTable(requests));
+    }
+
+    // Sidebar menu click
+    $("#shared_onboardings_menu").on("click", function (e) {
+        e.preventDefault();
+        currentSharedPage = 1;
+        $("#sharedOnboardingsSearchInput").val('');
+        fetchSharedOnboardings();
+        
+        $("#sharedOnboardingsTableContainer").removeClass("hidden");
+        $("#bookingTableContainer").addClass("hidden");
+        $("#driverTableContainer").addClass("hidden");
+        $("#carTableContainer").addClass("hidden");
+        $("#waitingforapprovalTableContainer").addClass("hidden");
+        $("#onrideTableContainer").addClass("hidden");
+        $("#newuserTableContainer").addClass("hidden");
+        $("#Blocked_CustomerTableContainer").addClass("hidden");
+    });
+
+    // Refresh shared onboardings
+    $("#refreshSharedOnboardings").on("click", function (e) {
+        e.preventDefault();
+        currentSharedPage = 1;
+        fetchSharedOnboardings($("#sharedOnboardingsSearchInput").val());
+    });
+
+    // Search filter
+    $("#sharedOnboardingsSearchInput").on("input", function () {
+        const searchTerm = $(this).val();
+        currentSharedPage = 1;
+        fetchSharedOnboardings(searchTerm);
+    });
+
+    // Copy Shareable Registration Link
+    $("#copyRegLinkBtn").on("click", function () {
+        const link = "https://agnicarrental.com/admin2025/onboard.php";
+        navigator.clipboard.writeText(link).then(function () {
+            alert("Shareable fleet registration link copied to clipboard!");
+        }).catch(function (err) {
+            console.error("Could not copy link: ", err);
+        });
+    });
+
+    // Action buttons (Approve/Reject) click handlers
+    $(document).on("click", ".approveOnboardBtn", function () {
+        const id = $(this).data("id");
+        if (confirm("Are you sure you want to approve this fleet request? This will automatically register the vehicle and driver.")) {
+            updateOnboardStatus(id, "Approved");
+        }
+    });
+
+    $(document).on("click", ".rejectOnboardBtn", function () {
+        const id = $(this).data("id");
+        if (confirm("Are you sure you want to reject this fleet request?")) {
+            updateOnboardStatus(id, "Rejected");
+        }
+    });
+
+    function updateOnboardStatus(id, status) {
+        $.ajax({
+            url: "https://agnicarrental.com/admin2025/update_shared_onboarding_status.php",
+            method: "POST",
+            data: { id: id, status: status },
+            dataType: "json",
+            success: function (response) {
+                if (response.status) {
+                    alert(response.message);
+                    fetchSharedOnboardings($("#sharedOnboardingsSearchInput").val());
+                    // Proactively refresh drivers & cars lists in background
+                    fetchDrivers();
+                    fetchCars();
+                } else {
+                    alert("Error: " + response.message);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX Error:", status, error);
+                alert("Server error. Please try again.");
+            }
+        });
+    }
 });
 
 document.addEventListener("DOMContentLoaded", function () {
