@@ -608,8 +608,7 @@
                 submitBtn.disabled = false;
                 
                 if (data.success) {
-                    showModal('success', 'Success!', 'Vehicle details submitted successfully');
-                    form.reset();
+                    window.location.href = 'vehicle_onboard_success.php';
                 } else {
                     showModal('error', 'Submission Failed', data.message || 'Error occurred while saving data.');
                 }
