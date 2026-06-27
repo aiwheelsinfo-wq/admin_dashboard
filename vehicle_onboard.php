@@ -324,10 +324,6 @@
             animation: spinner .6s linear infinite;
         }
 
-        .loading-text {
-            visibility: hidden;
-        }
-
         .btn-submit.loading .loading-text {
             visibility: hidden;
         }
