@@ -302,7 +302,10 @@ if (!isset($_SESSION['admin_id'])) {
                 </div>
                 <div class="row g-3 mt-1">
                     <div class="col-12 d-flex justify-content-between align-items-center">
-                        <button id="btnExport" class="btn btn-outline-light"><i class="fa-solid fa-file-csv me-2"></i> Export to CSV</button>
+                        <div class="d-flex gap-2">
+                            <button id="btnExport" class="btn btn-outline-light"><i class="fa-solid fa-file-csv me-2"></i> Export to CSV</button>
+                            <button id="btnShareForm" class="btn btn-outline-light"><i class="fa-solid fa-share-nodes me-2"></i> Share Form Link</button>
+                        </div>
                         <button id="btnRefresh" class="btn btn-amber"><i class="fa-solid fa-rotate me-2"></i> Refresh Data</button>
                     </div>
                 </div>
@@ -467,6 +470,16 @@ if (!isset($_SESSION['admin_id'])) {
         // Export to CSV
         $('#btnExport').on('click', function() {
             window.location.href = 'api_vehicle_entry.php?action=export';
+        });
+
+        // Copy Shareable Form Link
+        $('#btnShareForm').on('click', function() {
+            const link = "https://agnicarrental.com/admin2025/vehicle_onboard.php";
+            navigator.clipboard.writeText(link).then(function () {
+                alert("Shareable onboarding form link copied to clipboard!");
+            }).catch(function (err) {
+                console.error("Could not copy link: ", err);
+            });
         });
 
         // Edit Modal Opening
