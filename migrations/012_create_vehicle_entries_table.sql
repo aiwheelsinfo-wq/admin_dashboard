@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS vehicle_entries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    car_no VARCHAR(50) NOT NULL,
+    car_type VARCHAR(50) NOT NULL,
+    owner VARCHAR(100) NOT NULL,
+    owner_mobile VARCHAR(20) NOT NULL,
+    driver VARCHAR(100) NOT NULL,
+    driver_mobile VARCHAR(20) NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

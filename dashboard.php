@@ -102,6 +102,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-ban me-2"></i> Cancellation Policy
   </a>
 </li>
+                <li><a href="vehicle_entries_admin.php" id="vehicle_entries_menu">
+    <i class="fas fa-file-invoice me-2"></i> Vehicle Entries
+  </a>
+</li>
             
             </ul>
         </nav>
