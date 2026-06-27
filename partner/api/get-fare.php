@@ -18,11 +18,11 @@ require_once __DIR__ . '/logger.php';
 
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
 
-$from        = trim($body['from_address'] ?? '');
-$to          = trim($body['to_address']   ?? '');
-$trip_type   = trim($body['trip_type']    ?? 'One-way');
-$car_type    = trim($body['car_type']     ?? '');
-$distance_km = (float)($body['distance_km'] ?? 0);
+$from        = trim($body['from_address'] ?? $_REQUEST['from_address'] ?? '');
+$to          = trim($body['to_address']   ?? $_REQUEST['to_address']   ?? '');
+$trip_type   = trim($body['trip_type']    ?? $_REQUEST['trip_type']    ?? 'One-way');
+$car_type    = trim($body['car_type']     ?? $_REQUEST['car_type']     ?? '');
+$distance_km = (float)($body['distance_km'] ?? $_REQUEST['distance_km'] ?? $_REQUEST['distance'] ?? 0);
 
 // Normalize car type for matching in database
 $car_key = strtolower(str_replace([' ', '-'], '', $car_type));
@@ -37,7 +37,7 @@ if (strpos($car_key, 'sedan') !== false || strpos($car_key, 'dzire') !== false) 
     $car_type_normalized = 'Innova';
 }
 
-if (empty($from) || empty($car_type) || ($trip_type !== 'Local-Duty' && $distance_km <= 0)) {
+if (empty($from) || empty($car_type) || (($trip_type !== 'Local-Duty' && $trip_type !== 'Local-taxi' && $trip_type !== 'Local-Taxi') && $distance_km <= 0)) {
     log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'from_address, car_type, and distance_km are required'], 'error');
     api_error('from_address, car_type (e.g. Sedan), and distance_km are required', 400);
 }
