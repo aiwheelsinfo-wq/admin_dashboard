@@ -1383,30 +1383,6 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     fetchnewUsers();
     fetchBlocked_Customer();
 
-    // Parse URL parameter to activate correct tab on load
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
-    if (tabParam) {
-        if (tabParam === 'driver') {
-            $("#driver").click();
-        } else if (tabParam === 'cab') {
-            $("#cab").click();
-        } else if (tabParam === 'booking') {
-            // Already default, but make sure
-            $("#booking").click();
-        } else if (tabParam === 'completed') {
-            $("#Complete").click();
-        } else if (tabParam === 'newuser') {
-            $("#newuser").click();
-        } else if (tabParam === 'blocked_customer') {
-            $("#Blocked_Customer").click();
-        } else if (tabParam === 'extract_data') {
-            $("#Extract_Data").click();
-        } else if (tabParam === 'shared_onboardings') {
-            $("#shared_onboardings_menu").click();
-        }
-    }
-
     // Play pleasant notification chime using Web Audio API
     function playNotificationSound() {
         try {
@@ -1973,7 +1949,30 @@ $(document).on('click', '.confirmBtn2', function () {
                 console.error("AJAX Error:", status, error);
                 alert("Server error. Please try again.");
             }
-        });
+    }
+
+    // Parse URL parameter to activate correct tab on load after all event listeners are registered
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        if (tabParam === 'driver') {
+            $("#driver").click();
+        } else if (tabParam === 'cab') {
+            $("#cab").click();
+        } else if (tabParam === 'booking') {
+            // Already default, but make sure
+            $("#booking").click();
+        } else if (tabParam === 'completed') {
+            $("#Complete").click();
+        } else if (tabParam === 'newuser') {
+            $("#newuser").click();
+        } else if (tabParam === 'blocked_customer') {
+            $("#Blocked_Customer").click();
+        } else if (tabParam === 'extract_data') {
+            $("#Extract_Data").click();
+        } else if (tabParam === 'shared_onboardings') {
+            $("#shared_onboardings_menu").click();
+        }
     }
 });
 
