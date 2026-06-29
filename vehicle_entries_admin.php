@@ -406,6 +406,25 @@ if (!isset($_SESSION['admin_id'])) {
         </div>
     </div>
 
+    <!-- Confirm Delete Modal -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content" style="background: var(--surface-dark); border: 1px solid rgba(239, 83, 80, 0.3);">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i> Confirm Delete</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-3">
+                    <p class="mb-0 text-light">Are you sure you want to delete this vehicle record? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer border-0 d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JS Logic -->
     <script>
         // Fetch and render data
@@ -524,28 +543,43 @@ if (!isset($_SESSION['admin_id'])) {
             });
         });
 
-        // Delete record
+        // Delete record confirmation
+        let recordToDelete = null;
         function deleteRecord(id) {
-            if (confirm('Are you sure you want to delete this vehicle record? This action cannot be undone.')) {
-                $.post('api_vehicle_entry.php', {
-                    action: 'delete',
-                    id: id
-                }, function(res) {
-                    if (res.success) {
-                        $(`#row-${id}`).fadeOut(300, function() {
-                            $(this).remove();
-                            // Update count manually
-                            const current = parseInt($('#totalSubmissions').text());
-                            if (current > 0) $('#totalSubmissions').text(current - 1);
-                        });
-                    } else {
-                        alert('Error: ' + res.message);
-                    }
-                }, 'json').fail(function() {
-                    alert('Connection error. Failed to delete record.');
-                });
-            }
+            recordToDelete = id;
+            const confirmModal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+            confirmModal.show();
         }
+
+        $('#btnConfirmDelete').on('click', function() {
+            if (!recordToDelete) return;
+            const btn = $(this);
+            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i> Deleting...');
+
+            $.post('api_vehicle_entry.php', {
+                action: 'delete',
+                id: recordToDelete
+            }, function(res) {
+                btn.prop('disabled', false).text('Delete');
+                bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+                
+                if (res.success) {
+                    $(`#row-${recordToDelete}`).fadeOut(300, function() {
+                        $(this).remove();
+                        // Update count manually
+                        const current = parseInt($('#totalSubmissions').text());
+                        if (current > 0) $('#totalSubmissions').text(current - 1);
+                    });
+                    recordToDelete = null;
+                } else {
+                    alert('Error: ' + res.message);
+                }
+            }, 'json').fail(function() {
+                btn.prop('disabled', false).text('Delete');
+                bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+                alert('Connection error. Failed to delete record.');
+            });
+        });
 
         // Initial Load
         $(document).ready(loadData);
