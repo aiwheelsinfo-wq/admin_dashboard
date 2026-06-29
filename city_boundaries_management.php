@@ -22,6 +22,7 @@ if (!isset($_SESSION['admin_id'])) {
     
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC41U3p08LqY8G15ruxDCEfTvBLkG_OrsM&libraries=places"></script>
 
     <style>
         :root {
@@ -386,6 +387,54 @@ if (!isset($_SESSION['admin_id'])) {
     <!-- JS Handling CRUD -->
     <script>
         let modalInstance;
+        let autocomplete;
+
+        function initAutocomplete() {
+            const input = document.getElementById('cityName');
+            const options = {
+                types: ['(cities)'],
+                componentRestrictions: { country: 'in' }
+            };
+            autocomplete = new google.maps.places.Autocomplete(input, options);
+            
+            autocomplete.addListener('place_changed', function() {
+                const place = autocomplete.getPlace();
+                if (!place.geometry) {
+                    return;
+                }
+                
+                // Get the base city name
+                let cityBaseName = place.name;
+                
+                if (place.address_components) {
+                    for (let i = 0; i < place.address_components.length; i++) {
+                        const comp = place.address_components[i];
+                        if (comp.types.includes('locality')) {
+                            cityBaseName = comp.long_name;
+                            break;
+                        }
+                    }
+                }
+                
+                $('#cityName').val(cityBaseName);
+                
+                // Auto-fill min/max lat/lng from viewport bounds
+                const viewport = place.geometry.viewport;
+                if (viewport) {
+                    $('#minLat').val(viewport.getSouthWest().lat().toFixed(6));
+                    $('#maxLat').val(viewport.getNorthEast().lat().toFixed(6));
+                    $('#minLng').val(viewport.getSouthWest().lng().toFixed(6));
+                    $('#maxLng').val(viewport.getNorthEast().lng().toFixed(6));
+                } else if (place.geometry.location) {
+                    const lat = place.geometry.location.lat();
+                    const lng = place.geometry.location.lng();
+                    $('#minLat').val((lat - 0.1).toFixed(6));
+                    $('#maxLat').val((lat + 0.1).toFixed(6));
+                    $('#minLng').val((lng - 0.1).toFixed(6));
+                    $('#maxLng').val((lng + 0.1).toFixed(6));
+                }
+            });
+        }
 
         function loadBoundaries() {
             $.getJSON('api_city_boundary.php', { action: 'list' }, function(res) {
@@ -493,7 +542,10 @@ if (!isset($_SESSION['admin_id'])) {
             }
         }
 
-        $(document).ready(loadBoundaries);
+        $(document).ready(function() {
+            loadBoundaries();
+            initAutocomplete();
+        });
     </script>
 </body>
 </html>
