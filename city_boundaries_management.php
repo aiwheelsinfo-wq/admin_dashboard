@@ -332,7 +332,7 @@ if (!isset($_SESSION['admin_id'])) {
 
     <!-- Add/Edit Record Modal -->
     <div class="modal fade" id="boundaryModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <form id="boundaryForm">
                     <input type="hidden" id="cityId" name="id">
@@ -346,28 +346,49 @@ if (!isset($_SESSION['admin_id'])) {
                             <label class="form-label text-warning uppercase">City Name</label>
                             <input type="text" class="form-control" id="cityName" name="city_name" placeholder="e.g. Pune" required>
                         </div>
+                        
+                        <!-- Drawing Control -->
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-amber w-100" id="drawBtn" onclick="toggleMapEditor()">
+                                <i class="fa-solid fa-draw-polygon me-2"></i> Draw Boundary on Map
+                            </button>
+                        </div>
+                        <input type="hidden" id="polygonCoords" name="polygon_coords">
+
+                        <!-- Map wrapper inside modal -->
+                        <div id="mapWrapper" class="mb-4" style="display: none;">
+                            <label class="form-label text-warning uppercase">Click on map to place boundary points. Drag points to edit.</label>
+                            <div id="mapEditor" style="height: 380px; width: 100%; border-radius: 12px; border: 1px solid rgba(255, 179, 0, 0.3);"></div>
+                            <div class="mt-2 d-flex justify-content-between align-items-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearMapPolygon()">
+                                    <i class="fa-solid fa-trash-can me-1"></i> Clear Map
+                                </button>
+                                <span class="text-secondary small">Right-click on a point/vertex to delete it</span>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <!-- Min Lat -->
                             <div class="col-6 mb-3">
                                 <label class="form-label text-warning uppercase">Min Latitude</label>
-                                <input type="number" step="0.00000001" class="form-control" id="minLat" name="min_lat" placeholder="e.g. 18.4100" required>
+                                <input type="number" step="0.00000001" class="form-control" id="minLat" name="min_lat" placeholder="Computed from map" readonly required style="background-color: rgba(30, 30, 30, 0.4) !important; color: #aaa !important;">
                             </div>
                             <!-- Max Lat -->
                             <div class="col-6 mb-3">
                                 <label class="form-label text-warning uppercase">Max Latitude</label>
-                                <input type="number" step="0.00000001" class="form-control" id="maxLat" name="max_lat" placeholder="e.g. 18.6500" required>
+                                <input type="number" step="0.00000001" class="form-control" id="maxLat" name="max_lat" placeholder="Computed from map" readonly required style="background-color: rgba(30, 30, 30, 0.4) !important; color: #aaa !important;">
                             </div>
                         </div>
                         <div class="row">
                             <!-- Min Lng -->
                             <div class="col-6 mb-3">
                                 <label class="form-label text-warning uppercase">Min Longitude</label>
-                                <input type="number" step="0.00000001" class="form-control" id="minLng" name="min_lng" placeholder="e.g. 73.7200" required>
+                                <input type="number" step="0.00000001" class="form-control" id="minLng" name="min_lng" placeholder="Computed from map" readonly required style="background-color: rgba(30, 30, 30, 0.4) !important; color: #aaa !important;">
                             </div>
                             <!-- Max Lng -->
                             <div class="col-6 mb-3">
                                 <label class="form-label text-warning uppercase">Max Longitude</label>
-                                <input type="number" step="0.00000001" class="form-control" id="maxLng" name="max_lng" placeholder="e.g. 73.9800" required>
+                                <input type="number" step="0.00000001" class="form-control" id="maxLng" name="max_lng" placeholder="Computed from map" readonly required style="background-color: rgba(30, 30, 30, 0.4) !important; color: #aaa !important;">
                             </div>
                         </div>
                         <!-- Status -->
@@ -392,6 +413,139 @@ if (!isset($_SESSION['admin_id'])) {
     <script>
         let modalInstance;
         let autocomplete;
+        let map;
+        let polygon = null;
+        let mapLoaded = false;
+
+        function toggleMapEditor() {
+            const wrapper = document.getElementById('mapWrapper');
+            if (wrapper.style.display === 'none') {
+                wrapper.style.display = 'block';
+                // Trigger map initialization or resize
+                setTimeout(initMap, 200);
+            } else {
+                wrapper.style.display = 'none';
+            }
+        }
+
+        function initMap() {
+            if (mapLoaded && map) {
+                google.maps.event.trigger(map, 'resize');
+                return;
+            }
+
+            // Default center is Pune/Mumbai region
+            let centerLoc = { lat: 19.18, lng: 72.97 };
+            
+            const curLat = parseFloat($('#minLat').val()) || parseFloat($('#maxLat').val());
+            const curLng = parseFloat($('#minLng').val()) || parseFloat($('#maxLng').val());
+            if (curLat && curLng) {
+                centerLoc = { lat: curLat, lng: curLng };
+            }
+
+            map = new google.maps.Map(document.getElementById('mapEditor'), {
+                zoom: 11,
+                center: centerLoc,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            });
+
+            // Parse existing polygon coordinates if present
+            let pathCoords = [];
+            const rawCoords = $('#polygonCoords').val();
+            if (rawCoords) {
+                try {
+                    pathCoords = JSON.parse(rawCoords).map(pt => new google.maps.LatLng(pt.lat, pt.lng));
+                } catch(e) {
+                    console.error("Failed parsing coords", e);
+                }
+            }
+
+            // Create Editable and Draggable Polygon
+            polygon = new google.maps.Polygon({
+                paths: pathCoords,
+                strokeColor: '#FFB300',
+                strokeOpacity: 0.8,
+                strokeWeight: 2.5,
+                fillColor: '#FFB300',
+                fillOpacity: 0.3,
+                editable: true,
+                draggable: true
+            });
+            polygon.setMap(map);
+
+            if (pathCoords.length > 0) {
+                const bounds = new google.maps.LatLngBounds();
+                pathCoords.forEach(pt => bounds.extend(pt));
+                map.fitBounds(bounds);
+            }
+
+            // Click on map to add vertex point
+            google.maps.event.addListener(map, 'click', function(event) {
+                const path = polygon.getPath();
+                path.push(event.latLng);
+                updateBoundsFromPath(path);
+            });
+
+            // Listeners to detect when the polygon vertices are modified (dragged, added, or deleted)
+            google.maps.event.addListener(polygon.getPath(), 'set_at', function() {
+                updateBoundsFromPath(polygon.getPath());
+            });
+            google.maps.event.addListener(polygon.getPath(), 'insert_at', function() {
+                updateBoundsFromPath(polygon.getPath());
+            });
+            google.maps.event.addListener(polygon.getPath(), 'remove_at', function() {
+                updateBoundsFromPath(polygon.getPath());
+            });
+
+            // Right-click a vertex to delete it
+            google.maps.event.addListener(polygon, 'rightclick', function(event) {
+                if (event.vertex !== undefined) {
+                    polygon.getPath().removeAt(event.vertex);
+                    updateBoundsFromPath(polygon.getPath());
+                }
+            });
+
+            mapLoaded = true;
+        }
+
+        function updateBoundsFromPath(path) {
+            const coords = [];
+            let minLat = 90.0, maxLat = -90.0;
+            let minLng = 180.0, maxLng = -180.0;
+
+            for (let i = 0; i < path.getLength(); i++) {
+                const xy = path.getAt(i);
+                const lat = xy.lat();
+                const lng = xy.lng();
+                coords.push({ lat: lat, lng: lng });
+
+                if (lat < minLat) minLat = lat;
+                if (lat > maxLat) maxLat = lat;
+                if (lng < minLng) minLng = lng;
+                if (lng > maxLng) maxLng = lng;
+            }
+
+            if (coords.length > 0) {
+                $('#polygonCoords').val(JSON.stringify(coords));
+                $('#minLat').val(minLat.toFixed(8));
+                $('#maxLat').val(maxLat.toFixed(8));
+                $('#minLng').val(minLng.toFixed(8));
+                $('#maxLng').val(maxLng.toFixed(8));
+            } else {
+                $('#polygonCoords').val('');
+                $('#minLat').val('');
+                $('#maxLat').val('');
+                $('#minLng').val('');
+                $('#maxLng').val('');
+            }
+        }
+
+        function clearMapPolygon() {
+            if (polygon) {
+                polygon.setPath([]);
+                updateBoundsFromPath(polygon.getPath());
+            }
+        }
 
         function initAutocomplete() {
             const input = document.getElementById('cityName');
@@ -407,7 +561,6 @@ if (!isset($_SESSION['admin_id'])) {
                     return;
                 }
                 
-                // Get the base city name
                 let cityBaseName = place.name;
                 
                 if (place.address_components) {
@@ -425,17 +578,27 @@ if (!isset($_SESSION['admin_id'])) {
                 // Auto-fill min/max lat/lng from viewport bounds
                 const viewport = place.geometry.viewport;
                 if (viewport) {
-                    $('#minLat').val(viewport.getSouthWest().lat().toFixed(6));
-                    $('#maxLat').val(viewport.getNorthEast().lat().toFixed(6));
-                    $('#minLng').val(viewport.getSouthWest().lng().toFixed(6));
-                    $('#maxLng').val(viewport.getNorthEast().lng().toFixed(6));
+                    $('#minLat').val(viewport.getSouthWest().lat().toFixed(8));
+                    $('#maxLat').val(viewport.getNorthEast().lat().toFixed(8));
+                    $('#minLng').val(viewport.getSouthWest().lng().toFixed(8));
+                    $('#maxLng').val(viewport.getNorthEast().lng().toFixed(8));
                 } else if (place.geometry.location) {
                     const lat = place.geometry.location.lat();
                     const lng = place.geometry.location.lng();
-                    $('#minLat').val((lat - 0.1).toFixed(6));
-                    $('#maxLat').val((lat + 0.1).toFixed(6));
-                    $('#minLng').val((lng - 0.1).toFixed(6));
-                    $('#maxLng').val((lng + 0.1).toFixed(6));
+                    $('#minLat').val((lat - 0.1).toFixed(8));
+                    $('#maxLat').val((lat + 0.1).toFixed(8));
+                    $('#minLng').val((lng - 0.1).toFixed(8));
+                    $('#maxLng').val((lng + 0.1).toFixed(8));
+                }
+
+                // If map is already initialized, pan map to the place location
+                if (map && place.geometry) {
+                    if (place.geometry.viewport) {
+                        map.fitBounds(place.geometry.viewport);
+                    } else if (place.geometry.location) {
+                        map.setCenter(place.geometry.location);
+                        map.setZoom(12);
+                    }
                 }
             });
         }
@@ -490,7 +653,14 @@ if (!isset($_SESSION['admin_id'])) {
         function openAddModal() {
             $('#cityId').val('');
             $('#boundaryForm')[0].reset();
+            $('#polygonCoords').val('');
             $('#modalTitleText').text('Add New City Boundary');
+            document.getElementById('mapWrapper').style.display = 'none';
+            mapLoaded = false;
+            if (polygon) {
+                polygon.setMap(null);
+                polygon = null;
+            }
             
             modalInstance = new bootstrap.Modal(document.getElementById('boundaryModal'));
             modalInstance.show();
@@ -503,8 +673,15 @@ if (!isset($_SESSION['admin_id'])) {
             $('#maxLat').val(item.max_lat);
             $('#minLng').val(item.min_lng);
             $('#maxLng').val(item.max_lng);
+            $('#polygonCoords').val(item.polygon_coords || '');
             $('#cityStatus').val(item.status);
             $('#modalTitleText').text('Edit City Boundary');
+            document.getElementById('mapWrapper').style.display = 'none';
+            mapLoaded = false;
+            if (polygon) {
+                polygon.setMap(null);
+                polygon = null;
+            }
             
             modalInstance = new bootstrap.Modal(document.getElementById('boundaryModal'));
             modalInstance.show();

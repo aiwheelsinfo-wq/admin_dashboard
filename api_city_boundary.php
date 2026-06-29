@@ -12,13 +12,44 @@ function clean_input($data) {
     return htmlspecialchars(strip_tags(trim($data)));
 }
 
+// Bounding box from polygon helper
+function get_bounds_from_polygon($polygon_coords, &$min_lat, &$max_lat, &$min_lng, &$max_lng) {
+    if (empty($polygon_coords)) return false;
+    $coords = json_decode($polygon_coords, true);
+    if (!is_array($coords) || empty($coords)) return false;
+
+    $temp_min_lat = 90.0;
+    $temp_max_lat = -90.0;
+    $temp_min_lng = 180.0;
+    $temp_max_lng = -180.0;
+
+    foreach ($coords as $pt) {
+        if (!isset($pt['lat']) || !isset($pt['lng'])) continue;
+        $lat = floatval($pt['lat']);
+        $lng = floatval($pt['lng']);
+        if ($lat < $temp_min_lat) $temp_min_lat = $lat;
+        if ($lat > $temp_max_lat) $temp_max_lat = $lat;
+        if ($lng < $temp_min_lng) $temp_min_lng = $lng;
+        if ($lng > $temp_max_lng) $temp_max_lng = $lng;
+    }
+
+    if ($temp_min_lat < 90.0) {
+        $min_lat = $temp_min_lat;
+        $max_lat = $temp_max_lat;
+        $min_lng = $temp_min_lng;
+        $max_lng = $temp_max_lng;
+        return true;
+    }
+    return false;
+}
+
 $action = $_REQUEST['action'] ?? '';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. PUBLIC GET ACTIVE BOUNDARIES - Action: get_active_boundaries
 // ─────────────────────────────────────────────────────────────────────────────
 if ($action === 'get_active_boundaries') {
-    $sql = "SELECT city_name as name, min_lat as minLat, max_lat as maxLat, min_lng as minLng, max_lng as maxLng 
+    $sql = "SELECT city_name as name, min_lat as minLat, max_lat as maxLat, min_lng as minLng, max_lng as maxLng, polygon_coords as polygonCoords 
             FROM city_boundaries 
             WHERE status = 'active' 
             ORDER BY city_name ASC";
@@ -27,13 +58,13 @@ if ($action === 'get_active_boundaries') {
     if ($result) {
         $boundaries = [];
         while ($row = $result->fetch_assoc()) {
-            // Convert to double coordinates to prevent string formatting type issues in Flutter
             $boundaries[] = [
                 'name' => $row['name'],
                 'minLat' => floatval($row['minLat']),
                 'maxLat' => floatval($row['maxLat']),
                 'minLng' => floatval($row['minLng']),
-                'maxLng' => floatval($row['maxLng'])
+                'maxLng' => floatval($row['maxLng']),
+                'polygonCoords' => $row['polygonCoords']
             ];
         }
         echo json_encode([
@@ -87,20 +118,24 @@ if ($action === 'add') {
     }
 
     $city_name = clean_input($_POST['city_name'] ?? '');
+    $polygon_coords = $_POST['polygon_coords'] ?? '';
     $min_lat = floatval($_POST['min_lat'] ?? 0);
     $max_lat = floatval($_POST['max_lat'] ?? 0);
     $min_lng = floatval($_POST['min_lng'] ?? 0);
     $max_lng = floatval($_POST['max_lng'] ?? 0);
     $status = clean_input($_POST['status'] ?? 'active');
 
+    // Calculate bounds automatically if polygon is drawn
+    get_bounds_from_polygon($polygon_coords, $min_lat, $max_lat, $min_lng, $max_lng);
+
     if (empty($city_name) || $min_lat == 0 || $max_lat == 0 || $min_lng == 0 || $max_lng == 0) {
-        echo json_encode(['success' => false, 'message' => 'All boundary coordinates and city name are required.']);
+        echo json_encode(['success' => false, 'message' => 'All boundary coordinates (polygon coords) and city name are required.']);
         exit;
     }
 
-    $stmt = $conn->prepare("INSERT INTO city_boundaries (city_name, min_lat, max_lat, min_lng, max_lng, status) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO city_boundaries (city_name, min_lat, max_lat, min_lng, max_lng, status, polygon_coords) VALUES (?, ?, ?, ?, ?, ?, ?)");
     if ($stmt) {
-        $stmt->bind_param("sdddds", $city_name, $min_lat, $max_lat, $min_lng, $max_lng, $status);
+        $stmt->bind_param("sddddss", $city_name, $min_lat, $max_lat, $min_lng, $max_lng, $status, $polygon_coords);
         if ($stmt->execute()) {
             echo json_encode(['success' => true, 'message' => 'City boundary geofence added successfully']);
         } else {
@@ -124,20 +159,24 @@ if ($action === 'edit') {
 
     $id = intval($_POST['id'] ?? 0);
     $city_name = clean_input($_POST['city_name'] ?? '');
+    $polygon_coords = $_POST['polygon_coords'] ?? '';
     $min_lat = floatval($_POST['min_lat'] ?? 0);
     $max_lat = floatval($_POST['max_lat'] ?? 0);
     $min_lng = floatval($_POST['min_lng'] ?? 0);
     $max_lng = floatval($_POST['max_lng'] ?? 0);
     $status = clean_input($_POST['status'] ?? 'active');
 
+    // Calculate bounds automatically if polygon is drawn
+    get_bounds_from_polygon($polygon_coords, $min_lat, $max_lat, $min_lng, $max_lng);
+
     if ($id <= 0 || empty($city_name) || $min_lat == 0 || $max_lat == 0 || $min_lng == 0 || $max_lng == 0) {
-        echo json_encode(['success' => false, 'message' => 'All boundary coordinates and city name are required.']);
+        echo json_encode(['success' => false, 'message' => 'All boundary coordinates (polygon coords) and city name are required.']);
         exit;
     }
 
-    $stmt = $conn->prepare("UPDATE city_boundaries SET city_name = ?, min_lat = ?, max_lat = ?, min_lng = ?, max_lng = ?, status = ? WHERE id = ?");
+    $stmt = $conn->prepare("UPDATE city_boundaries SET city_name = ?, min_lat = ?, max_lat = ?, min_lng = ?, max_lng = ?, status = ?, polygon_coords = ? WHERE id = ?");
     if ($stmt) {
-        $stmt->bind_param("sddddsi", $city_name, $min_lat, $max_lat, $min_lng, $max_lng, $status, $id);
+        $stmt->bind_param("sddddssi", $city_name, $min_lat, $max_lat, $min_lng, $max_lng, $status, $polygon_coords, $id);
         if ($stmt->execute()) {
             echo json_encode(['success' => true, 'message' => 'City boundary geofence updated successfully']);
         } else {
