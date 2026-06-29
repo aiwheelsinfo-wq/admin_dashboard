@@ -319,6 +319,7 @@ if (!isset($_SESSION['admin_id'])) {
                         <tr>
                             <th>Car No</th>
                             <th>Car Type</th>
+                            <th>Fuel Type</th>
                             <th>Owner</th>
                             <th>Owner Mobile</th>
                             <th>Driver</th>
@@ -330,7 +331,7 @@ if (!isset($_SESSION['admin_id'])) {
                     </thead>
                     <tbody id="entriesTableBody">
                         <tr>
-                            <td colspan="9" class="text-muted py-4">Loading vehicle entries...</td>
+                            <td colspan="10" class="text-muted py-4">Loading vehicle entries...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -345,7 +346,7 @@ if (!isset($_SESSION['admin_id'])) {
                 <form id="editForm">
                     <input type="hidden" id="editId" name="id">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i> Edit Vehicle Record</h5>
+                         <h5 class="modal-title"><i class="fa-solid fa-pen-to-square me-2"></i> Edit Vehicle Record</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -357,12 +358,17 @@ if (!isset($_SESSION['admin_id'])) {
                         <!-- Car Type -->
                         <div class="mb-3">
                             <label class="form-label text-warning uppercase">Car Type</label>
-                            <select class="form-select" id="editCarType" name="car_type" required>
-                                <option value="Sedan">Sedan</option>
-                                <option value="SUV">SUV</option>
-                                <option value="Hatchback">Hatchback</option>
-                                <option value="Truck">Truck</option>
-                                <option value="Other">Other</option>
+                            <input type="text" class="form-control" id="editCarType" name="car_type" required placeholder="e.g. sedan, hatchback, innova crista">
+                        </div>
+                        <!-- Fuel Type -->
+                        <div class="mb-3">
+                            <label class="form-label text-warning uppercase">Fuel Type</label>
+                            <select class="form-select" id="editFuelType" name="fuel_type" required>
+                                <option value="Petrol">Petrol</option>
+                                <option value="Diesel">Diesel</option>
+                                <option value="CNG">CNG</option>
+                                <option value="Electric">Electric (EV)</option>
+                                <option value="Hybrid">Hybrid</option>
                             </select>
                         </div>
                         <!-- Owner -->
@@ -430,7 +436,7 @@ if (!isset($_SESSION['admin_id'])) {
         function renderTable(data) {
             let html = '';
             if (data.length === 0) {
-                html = `<tr><td colspan="9" class="text-muted py-4">No matching records found.</td></tr>`;
+                html = `<tr><td colspan="10" class="text-muted py-4">No matching records found.</td></tr>`;
             } else {
                 data.forEach(item => {
                     const formattedDate = new Date(item.created_at).toLocaleString('en-IN', {
@@ -442,6 +448,7 @@ if (!isset($_SESSION['admin_id'])) {
                         <tr id="row-${item.id}">
                             <td><strong>${item.car_no}</strong></td>
                             <td><span class="badge bg-secondary">${item.car_type}</span></td>
+                            <td><span class="badge bg-info text-dark">${item.fuel_type || 'N/A'}</span></td>
                             <td>${item.owner}</td>
                             <td>${item.owner_mobile}</td>
                             <td>${item.driver}</td>
@@ -488,6 +495,7 @@ if (!isset($_SESSION['admin_id'])) {
             $('#editId').val(item.id);
             $('#editCarNo').val(item.car_no);
             $('#editCarType').val(item.car_type);
+            $('#editFuelType').val(item.fuel_type || 'Petrol');
             $('#editOwner').val(item.owner);
             $('#editOwnerMobile').val(item.owner_mobile);
             $('#editDriver').val(item.driver);

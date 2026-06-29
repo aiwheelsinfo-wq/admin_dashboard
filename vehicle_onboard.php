@@ -376,16 +376,45 @@
                 <div class="input-wrapper">
                     <select id="carType" name="car_type" class="form-input" required>
                         <option value="" disabled selected>Select Car Type</option>
-                        <option value="Sedan">Sedan</option>
-                        <option value="SUV">SUV</option>
-                        <option value="Hatchback">Hatchback</option>
-                        <option value="Truck">Truck</option>
-                        <option value="Other">Other</option>
+                        <option value="hatchback">hatchback</option>
+                        <option value="sedan">sedan</option>
+                        <option value="ertiga">ertiga</option>
+                        <option value="innova">innova</option>
+                        <option value="innova crista">innova crista</option>
+                        <option value="other">other</option>
                     </select>
                     <i class="fa-solid fa-list input-icon"></i>
                     <i class="fa-solid fa-chevron-down select-arrow"></i>
                 </div>
                 <div class="error-message" id="carTypeError">Please select a car type.</div>
+            </div>
+
+            <!-- Custom Car Type (hidden by default) -->
+            <div class="form-group" id="customCarTypeGroup" style="display: none;">
+                <label class="form-label" for="customCarType">Enter Custom Car Type</label>
+                <div class="input-wrapper">
+                    <input type="text" id="customCarType" name="custom_car_type" class="form-input" placeholder="e.g. Fortuner, Swift">
+                    <i class="fa-solid fa-keyboard input-icon"></i>
+                </div>
+                <div class="error-message" id="customCarTypeError">Custom car type is required.</div>
+            </div>
+
+            <!-- Fuel Type -->
+            <div class="form-group">
+                <label class="form-label" for="fuelType">Fuel Type</label>
+                <div class="input-wrapper">
+                    <select id="fuelType" name="fuel_type" class="form-input" required>
+                        <option value="" disabled selected>Select Fuel Type</option>
+                        <option value="Petrol">Petrol</option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="CNG">CNG</option>
+                        <option value="Electric">Electric (EV)</option>
+                        <option value="Hybrid">Hybrid</option>
+                    </select>
+                    <i class="fa-solid fa-gas-pump input-icon"></i>
+                    <i class="fa-solid fa-chevron-down select-arrow"></i>
+                </div>
+                <div class="error-message" id="fuelTypeError">Please select a fuel type.</div>
             </div>
 
             <!-- Owner Name -->
@@ -472,6 +501,19 @@
         const submitBtn = document.getElementById('submitBtn');
         const locationInput = document.getElementById('location');
         
+        const carType = document.getElementById('carType');
+        const customCarTypeGroup = document.getElementById('customCarTypeGroup');
+        const customCarType = document.getElementById('customCarType');
+        const fuelType = document.getElementById('fuelType');
+
+        carType.addEventListener('change', () => {
+            if (carType.value.toLowerCase() === 'other') {
+                customCarTypeGroup.style.display = 'block';
+            } else {
+                customCarTypeGroup.style.display = 'none';
+            }
+        });
+
         // Modal elements
         const statusModal = document.getElementById('statusModal');
         const modalIcon = document.getElementById('modalIcon');
@@ -514,6 +556,7 @@
         // Reset fields
         resetBtn.addEventListener('click', () => {
             form.reset();
+            customCarTypeGroup.style.display = 'none';
             // Clear all errors
             document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
         });
@@ -533,12 +576,29 @@
             }
 
             // Car Type Check
-            const carType = document.getElementById('carType');
             if (carType.value === '') {
                 document.getElementById('carTypeError').style.display = 'block';
                 isValid = false;
             } else {
                 document.getElementById('carTypeError').style.display = 'none';
+                if (carType.value.toLowerCase() === 'other') {
+                    if (customCarType.value.trim() === '') {
+                        document.getElementById('customCarTypeError').style.display = 'block';
+                        isValid = false;
+                    } else {
+                        document.getElementById('customCarTypeError').style.display = 'none';
+                    }
+                } else {
+                    document.getElementById('customCarTypeError').style.display = 'none';
+                }
+            }
+
+            // Fuel Type Check
+            if (fuelType.value === '') {
+                document.getElementById('fuelTypeError').style.display = 'block';
+                isValid = false;
+            } else {
+                document.getElementById('fuelTypeError').style.display = 'none';
             }
 
             // Owner Name Check
@@ -592,6 +652,9 @@
             submitBtn.disabled = true;
 
             const formData = new FormData(form);
+            if (carType.value.toLowerCase() === 'other') {
+                formData.set('car_type', customCarType.value.trim());
+            }
             formData.append('action', 'add');
 
             fetch('api_vehicle_entry.php', {

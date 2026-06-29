@@ -25,6 +25,7 @@ if ($action === 'add') {
 
     $car_no = clean_input($_POST['car_no'] ?? '');
     $car_type = clean_input($_POST['car_type'] ?? '');
+    $fuel_type = clean_input($_POST['fuel_type'] ?? '');
     $owner = clean_input($_POST['owner'] ?? '');
     $owner_mobile = clean_input($_POST['owner_mobile'] ?? '');
     $driver = clean_input($_POST['driver'] ?? '');
@@ -32,7 +33,7 @@ if ($action === 'add') {
     $location = clean_input($_POST['location'] ?? '');
 
     // Server-side validation
-    if (empty($car_no) || empty($car_type) || empty($owner) || empty($owner_mobile) || empty($driver) || empty($driver_mobile) || empty($location)) {
+    if (empty($car_no) || empty($car_type) || empty($fuel_type) || empty($owner) || empty($owner_mobile) || empty($driver) || empty($driver_mobile) || empty($location)) {
         echo json_encode(['success' => false, 'message' => 'All fields are required.']);
         exit;
     }
@@ -43,9 +44,9 @@ if ($action === 'add') {
     }
 
     // Insert into database
-    $stmt = $conn->prepare("INSERT INTO vehicle_entries (car_no, car_type, owner, owner_mobile, driver, driver_mobile, location) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO vehicle_entries (car_no, car_type, owner, owner_mobile, driver, driver_mobile, location, fuel_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     if ($stmt) {
-        $stmt->bind_param("sssssss", $car_no, $car_type, $owner, $owner_mobile, $driver, $driver_mobile, $location);
+        $stmt->bind_param("ssssssss", $car_no, $car_type, $owner, $owner_mobile, $driver, $driver_mobile, $location, $fuel_type);
         if ($stmt->execute()) {
             echo json_encode(['success' => true, 'message' => 'Vehicle details submitted successfully']);
         } else {
@@ -140,13 +141,14 @@ if ($action === 'edit') {
     $id = intval($_POST['id'] ?? 0);
     $car_no = clean_input($_POST['car_no'] ?? '');
     $car_type = clean_input($_POST['car_type'] ?? '');
+    $fuel_type = clean_input($_POST['fuel_type'] ?? '');
     $owner = clean_input($_POST['owner'] ?? '');
     $owner_mobile = clean_input($_POST['owner_mobile'] ?? '');
     $driver = clean_input($_POST['driver'] ?? '');
     $driver_mobile = clean_input($_POST['driver_mobile'] ?? '');
     $location = clean_input($_POST['location'] ?? '');
 
-    if ($id <= 0 || empty($car_no) || empty($car_type) || empty($owner) || empty($owner_mobile) || empty($driver) || empty($driver_mobile) || empty($location)) {
+    if ($id <= 0 || empty($car_no) || empty($car_type) || empty($fuel_type) || empty($owner) || empty($owner_mobile) || empty($driver) || empty($driver_mobile) || empty($location)) {
         echo json_encode(['success' => false, 'message' => 'All fields are required.']);
         exit;
     }
@@ -156,9 +158,9 @@ if ($action === 'edit') {
         exit;
     }
 
-    $stmt = $conn->prepare("UPDATE vehicle_entries SET car_no = ?, car_type = ?, owner = ?, owner_mobile = ?, driver = ?, driver_mobile = ?, location = ? WHERE id = ?");
+    $stmt = $conn->prepare("UPDATE vehicle_entries SET car_no = ?, car_type = ?, owner = ?, owner_mobile = ?, driver = ?, driver_mobile = ?, location = ?, fuel_type = ? WHERE id = ?");
     if ($stmt) {
-        $stmt->bind_param("sssssssi", $car_no, $car_type, $owner, $owner_mobile, $driver, $driver_mobile, $location, $id);
+        $stmt->bind_param("ssssssssi", $car_no, $car_type, $owner, $owner_mobile, $driver, $driver_mobile, $location, $fuel_type, $id);
         if ($stmt->execute()) {
             echo json_encode(['success' => true, 'message' => 'Record updated successfully']);
         } else {
@@ -215,9 +217,9 @@ if ($action === 'export') {
     $output = fopen("php://output", "w");
     
     // CSV Header row
-    fputcsv($output, ['Car No', 'Car Type', 'Owner', 'Owner Mobile', 'Driver', 'Driver Mobile', 'Location', 'Submitted Date']);
+    fputcsv($output, ['Car No', 'Car Type', 'Fuel Type', 'Owner', 'Owner Mobile', 'Driver', 'Driver Mobile', 'Location', 'Submitted Date']);
 
-    $res = $conn->query("SELECT car_no, car_type, owner, owner_mobile, driver, driver_mobile, location, created_at FROM vehicle_entries ORDER BY created_at DESC");
+    $res = $conn->query("SELECT car_no, car_type, fuel_type, owner, owner_mobile, driver, driver_mobile, location, created_at FROM vehicle_entries ORDER BY created_at DESC");
     if ($res) {
         while ($row = $res->fetch_assoc()) {
             fputcsv($output, $row);
