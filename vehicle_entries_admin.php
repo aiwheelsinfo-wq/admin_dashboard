@@ -262,6 +262,7 @@ if (!isset($_SESSION['admin_id'])) {
                 <li><a href="dashboard.php?tab=newuser"><i class="fa-solid fa-users me-2"></i> Customers</a></li>
                 <li><a href="vendor_settlements.php"><i class="fas fa-wallet me-2"></i> Settlements</a></li>
                 <li class="active"><a href="vehicle_entries_admin.php"><i class="fas fa-file-invoice me-2"></i> Vehicle Entries</a></li>
+                <li><a href="city_boundaries_management.php"><i class="fas fa-map-marked-alt me-2"></i> City Boundaries</a></li>
             </ul>
         </nav>
 

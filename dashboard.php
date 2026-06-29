@@ -106,6 +106,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-file-invoice me-2"></i> Vehicle Entries
   </a>
 </li>
+                <li><a href="city_boundaries_management.php" id="city_boundaries_menu">
+    <i class="fas fa-map-marked-alt me-2"></i> City Boundaries
+  </a>
+</li>
             
             </ul>
         </nav>
