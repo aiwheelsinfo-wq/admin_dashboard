@@ -233,6 +233,10 @@ if (!isset($_SESSION['admin_id'])) {
         .btn-close {
             filter: invert(1);
         }
+
+        .pac-container {
+            z-index: 9999 !important;
+        }
     </style>
 </head>
 <body>
