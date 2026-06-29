@@ -462,7 +462,7 @@ if (!isset($_SESSION['admin_id'])) {
 
             // Create Editable and Draggable Polygon
             polygon = new google.maps.Polygon({
-                paths: pathCoords,
+                paths: [pathCoords],
                 strokeColor: '#FFB300',
                 strokeOpacity: 0.8,
                 strokeWeight: 2.5,
