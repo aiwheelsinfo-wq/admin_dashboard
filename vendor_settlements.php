@@ -39,25 +39,69 @@ if (isset($_GET['action']) && isset($_GET['id'])) {
     exit();
 }
 
-// 2. Mark as Paid via POST
+// 2. Automated Payout via POST
 if (isset($_POST['action']) && $_POST['action'] === 'pay') {
     $id = (int)($_POST['id'] ?? 0);
-    $txn_ref = trim($_POST['transaction_reference'] ?? '');
+    $holder_name = trim($_POST['bank_holder_name'] ?? '');
+    $acc_no = trim($_POST['bank_account_no'] ?? '');
+    $ifsc = trim($_POST['bank_ifsc'] ?? '');
+    $upi_id = trim($_POST['upi_id'] ?? '');
 
     if ($id <= 0) {
         $_SESSION['error_msg'] = "Invalid booking ID.";
-    } elseif (empty($txn_ref)) {
-        $_SESSION['error_msg'] = "Transaction reference cannot be empty.";
     } else {
-        $now = date('Y-m-d H:i:s');
-        $stmt = $conn->prepare("UPDATE bookings SET settlement_status = 'Paid', settlement_date = ?, transaction_reference = ? WHERE id = ? AND trip_type = 'One-way'");
-        $stmt->bind_param("ssi", $now, $txn_ref, $id);
-        if ($stmt->execute()) {
-            $_SESSION['success_msg'] = "Settlement marked as Paid successfully!";
+        // Fetch booking info (vender_id and amount)
+        $b_stmt = $conn->prepare("SELECT vender_id, paid_amount FROM bookings WHERE id = ?");
+        $b_stmt->bind_param("i", $id);
+        $b_stmt->execute();
+        $b_res = $b_stmt->get_result()->fetch_assoc();
+        $b_stmt->close();
+        
+        if (!$b_res) {
+            $_SESSION['error_msg'] = "Booking not found.";
         } else {
-            $_SESSION['error_msg'] = "Database error: " . $conn->error;
+            $vendor_phone = $b_res['vender_id'];
+            $eligible_amount = floatval($b_res['paid_amount']) * 0.60;
+            
+            // Update bank details if provided
+            if (!empty($acc_no) || !empty($upi_id)) {
+                $up_stmt = $conn->prepare("UPDATE users SET bank_account_no = ?, bank_ifsc = ?, bank_holder_name = ?, upi_id = ?, razorpay_fund_account_id = NULL WHERE phone_number = ?");
+                $up_stmt->bind_param("sssss", $acc_no, $ifsc, $holder_name, $upi_id, $vendor_phone);
+                $up_stmt->execute();
+                $up_stmt->close();
+            }
+            
+            try {
+                require_once __DIR__ . '/razorpay_x_helpers.php';
+                
+                // Get or create Contact in RazorpayX
+                $contact_id = RazorpayX::getOrCreateContact($conn, $vendor_phone);
+                
+                // Get or create Fund Account in RazorpayX
+                $fund_account_id = RazorpayX::getOrCreateFundAccount($conn, $vendor_phone, $contact_id);
+                
+                // Trigger Payout
+                $payout = RazorpayX::createPayout($fund_account_id, $eligible_amount, $id);
+                
+                if ($payout['success']) {
+                    $txn_ref = $payout['utr'];
+                    $now = date('Y-m-d H:i:s');
+                    
+                    $stmt = $conn->prepare("UPDATE bookings SET settlement_status = 'Paid', settlement_date = ?, transaction_reference = ? WHERE id = ? AND trip_type = 'One-way'");
+                    $stmt->bind_param("ssi", $now, $txn_ref, $id);
+                    if ($stmt->execute()) {
+                        $_SESSION['success_msg'] = "Payout processed successfully! Txn Ref: " . htmlspecialchars($txn_ref);
+                    } else {
+                        $_SESSION['error_msg'] = "Payout processed but database update failed: " . $conn->error;
+                    }
+                    $stmt->close();
+                } else {
+                    $_SESSION['error_msg'] = "RazorpayX Payout Failed: " . htmlspecialchars($payout['message']);
+                }
+            } catch (Exception $e) {
+                $_SESSION['error_msg'] = $e->getMessage();
+            }
         }
-        $stmt->close();
     }
     header("Location: vendor_settlements.php");
     exit();
@@ -75,8 +119,13 @@ $query = "
         b.settlement_status,
         b.settlement_date,
         b.transaction_reference,
+        b.vender_id AS vendor_phone,
         u.name AS customer_name,
-        COALESCE(v.agency_name, v.name, b.vender_id) AS vendor_name
+        COALESCE(v.agency_name, v.name, b.vender_id) AS vendor_name,
+        v.bank_account_no,
+        v.bank_ifsc,
+        v.bank_holder_name,
+        v.upi_id
     FROM bookings b
     INNER JOIN users u ON b.booker_id = u.phone_number
     LEFT JOIN users v ON b.vender_id = v.phone_number
@@ -400,7 +449,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                                                     </a>
                                                 <?php endif; ?>
                                                 
-                                                <button class="btn-action btn-pay" onclick="openPaymentModal(<?= $s['booking_id'] ?>, <?= $eligible ?>)">
+                                                <button class="btn-action btn-pay" onclick="openPaymentModal(<?= $s['booking_id'] ?>, <?= $eligible ?>, '<?= htmlspecialchars($s['vendor_phone'] ?? '', ENT_QUOTES) ?>', '<?= htmlspecialchars($s['bank_holder_name'] ?? '', ENT_QUOTES) ?>', '<?= htmlspecialchars($s['bank_account_no'] ?? '', ENT_QUOTES) ?>', '<?= htmlspecialchars($s['bank_ifsc'] ?? '', ENT_QUOTES) ?>', '<?= htmlspecialchars($s['upi_id'] ?? '', ENT_QUOTES) ?>')">
                                                     <i class="fas fa-rupee-sign"></i> Pay
                                                 </button>
                                             <?php else: ?>
@@ -424,7 +473,7 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:16px; border:none; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
             <div class="modal-header" style="border-bottom:1px solid #eaedf1;">
-                <h5 class="modal-title" id="payModalLabel" style="font-weight:700;"><i class="fas fa-rupee-sign me-2" style="color:#6C63FF"></i>Mark Settlement as Paid</h5>
+                <h5 class="modal-title" id="payModalLabel" style="font-weight:700;"><i class="fas fa-rupee-sign me-2" style="color:#6C63FF"></i>Instant Payout via RazorpayX</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST">
@@ -432,19 +481,52 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
                     <input type="hidden" name="action" value="pay">
                     <input type="hidden" name="id" id="pay-booking-id">
                     
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-weight:600; color:#555;">Eligible Amount</label>
+                            <input type="text" id="pay-amount-display" class="form-control" readonly style="border-radius:10px; background-color:#f8f9fa; font-weight:700; color:#28a745;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-weight:600; color:#555;">Vendor Phone</label>
+                            <input type="text" id="pay-vendor-phone" class="form-control" readonly style="border-radius:10px; background-color:#f8f9fa;">
+                        </div>
+                    </div>
+                    
+                    <hr class="text-muted">
+                    <h6 class="mb-3" style="font-weight:700; color:#465c71;"><i class="fas fa-university me-2"></i>Vendor Bank Details</h6>
+                    
                     <div class="mb-3">
-                        <label class="form-label" style="font-weight:600; color:#555;">Eligible Amount</label>
-                        <input type="text" id="pay-amount-display" class="form-control" readonly style="border-radius:10px; background-color:#f8f9fa;">
+                        <label class="form-label" style="font-weight:600; color:#555;">Account Holder Name</label>
+                        <input type="text" name="bank_holder_name" id="pay-holder-name" class="form-control" placeholder="Vendor's Full Name" style="border-radius:10px; padding:8px 12px;">
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-weight:600; color:#555;">Account Number</label>
+                            <input type="text" name="bank_account_no" id="pay-account-no" class="form-control" placeholder="12-18 Digits Account No" style="border-radius:10px; padding:8px 12px;">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" style="font-weight:600; color:#555;">IFSC Code</label>
+                            <input type="text" name="bank_ifsc" id="pay-ifsc" class="form-control" placeholder="IFSC Code (e.g. SBIN0001234)" style="border-radius:10px; padding:8px 12px;">
+                        </div>
+                    </div>
+                    
+                    <div class="text-center my-3 text-muted">
+                        <span>— OR —</span>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label" style="font-weight:600; color:#555;">Transaction Reference <span class="text-danger">*</span></label>
-                        <input type="text" name="transaction_reference" class="form-control" placeholder="e.g. UPI Ref / Bank UTN ID" required style="border-radius:10px; padding:10px 14px;">
+                        <label class="form-label" style="font-weight:600; color:#555;">UPI ID (Virtual Payment Address)</label>
+                        <input type="text" name="upi_id" id="pay-upi-id" class="form-control" placeholder="e.g. name@upi" style="border-radius:10px; padding:8px 12px;">
+                    </div>
+                    
+                    <div class="alert alert-info mt-3 py-2 px-3" style="border-radius:10px; font-size:0.78rem; line-height:1.4;">
+                        <i class="fas fa-info-circle me-1"></i> <strong>Note:</strong> Payout will be processed instantly. Make sure to input correct bank details or a valid UPI ID before submitting.
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid #eaedf1; padding:16px 24px;">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal" style="border-radius:10px;">Cancel</button>
-                    <button type="submit" class="btn btn-primary" style="background:#6C63FF; border:none; border-radius:10px; padding:10px 20px;">Mark as Paid</button>
+                    <button type="submit" class="btn btn-primary" style="background:#6C63FF; border:none; border-radius:10px; padding:10px 20px;" onclick="return validatePayoutForm();">Transfer Money</button>
                 </div>
             </form>
         </div>
@@ -452,12 +534,36 @@ unset($_SESSION['success_msg'], $_SESSION['error_msg']);
 </div>
 
 <script>
-    function openPaymentModal(bookingId, amount) {
+    function openPaymentModal(bookingId, amount, phone, holderName, accNo, ifsc, upi) {
         document.getElementById('pay-booking-id').value = bookingId;
         document.getElementById('pay-amount-display').value = '₹' + amount.toFixed(2);
+        document.getElementById('pay-vendor-phone').value = phone;
+        
+        document.getElementById('pay-holder-name').value = holderName || '';
+        document.getElementById('pay-account-no').value = accNo || '';
+        document.getElementById('pay-ifsc').value = ifsc || '';
+        document.getElementById('pay-upi-id').value = upi || '';
         
         var payModal = new bootstrap.Modal(document.getElementById('payModal'));
         payModal.show();
+    }
+    
+    function validatePayoutForm() {
+        var accNo = document.getElementById('pay-account-no').value.trim();
+        var ifsc = document.getElementById('pay-ifsc').value.trim();
+        var upi = document.getElementById('pay-upi-id').value.trim();
+        
+        if (accNo === '' && upi === '') {
+            alert('Please enter either Bank Account details OR a UPI ID to process the payout.');
+            return false;
+        }
+        
+        if (accNo !== '' && ifsc === '') {
+            alert('Please enter the IFSC code for the Bank Account.');
+            return false;
+        }
+        
+        return confirm('Are you sure you want to process this instant payout to the vendor?');
     }
 
     $(document).ready(function() {
