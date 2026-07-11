@@ -9,6 +9,6 @@ define('EMAIL_PROVIDER', 'brevo');
 define('EMAIL_API_KEY', 'xkeysib-' . 'de2ea930518dd080b214bd7ab5897e4c0afa06567b94947eea87bbd8e736fc91-KcQwj79aHsCcjXPP');
 
 // 3. Configure the verified sender details (must match what you verified in your provider dashboard):
-define('EMAIL_SENDER_NAME', 'Redox API Service');
+define('EMAIL_SENDER_NAME', 'Rentox API Service');
 define('EMAIL_SENDER_EMAIL', 'ai.wheels.info@gmail.com');
 ?>
