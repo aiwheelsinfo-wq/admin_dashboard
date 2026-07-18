@@ -24,6 +24,8 @@ $(document).ready(function () {
     let currentBlocked_CustomerPage=1;
     let newUserNotificationCount = 0; // New variable for notification count
     let lastMaxBookingId = 0;
+    let seenBookingIds = new Set();
+    let isInitialLoadDone = false;
     let unreadNotifications = [];
     function formatDate(dateStr) {
         const [year, month, day] = dateStr.split('-');
@@ -823,6 +825,8 @@ function renderDriverTable(drivers, page = currentDriverPage) {
     function fetchBookings() {
         $.getJSON("https://agnicarrental.com/admin2025/admin_booking_list_Agni.php", function (data) {
             allBookings = data.bookingsdata || [];
+            allBookings.forEach(b => seenBookingIds.add(parseInt(b.booking_id) || 0));
+            isInitialLoadDone = true;
             if (lastMaxBookingId === 0 && allBookings.length > 0) {
                 lastMaxBookingId = Math.max(...allBookings.map(b => parseInt(b.booking_id) || 0));
                 console.log("Initial max booking ID set to:", lastMaxBookingId);
@@ -1496,7 +1500,8 @@ function renderDriverTable(drivers, page = currentDriverPage) {
 
             bookings.forEach(booking => {
                 const bookingId = parseInt(booking.booking_id) || 0;
-                if (lastMaxBookingId > 0 && bookingId > lastMaxBookingId) {
+                if (isInitialLoadDone && !seenBookingIds.has(bookingId)) {
+                    seenBookingIds.add(bookingId);
                     newBookingsFound.push(booking);
                     if (bookingId > currentMaxId) {
                         currentMaxId = bookingId;
