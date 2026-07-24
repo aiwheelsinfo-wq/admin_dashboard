@@ -187,10 +187,8 @@ try {
             (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status) 
             VALUES (?, ?, ?, ?, ?, 'VERIFIED')
             ON DUPLICATE KEY UPDATE 
-            holder_name = VALUES(holder_name), 
-            dob = VALUES(dob), 
-            expiry_date = VALUES(expiry_date), 
-            permanent_address = VALUES(permanent_address)";
+            holder_name = IF(holder_name IS NULL OR holder_name = '' OR holder_name = 'Driver', VALUES(holder_name), holder_name),
+            permanent_address = IF(permanent_address IS NULL OR permanent_address = '', VALUES(permanent_address), permanent_address)";
         $ver_stmt = mysqli_prepare($conn, $ver_sql);
         if ($ver_stmt) {
             mysqli_stmt_bind_param($ver_stmt, "sssss", $license_no, $date_of_birth, $full_name, $license_doe, $driver_address);

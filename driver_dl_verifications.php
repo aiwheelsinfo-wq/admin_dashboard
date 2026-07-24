@@ -20,7 +20,7 @@ $tableSql = "CREATE TABLE IF NOT EXISTS `driver_dl_verifications` (
 mysqli_query($conn, $tableSql);
 
 // Auto-sync drivers from main drivers table into driver_dl_verifications if not present
-$syncSql = "INSERT IGNORE INTO driver_dl_verifications (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status)
+$syncSql = "INSERT INTO driver_dl_verifications (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status)
     SELECT TRIM(license_no), 
            IF(date_of_birth IS NULL OR date_of_birth = '0000-00-00', '1970-01-01', date_of_birth), 
            IFNULL(full_name, 'Driver'), 
@@ -28,7 +28,10 @@ $syncSql = "INSERT IGNORE INTO driver_dl_verifications (dl_number, dob, holder_n
            IFNULL(driver_address, ''), 
            'VERIFIED'
     FROM drivers 
-    WHERE license_no IS NOT NULL AND TRIM(license_no) != '' AND LOWER(TRIM(license_no)) != 'null' AND CHAR_LENGTH(TRIM(license_no)) >= 5";
+    WHERE license_no IS NOT NULL AND TRIM(license_no) != '' AND LOWER(TRIM(license_no)) != 'null' AND CHAR_LENGTH(TRIM(license_no)) >= 5
+    ON DUPLICATE KEY UPDATE 
+    holder_name = IF(driver_dl_verifications.holder_name IS NULL OR driver_dl_verifications.holder_name = '' OR driver_dl_verifications.holder_name = 'Driver', VALUES(holder_name), driver_dl_verifications.holder_name),
+    permanent_address = IF(driver_dl_verifications.permanent_address IS NULL OR driver_dl_verifications.permanent_address = '', VALUES(permanent_address), driver_dl_verifications.permanent_address)";
 mysqli_query($conn, $syncSql);
 
 // Handle Admin Action (Manual Approval / Override / Block)
