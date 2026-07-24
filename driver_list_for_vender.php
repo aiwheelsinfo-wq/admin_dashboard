@@ -42,16 +42,16 @@ switch ($method) {
         b.booking_status,
         b.from_address,
         b.to_address
-    FROM drivers d
-    LEFT JOIN driver_vendor_join_Table dv ON dv.driver_id = d.phone_number
+    FROM driver_vendor_join_Table dv
+    JOIN drivers d ON dv.driver_id = d.phone_number
     LEFT JOIN driver_dl_verifications dl ON UPPER(REPLACE(REPLACE(d.license_no, ' ', ''), '-', '')) = dl.dl_number
     LEFT JOIN bookings b ON b.driver_id = d.phone_number AND b.date >= CURDATE()
-    WHERE dv.vendor_id = ? OR d.phone_number = ?
+    WHERE dv.vendor_id = ?
     ORDER BY d.driver_id DESC;
     ";
 
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $vendor_id, $vendor_id);
+    $stmt->bind_param("s", $vendor_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -125,7 +125,7 @@ switch ($method) {
         break;
 
     /* =====================================================
-       DELETE → Delete Driver (Protects Primary Vendor Accounts)
+       DELETE → Delete Driver (Removes join link & sub-driver)
     ===================================================== */
    case 'DELETE':
         $deleteData = json_decode(file_get_contents("php://input"), true);
@@ -135,6 +135,8 @@ switch ($method) {
         }
 
         $driver_id = intval($deleteData['driver_id']);
+        $vendor_id = isset($deleteData['vendor_id']) ? trim($deleteData['vendor_id']) : '';
+
         $conn->begin_transaction();
 
         try {
@@ -152,14 +154,19 @@ switch ($method) {
             $phone = $driver['phone_number'];
             $userType = strtolower(trim($driver['userType'] ?? ''));
 
-            // Always remove from join table
-            $stmt1 = $conn->prepare("DELETE FROM driver_vendor_join_Table WHERE driver_id = ?");
-            $stmt1->bind_param("s", $phone);
+            // Remove link from driver_vendor_join_Table
+            if (!empty($vendor_id)) {
+                $stmt1 = $conn->prepare("DELETE FROM driver_vendor_join_Table WHERE driver_id = ? AND vendor_id = ?");
+                $stmt1->bind_param("ss", $phone, $vendor_id);
+            } else {
+                $stmt1 = $conn->prepare("DELETE FROM driver_vendor_join_Table WHERE driver_id = ?");
+                $stmt1->bind_param("s", $phone);
+            }
             $stmt1->execute();
             $stmt1->close();
 
-            // DO NOT delete vendor primary account from drivers table
-            if ($userType !== 'vendor') {
+            // Delete sub-driver record if NOT a primary vendor
+            if ($userType !== 'vendor' && $phone !== $vendor_id) {
                 $stmt2 = $conn->prepare("DELETE FROM drivers WHERE driver_id = ?");
                 $stmt2->bind_param("i", $driver_id);
                 $stmt2->execute();
@@ -167,7 +174,7 @@ switch ($method) {
             }
 
             $conn->commit();
-            echo json_encode(["status" => true, "message" => "Driver deleted"]);
+            echo json_encode(["status" => true, "message" => "Driver removed from fleet successfully"]);
         } catch (Exception $e) {
             $conn->rollback();
             echo json_encode(["status" => false, "message" => $e->getMessage()]);
