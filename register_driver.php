@@ -90,7 +90,7 @@ $rawPin = $data['pin_code'] ?? $_POST['pin_code'] ?? $_GET['pin_code'] ?? NULL;
 $pin_code = $rawPin ? mysqli_real_escape_string($conn, $rawPin) : NULL;
 
 $rawDl = $data['license_no'] ?? $_POST['license_no'] ?? $_GET['license_no'] ?? NULL;
-$license_no = $rawDl ? mysqli_real_escape_string($conn, strtoupper(trim($rawDl))) : NULL;
+$license_no = $rawDl ? mysqli_real_escape_string($conn, strtoupper(trim(preg_replace('/[\s\-]/', '', $rawDl)))) : NULL;
 
 $rawDoe = $data['license_doe'] ?? $_POST['license_doe'] ?? $_GET['license_doe'] ?? '';
 $license_doe = validateDate($rawDoe);
@@ -118,6 +118,8 @@ $status = mysqli_real_escape_string($conn, $rawStatus);
 $rawUserType = $data['userType'] ?? $_POST['userType'] ?? $_GET['userType'] ?? 'Driver';
 $userType = mysqli_real_escape_string($conn, $rawUserType);
 
+$isCheckOnly = isset($data['check_only']) || isset($_GET['check_only']);
+
 if (empty($phone_number)) {
     ob_clean();
     echo json_encode(["status" => "error", "message" => "Phone number is required"]);
@@ -125,16 +127,54 @@ if (empty($phone_number)) {
     exit;
 }
 
-// Check if driver exists
-$check_sql = "SELECT 1 FROM drivers WHERE phone_number = ?";
+// 1. DUPLICATE PHONE NUMBER VALIDATION
+$check_sql = "SELECT driver_id, full_name, phone_number FROM drivers WHERE phone_number = ? AND full_name IS NOT NULL AND full_name != ''";
 $check_stmt = mysqli_prepare($conn, $check_sql);
 mysqli_stmt_bind_param($check_stmt, "s", $phone_number);
 mysqli_stmt_execute($check_stmt);
 $check_result = mysqli_stmt_get_result($check_stmt);
-$driverExists = (mysqli_num_rows($check_result) > 0);
+$existingDriver = mysqli_fetch_assoc($check_result);
 mysqli_stmt_close($check_stmt);
 
-if ($driverExists) {
+// If check_only parameter is passed, just return check result
+if ($isCheckOnly) {
+    ob_clean();
+    if ($existingDriver) {
+        echo json_encode([
+            "status" => "duplicate",
+            "exists" => true,
+            "message" => "⚠️ Driver with phone number {$phone_number} already exists! (" . ($existingDriver['full_name'] ?: 'Registered') . ")"
+        ]);
+    } else {
+        echo json_encode(["status" => "success", "exists" => false, "message" => "Phone number available"]);
+    }
+    mysqli_close($conn);
+    exit;
+}
+
+// 2. DUPLICATE DRIVING LICENSE VALIDATION
+if (!empty($license_no)) {
+    $dl_check_sql = "SELECT full_name, phone_number FROM drivers WHERE UPPER(REPLACE(REPLACE(license_no, ' ', ''), '-', '')) = ? AND phone_number != ?";
+    $dl_stmt = mysqli_prepare($conn, $dl_check_sql);
+    if ($dl_stmt) {
+        mysqli_stmt_bind_param($dl_stmt, "ss", $license_no, $phone_number);
+        mysqli_stmt_execute($dl_stmt);
+        $dl_result = mysqli_stmt_get_result($dl_stmt);
+        if ($dlDriver = mysqli_fetch_assoc($dl_result)) {
+            ob_clean();
+            echo json_encode([
+                "status" => "duplicate",
+                "message" => "⚠️ Driving License {$license_no} is already registered to {$dlDriver['phone_number']} (" . ($dlDriver['full_name'] ?: 'Registered Driver') . ")"
+            ]);
+            mysqli_stmt_close($dl_stmt);
+            mysqli_close($conn);
+            exit;
+        }
+        mysqli_stmt_close($dl_stmt);
+    }
+}
+
+if ($existingDriver) {
     // UPDATE EXISTING DRIVER
     $sql = "UPDATE drivers SET 
         full_name = ?, email = ?, date_of_birth = ?, driver_address = ?, pin_code = ?, 
@@ -170,7 +210,6 @@ if ($driverExists) {
 
 // Link to Vendor in driver_vendor_join_Table if vendor_number is provided
 if (!empty($vendor_number)) {
-    // 1. Delete old join to prevent stale joins
     $del_stmt = mysqli_prepare($conn, "DELETE FROM driver_vendor_join_Table WHERE driver_id = ?");
     if ($del_stmt) {
         mysqli_stmt_bind_param($del_stmt, "s", $phone_number);
@@ -178,7 +217,6 @@ if (!empty($vendor_number)) {
         mysqli_stmt_close($del_stmt);
     }
 
-    // 2. Insert fresh join link
     $ins_stmt = mysqli_prepare($conn, "INSERT INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?)");
     if ($ins_stmt) {
         mysqli_stmt_bind_param($ins_stmt, "ss", $phone_number, $vendor_number);
