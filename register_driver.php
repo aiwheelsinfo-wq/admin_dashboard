@@ -89,9 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['phone_number'])) {
 // POST: Register / Update driver
 $raw_input = file_get_contents("php://input");
 $data = json_decode($raw_input, true);
+if (!is_array($data) || empty($data)) {
+    if (!empty($_POST)) {
+        $data = $_POST;
+    }
+}
 
-if (!$data) {
-    sendJsonResponse("error", "Invalid JSON input");
+if (!is_array($data) || empty($data)) {
+    sendJsonResponse("error", "Invalid or empty input");
 }
 
 // Extract and sanitize
