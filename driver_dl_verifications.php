@@ -303,7 +303,14 @@ $result = mysqli_query($conn, $sql);
                         <?php if (mysqli_num_rows($result) > 0): ?>
                             <?php while ($row = mysqli_fetch_assoc($result)): 
                                 $isExpired = (!empty($row['expiry_date']) && strtotime($row['expiry_date']) < strtotime(date('Y-m-d')));
-                                $photoPath = !empty($row['dl_photo_path']) ? $row['dl_photo_path'] : 'images/default_avatar.png';
+                                $photoPath = 'https://ui-avatars.com/api/?name=' . urlencode($row['holder_name'] ?? 'Driver');
+                                if (!empty($row['dl_photo_path'])) {
+                                    if (strpos($row['dl_photo_path'], 'http') === 0) {
+                                        $photoPath = $row['dl_photo_path'];
+                                    } else {
+                                        $photoPath = 'https://agnicarrental.com/driver2025/' . ltrim($row['dl_photo_path'], '/');
+                                    }
+                                }
                             ?>
                                 <tr>
                                     <td>
