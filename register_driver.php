@@ -170,18 +170,20 @@ if ($driverExists) {
 
 // Link to Vendor in driver_vendor_join_Table if vendor_number is provided
 if (!empty($vendor_number)) {
-    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `driver_vendor_join_Table` (
-      `id` INT AUTO_INCREMENT PRIMARY KEY,
-      `driver_id` VARCHAR(50) NOT NULL,
-      `vendor_id` VARCHAR(50) NOT NULL,
-      UNIQUE KEY `unique_join` (`driver_id`, `vendor_id`)
-    )");
+    // 1. Delete old join to prevent stale joins
+    $del_stmt = mysqli_prepare($conn, "DELETE FROM driver_vendor_join_Table WHERE driver_id = ?");
+    if ($del_stmt) {
+        mysqli_stmt_bind_param($del_stmt, "s", $phone_number);
+        mysqli_stmt_execute($del_stmt);
+        mysqli_stmt_close($del_stmt);
+    }
 
-    $insert_sql = "INSERT INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE vendor_id=VALUES(vendor_id)";
-    if ($insert_stmt = mysqli_prepare($conn, $insert_sql)) {
-        mysqli_stmt_bind_param($insert_stmt, "ss", $phone_number, $vendor_number);
-        mysqli_stmt_execute($insert_stmt);
-        mysqli_stmt_close($insert_stmt);
+    // 2. Insert fresh join link
+    $ins_stmt = mysqli_prepare($conn, "INSERT INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?)");
+    if ($ins_stmt) {
+        mysqli_stmt_bind_param($ins_stmt, "ss", $phone_number, $vendor_number);
+        mysqli_stmt_execute($ins_stmt);
+        mysqli_stmt_close($ins_stmt);
     }
 }
 
