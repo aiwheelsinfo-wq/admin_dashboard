@@ -19,10 +19,14 @@ $tableSql = "CREATE TABLE IF NOT EXISTS `driver_dl_verifications` (
 mysqli_query($conn, $tableSql);
 
 // Auto-sync drivers from main drivers table into driver_dl_verifications if not present
-$syncSql = "INSERT IGNORE INTO driver_dl_verifications (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status)
-    SELECT license_no, date_of_birth, full_name, license_doe, driver_address, 'VERIFIED'
+$syncSql = "INSERT INTO driver_dl_verifications (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status)
+    SELECT TRIM(license_no), date_of_birth, full_name, license_doe, driver_address, 'VERIFIED'
     FROM drivers 
-    WHERE license_no IS NOT NULL AND license_no != ''";
+    WHERE license_no IS NOT NULL AND TRIM(license_no) != '' AND CHAR_LENGTH(TRIM(license_no)) >= 10
+    ON DUPLICATE KEY UPDATE 
+    holder_name=VALUES(holder_name), 
+    expiry_date=VALUES(expiry_date), 
+    permanent_address=VALUES(permanent_address)";
 mysqli_query($conn, $syncSql);
 
 // Handle Admin Action (Manual Approval / Override / Block)
