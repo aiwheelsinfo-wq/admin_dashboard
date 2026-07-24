@@ -108,6 +108,7 @@ try {
     $driver_address = isset($data['driver_address']) ? trim($data['driver_address']) : '';
     $pin_code       = isset($data['pin_code']) ? trim($data['pin_code']) : '';
     $license_no     = isset($data['license_no']) ? trim($data['license_no']) : '';
+    $license_doi    = isset($data['license_doi']) ? validateDate($data['license_doi']) : NULL;
     $license_doe    = isset($data['license_doe']) ? validateDate($data['license_doe']) : '1970-01-01';
     $license_type   = isset($data['license_type']) ? trim($data['license_type']) : '';
     $adhaar_card_no = isset($data['adhaar_card_no']) ? trim($data['adhaar_card_no']) : '';
@@ -184,14 +185,16 @@ try {
     // 2. Upsert into driver_dl_verifications so it appears in the admin driver_dl_verifications dashboard
     if (!empty($license_no)) {
         $ver_sql = "INSERT INTO driver_dl_verifications 
-            (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status) 
-            VALUES (?, ?, ?, ?, ?, 'VERIFIED')
+            (dl_number, dob, holder_name, issue_date, expiry_date, permanent_address, verification_status) 
+            VALUES (?, ?, ?, ?, ?, ?, 'VERIFIED')
             ON DUPLICATE KEY UPDATE 
             holder_name = IF(holder_name IS NULL OR holder_name = '' OR holder_name = 'Driver', VALUES(holder_name), holder_name),
+            issue_date = IF(issue_date IS NULL OR issue_date = '0000-00-00', VALUES(issue_date), issue_date),
+            expiry_date = VALUES(expiry_date),
             permanent_address = IF(permanent_address IS NULL OR permanent_address = '', VALUES(permanent_address), permanent_address)";
         $ver_stmt = mysqli_prepare($conn, $ver_sql);
         if ($ver_stmt) {
-            mysqli_stmt_bind_param($ver_stmt, "sssss", $license_no, $date_of_birth, $full_name, $license_doe, $driver_address);
+            mysqli_stmt_bind_param($ver_stmt, "ssssss", $license_no, $date_of_birth, $full_name, $license_doi, $license_doe, $driver_address);
             mysqli_stmt_execute($ver_stmt);
             mysqli_stmt_close($ver_stmt);
         }
