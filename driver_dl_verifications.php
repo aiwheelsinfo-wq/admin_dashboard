@@ -363,47 +363,26 @@ $result = mysqli_query($conn, $sql);
                                         ?>
                                     </td>
                                     <td class="text-end">
-                                        <div class="dropdown">
-                                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle rounded-3" type="button" data-bs-toggle="dropdown">
-                                                Manage
+                                        <div class="d-flex align-items-center justify-content-end gap-2">
+                                            <button class="btn btn-outline-primary btn-sm rounded-3" data-bs-toggle="modal" data-bs-target="#dlModal<?php echo $row['id']; ?>" title="View Details">
+                                                <i class="fas fa-eye me-1"></i> View
                                             </button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                                <li>
-                                                    <button class="dropdown-item" data-bs-toggle="modal" data-bs-target="#dlModal<?php echo $row['id']; ?>">
-                                                        <i class="fas fa-eye text-primary me-2"></i> View Full Details
+                                            <?php if($row['verification_status'] !== 'MANUAL_APPROVED'): ?>
+                                                <form method="POST" action="" class="d-inline">
+                                                    <input type="hidden" name="dl_number" value="<?php echo htmlspecialchars($row['dl_number']); ?>">
+                                                    <input type="hidden" name="action" value="approve_manual">
+                                                    <button type="submit" class="btn btn-outline-success btn-sm rounded-3" title="Approve Manually">
+                                                        <i class="fas fa-user-check me-1"></i> Approve
                                                     </button>
-                                                </li>
-                                                <?php if($row['verification_status'] !== 'MANUAL_APPROVED'): ?>
-                                                    <li>
-                                                        <form method="POST" action="">
-                                                            <input type="hidden" name="dl_number" value="<?php echo htmlspecialchars($row['dl_number']); ?>">
-                                                            <input type="hidden" name="action" value="approve_manual">
-                                                            <button type="submit" class="dropdown-item text-success fw-bold">
-                                                                <i class="fas fa-user-shield me-2"></i> Approve Manually
-                                                            </button>
-                                                        </form>
-                                                    </li>
-                                                <?php endif; ?>
-                                                <li>
-                                                    <form method="POST" action="">
-                                                        <input type="hidden" name="dl_number" value="<?php echo htmlspecialchars($row['dl_number']); ?>">
-                                                        <input type="hidden" name="action" value="reject">
-                                                        <button type="submit" class="dropdown-item text-warning">
-                                                            <i class="fas fa-ban me-2"></i> Mark Rejected
-                                                        </button>
-                                                    </form>
-                                                </li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li>
-                                                    <form method="POST" action="" onsubmit="return confirm('Are you sure you want to delete DL record for <?php echo htmlspecialchars($row['holder_name']); ?>?');">
-                                                        <input type="hidden" name="dl_number" value="<?php echo htmlspecialchars($row['dl_number']); ?>">
-                                                        <input type="hidden" name="action" value="delete">
-                                                        <button type="submit" class="dropdown-item text-danger fw-bold">
-                                                            <i class="fas fa-trash-alt me-2"></i> Delete Record
-                                                        </button>
-                                                    </form>
-                                                </li>
-                                            </ul>
+                                                </form>
+                                            <?php endif; ?>
+                                            <form method="POST" action="" class="d-inline" onsubmit="return confirm('Are you sure you want to delete DL record for <?php echo htmlspecialchars($row['holder_name']); ?>?');">
+                                                <input type="hidden" name="dl_number" value="<?php echo htmlspecialchars($row['dl_number']); ?>">
+                                                <input type="hidden" name="action" value="delete">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-3" title="Delete Record">
+                                                    <i class="fas fa-trash-alt me-1"></i> Delete
+                                                </button>
+                                            </form>
                                         </div>
 
                                         <!-- Full Details Modal -->
