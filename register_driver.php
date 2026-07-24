@@ -67,30 +67,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['phone_number'])) {
     exit;
 }
 
-// POST: Add or Update driver
-$data = json_decode(file_get_contents("php://input"), true);
-if (!$data) {
-    $data = $_POST; // Fallback to form-data
-}
+// Support JSON, POST, and GET parameters
+$rawInput = file_get_contents("php://input");
+$data = json_decode($rawInput, true) ?? [];
 
-$phone_number = isset($data['phone_number']) ? mysqli_real_escape_string($conn, trim($data['phone_number'])) : '';
-$full_name = isset($data['full_name']) ? mysqli_real_escape_string($conn, trim($data['full_name'])) : '';
-$email = isset($data['email']) ? mysqli_real_escape_string($conn, trim($data['email'])) : NULL;
-$date_of_birth = isset($data['date_of_birth']) ? validateDate($data['date_of_birth']) : NULL;
-$driver_address = isset($data['driver_address']) ? mysqli_real_escape_string($conn, $data['driver_address']) : NULL;
-$pin_code = isset($data['pin_code']) ? mysqli_real_escape_string($conn, $data['pin_code']) : NULL;
-$license_no = isset($data['license_no']) ? mysqli_real_escape_string($conn, strtoupper(trim($data['license_no']))) : NULL;
-$license_doe = isset($data['license_doe']) ? validateDate($data['license_doe']) : NULL;
-$license_type = isset($data['license_type']) ? mysqli_real_escape_string($conn, $data['license_type']) : 'LMV';
-$adhaar_card_no = isset($data['adhaar_card_no']) ? mysqli_real_escape_string($conn, $data['adhaar_card_no']) : NULL;
-$pan_card_no = isset($data['pan_card_no']) ? mysqli_real_escape_string($conn, $data['pan_card_no']) : NULL;
-$photo = isset($data['photo']) ? mysqli_real_escape_string($conn, $data['photo']) : 'NO';
-$driver_city = isset($data['driver_city']) ? mysqli_real_escape_string($conn, $data['driver_city']) : NULL;
-$agency_name = isset($data['agency_name']) ? mysqli_real_escape_string($conn, $data['agency_name']) : NULL;
-$second_number = isset($data['second_number']) ? mysqli_real_escape_string($conn, $data['second_number']) : NULL;
-$vendor_number = isset($data['vendor_number']) ? mysqli_real_escape_string($conn, trim($data['vendor_number'])) : NULL;
-$status = isset($data['status']) ? mysqli_real_escape_string($conn, $data['status']) : 'filled';
-$userType = isset($data['userType']) ? mysqli_real_escape_string($conn, $data['userType']) : 'Driver';
+$rawPhone = $data['phone_number'] ?? $_POST['phone_number'] ?? $_GET['phone_number'] ?? '';
+$phone_number = mysqli_real_escape_string($conn, trim($rawPhone));
+
+$rawName = $data['full_name'] ?? $_POST['full_name'] ?? $_GET['full_name'] ?? '';
+$full_name = mysqli_real_escape_string($conn, trim($rawName));
+
+$rawEmail = $data['email'] ?? $_POST['email'] ?? $_GET['email'] ?? NULL;
+$email = $rawEmail ? mysqli_real_escape_string($conn, trim($rawEmail)) : NULL;
+
+$rawDob = $data['date_of_birth'] ?? $_POST['date_of_birth'] ?? $_GET['date_of_birth'] ?? '';
+$date_of_birth = validateDate($rawDob);
+
+$rawAddr = $data['driver_address'] ?? $_POST['driver_address'] ?? $_GET['driver_address'] ?? NULL;
+$driver_address = $rawAddr ? mysqli_real_escape_string($conn, $rawAddr) : NULL;
+
+$rawPin = $data['pin_code'] ?? $_POST['pin_code'] ?? $_GET['pin_code'] ?? NULL;
+$pin_code = $rawPin ? mysqli_real_escape_string($conn, $rawPin) : NULL;
+
+$rawDl = $data['license_no'] ?? $_POST['license_no'] ?? $_GET['license_no'] ?? NULL;
+$license_no = $rawDl ? mysqli_real_escape_string($conn, strtoupper(trim($rawDl))) : NULL;
+
+$rawDoe = $data['license_doe'] ?? $_POST['license_doe'] ?? $_GET['license_doe'] ?? '';
+$license_doe = validateDate($rawDoe);
+
+$rawType = $data['license_type'] ?? $_POST['license_type'] ?? $_GET['license_type'] ?? 'LMV';
+$license_type = mysqli_real_escape_string($conn, $rawType);
+
+$rawAadhaar = $data['adhaar_card_no'] ?? $_POST['adhaar_card_no'] ?? $_GET['adhaar_card_no'] ?? NULL;
+$adhaar_card_no = $rawAadhaar ? mysqli_real_escape_string($conn, $rawAadhaar) : NULL;
+
+$rawPan = $data['pan_card_no'] ?? $_POST['pan_card_no'] ?? $_GET['pan_card_no'] ?? NULL;
+$pan_card_no = $rawPan ? mysqli_real_escape_string($conn, $rawPan) : NULL;
+
+$photo = $data['photo'] ?? $_POST['photo'] ?? $_GET['photo'] ?? 'NO';
+$driver_city = $data['driver_city'] ?? $_POST['driver_city'] ?? $_GET['driver_city'] ?? NULL;
+$agency_name = $data['agency_name'] ?? $_POST['agency_name'] ?? $_GET['agency_name'] ?? NULL;
+$second_number = $data['second_number'] ?? $_POST['second_number'] ?? $_GET['second_number'] ?? NULL;
+
+$rawVendor = $data['vendor_number'] ?? $_POST['vendor_number'] ?? $_GET['vendor_number'] ?? '';
+$vendor_number = mysqli_real_escape_string($conn, trim($rawVendor));
+
+$rawStatus = $data['status'] ?? $_POST['status'] ?? $_GET['status'] ?? 'filled';
+$status = mysqli_real_escape_string($conn, $rawStatus);
+
+$rawUserType = $data['userType'] ?? $_POST['userType'] ?? $_GET['userType'] ?? 'Driver';
+$userType = mysqli_real_escape_string($conn, $rawUserType);
 
 if (empty($phone_number)) {
     ob_clean();
@@ -144,7 +170,6 @@ if ($driverExists) {
 
 // Link to Vendor in driver_vendor_join_Table if vendor_number is provided
 if (!empty($vendor_number)) {
-    // Ensure table exists
     mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `driver_vendor_join_Table` (
       `id` INT AUTO_INCREMENT PRIMARY KEY,
       `driver_id` VARCHAR(50) NOT NULL,
