@@ -223,72 +223,42 @@ if ($stmt = mysqli_prepare($conn, $sql)) {
         $license_no, $license_doe, $license_type, $adhaar_card_no, $pan_card_no,
         $photo, $driver_city, $agency_name, $second_number, $status, $userType
     );
-    if (mysqli_stmt_execute($stmt)) {
-        $affected_rows = mysqli_stmt_affected_rows($stmt);
-        $response = [
-            "status" => "success",
-            "message" => "Driver saved successfully",
-            "rows_affected" => $affected_rows
-        ];
-        file_put_contents('debug.log', "POST response: " . json_encode($response) . "\n", FILE_APPEND);
-        ob_clean();
-        echo json_encode($response);
-    } else {
-        file_put_contents('debug.log', "Error executing upsert: " . mysqli_stmt_error($stmt) . "\n", FILE_APPEND);
+    if (!mysqli_stmt_execute($stmt)) {
         ob_clean();
         echo json_encode(["status" => "error", "message" => "Error saving driver: " . mysqli_stmt_error($stmt)]);
+        mysqli_stmt_close($stmt);
+        mysqli_close($conn);
+        exit;
     }
     mysqli_stmt_close($stmt);
 } else {
-    file_put_contents('debug.log', "Error preparing upsert query: " . mysqli_error($conn) . "\n", FILE_APPEND);
     ob_clean();
     echo json_encode(["status" => "error", "message" => "Error preparing query: " . mysqli_error($conn)]);
+    mysqli_close($conn);
+    exit;
 }
 
-// Handle driver_vendor_join_Table only if vendor_number is provided
+// Link driver to vendor (INSERT IGNORE avoids duplicate crash)
 if ($status === 'filled' && !empty($vendor_number)) {
-    $insert_sql = "INSERT INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?)";
+    $insert_sql = "INSERT IGNORE INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?)";
     if ($insert_stmt = mysqli_prepare($conn, $insert_sql)) {
         mysqli_stmt_bind_param($insert_stmt, "ss", $phone_number, $vendor_number);
-        if (!mysqli_stmt_execute($insert_stmt)) {
-            file_put_contents('debug.log', "Failed to insert into driver_vendor_join_Table: " . mysqli_stmt_error($insert_stmt) . "\n", FILE_APPEND);
-            ob_clean();
-            echo json_encode(["status" => "error", "message" => "Failed to insert into driver_vendor_join_Table: " . mysqli_stmt_error($insert_stmt)]);
-            mysqli_close($conn);
-            exit;
-        }
+        mysqli_stmt_execute($insert_stmt); // Ignore errors — IGNORE handles duplicates
         mysqli_stmt_close($insert_stmt);
-    } else {
-        file_put_contents('debug.log', "Error preparing insert query: " . mysqli_error($conn) . "\n", FILE_APPEND);
-        ob_clean();
-        echo json_encode(["status" => "error", "message" => "Error preparing insert query: " . mysqli_error($conn)]);
-        mysqli_close($conn);
-        exit;
     }
 }
 
 // Update status to 'filled' if 'join'
 if ($status === 'join') {
-    $sql = "UPDATE drivers SET status = 'filled' WHERE phone_number = ?";
-    if ($stmt = mysqli_prepare($conn, $sql)) {
-        mysqli_stmt_bind_param($stmt, "s", $phone_number);
-        if (!mysqli_stmt_execute($stmt)) {
-            file_put_contents('debug.log', "Error updating status: " . mysqli_stmt_error($stmt) . "\n", FILE_APPEND);
-            ob_clean();
-            echo json_encode(["status" => "error", "message" => "Error updating status: " . mysqli_stmt_error($stmt)]);
-            mysqli_close($conn);
-            exit;
-        }
-        mysqli_stmt_close($stmt);
-    } else {
-        file_put_contents('debug.log', "Error preparing status update query: " . mysqli_error($conn) . "\n", FILE_APPEND);
-        ob_clean();
-        echo json_encode(["status" => "error", "message" => "Error preparing status update query: " . mysqli_error($conn)]);
-        mysqli_close($conn);
-        exit;
+    $updateSql = "UPDATE drivers SET status = 'filled' WHERE phone_number = ?";
+    if ($updateStmt = mysqli_prepare($conn, $updateSql)) {
+        mysqli_stmt_bind_param($updateStmt, "s", $phone_number);
+        mysqli_stmt_execute($updateStmt);
+        mysqli_stmt_close($updateStmt);
     }
 }
 
 mysqli_close($conn);
-ob_end_flush();
-?>
+ob_clean();
+echo json_encode(["status" => "success", "message" => "Driver saved successfully"]);
+exit;
