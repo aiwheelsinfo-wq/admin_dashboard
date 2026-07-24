@@ -11,12 +11,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 include 'db_connect.php';
 
-// Get JSON Input
+// Support both JSON body and POST/GET form data
 $rawInput = file_get_contents('php://input');
 $inputData = json_decode($rawInput, true);
 
-$license_no = isset($inputData['license_no']) ? strtoupper(trim(preg_replace('/[\s\-]/', '', $inputData['license_no']))) : '';
-$dob = isset($inputData['date_of_birth']) ? trim($inputData['date_of_birth']) : '';
+$rawDl = $inputData['license_no'] ?? $_POST['license_no'] ?? $_GET['license_no'] ?? '';
+$rawDob = $inputData['date_of_birth'] ?? $_POST['date_of_birth'] ?? $_GET['date_of_birth'] ?? '';
+
+$license_no = strtoupper(trim(preg_replace('/[\s\-]/', '', $rawDl)));
+$dob = trim($rawDob);
 
 if (empty($license_no)) {
     echo json_encode(["success" => false, "message" => "License number is required"]);
