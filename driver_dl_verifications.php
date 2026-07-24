@@ -92,6 +92,33 @@ if (!empty($searchQuery)) {
     $whereClause .= " AND (dl_number LIKE '%$searchQuery%' OR holder_name LIKE '%$searchQuery%' OR permanent_address LIKE '%$searchQuery%')";
 }
 
+function getDlPhotoUrl($row) {
+    $rawPhoto = $row['dl_photo_path'] ?? '';
+    if (!empty($rawPhoto)) {
+        if (strpos($rawPhoto, 'http') === 0) {
+            return $rawPhoto;
+        }
+        $localFile = '/var/www/html/driver2025/' . ltrim($rawPhoto, '/');
+        if (file_exists($localFile)) {
+            return 'https://agnicarrental.com/driver2025/' . ltrim($rawPhoto, '/');
+        }
+    }
+    
+    // Auto-search for saved DL photo matching the license number in uploads/dl_photos/
+    $dlNum = strtoupper(trim(preg_replace('/[\s\-]/', '', $row['dl_number'] ?? '')));
+    if (!empty($dlNum)) {
+        $globMatches = glob("/var/www/html/driver2025/uploads/dl_photos/dl_{$dlNum}_*.jpg");
+        if (!empty($globMatches)) {
+            $latestFile = end($globMatches);
+            $filename = basename($latestFile);
+            return 'https://agnicarrental.com/driver2025/uploads/dl_photos/' . $filename;
+        }
+    }
+    
+    // Fallback avatar
+    return 'https://ui-avatars.com/api/?name=' . urlencode($row['holder_name'] ?? 'Driver') . '&background=2563EB&color=fff';
+}
+
 $sql = "SELECT v.*, d.phone_number as driver_phone, d.agency_name, d.driver_city 
         FROM driver_dl_verifications v 
         LEFT JOIN drivers d ON (REPLACE(REPLACE(UPPER(d.license_no), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(v.dl_number), ' ', ''), '-', '')) 
@@ -117,26 +144,24 @@ $result = mysqli_query($conn, $sql);
             --success: #059669;
             --warning: #D97706;
             --danger: #DC2626;
-            --bg-body: #F8FAFC;
-            --card-bg: #FFFFFF;
-            --text-dark: #0F172A;
             --text-muted: #64748B;
         }
-
+        
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--bg-body);
-            color: var(--text-dark);
-        }
-
-        .navbar-brand img {
-            height: 38px;
+            background-color: #F8FAFC;
+            color: #0F172A;
         }
 
         .top-navbar {
             background: #FFFFFF;
             border-bottom: 1px solid #E2E8F0;
-            padding: 12px 24px;
+            padding: 14px 28px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .top-navbar img {
+            height: 38px;
         }
 
         .stat-card {
@@ -144,12 +169,13 @@ $result = mysqli_query($conn, $sql);
             border: 1px solid #E2E8F0;
             border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-            transition: transform 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .stat-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
         }
 
         .stat-icon {
@@ -185,8 +211,8 @@ $result = mysqli_query($conn, $sql);
         }
 
         .driver-avatar {
-            width: 45px;
-            height: 45px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid #E2E8F0;
@@ -328,16 +354,7 @@ $result = mysqli_query($conn, $sql);
                         <?php if (mysqli_num_rows($result) > 0): ?>
                             <?php while ($row = mysqli_fetch_assoc($result)): 
                                 $isExpired = (!empty($row['expiry_date']) && strtotime($row['expiry_date']) < strtotime(date('Y-m-d')));
-                                $rawPhoto = $row['dl_photo_path'] ?? '';
-                                if (!empty($rawPhoto)) {
-                                    if (strpos($rawPhoto, 'http') === 0) {
-                                        $photoPath = $rawPhoto;
-                                    } else {
-                                        $photoPath = 'https://agnicarrental.com/driver2025/' . ltrim($rawPhoto, '/');
-                                    }
-                                } else {
-                                    $photoPath = 'https://ui-avatars.com/api/?name=' . urlencode($row['holder_name'] ?? 'Driver') . '&background=2563EB&color=fff';
-                                }
+                                $photoPath = getDlPhotoUrl($row);
                                 $phoneNum = $row['driver_phone'] ?? '';
                             ?>
                                 <tr>
