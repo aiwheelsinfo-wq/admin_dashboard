@@ -157,15 +157,6 @@ $vendor_number = isset($data['vendor_number']) ? mysqli_real_escape_string($conn
 $status = isset($data['status']) ? mysqli_real_escape_string($conn, $data['status']) : NULL;
 $userType = isset($data['userType']) ? mysqli_real_escape_string($conn, $data['userType']) : '';
 
-// Sync driver name to official Driving License name if verified
-if (!empty($license_no)) {
-    $clean_dl = strtoupper(trim(preg_replace('/[\s\-]/', '', $license_no)));
-    $dlQuery = mysqli_query($conn, "SELECT holder_name FROM driver_dl_verifications WHERE dl_number='$clean_dl' AND holder_name IS NOT NULL AND holder_name != ''");
-    if ($dlRow = mysqli_fetch_assoc($dlQuery)) {
-        $full_name = mysqli_real_escape_string($conn, $dlRow['holder_name']);
-    }
-}
-
 // Override status for Vendor
 if ($userType === 'Vendor') {
     $status = 'active';
