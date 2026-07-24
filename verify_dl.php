@@ -21,6 +21,11 @@ $rawDob = $inputData['date_of_birth'] ?? $_POST['date_of_birth'] ?? $_GET['date_
 $license_no = strtoupper(trim(preg_replace('/[\s\-]/', '', $rawDl)));
 $dob = trim($rawDob);
 
+// Convert dd-mm-yyyy or dd/mm/yyyy to yyyy-mm-dd format for Surepass API
+if (preg_match('/^(\d{2})[\-\/](\d{2})[\-\/](\d{4})$/', $dob, $m)) {
+    $dob = $m[3] . '-' . $m[2] . '-' . $m[1];
+}
+
 if (empty($license_no)) {
     echo json_encode(["success" => false, "message" => "License number is required"]);
     exit;
@@ -51,27 +56,29 @@ mysqli_query($conn, $tableSql);
 
 // 2. CHECK MYSQL CACHE FIRST (Avoid Duplicate API Charges - ₹0 Cost)
 $cacheStmt = mysqli_prepare($conn, "SELECT * FROM driver_dl_verifications WHERE dl_number = ? AND verification_status = 'VERIFIED'");
-mysqli_stmt_bind_param($cacheStmt, "s", $license_no);
-mysqli_stmt_execute($cacheStmt);
-$cacheResult = mysqli_stmt_get_result($cacheStmt);
+if ($cacheStmt) {
+    mysqli_stmt_bind_param($cacheStmt, "s", $license_no);
+    mysqli_stmt_execute($cacheStmt);
+    $cacheResult = mysqli_stmt_get_result($cacheStmt);
 
-if ($cachedRow = mysqli_fetch_assoc($cacheResult)) {
-    echo json_encode([
-        "success" => true,
-        "source" => "cache",
-        "message" => "Verified from Database Cache (₹0 Cost)",
-        "data" => [
-            "name" => $cachedRow['holder_name'],
-            "license_number" => $cachedRow['dl_number'],
-            "dob" => $cachedRow['dob'],
-            "expiry_date" => $cachedRow['expiry_date'],
-            "issue_date" => $cachedRow['issue_date'],
-            "permanent_address" => $cachedRow['permanent_address'],
-            "has_lmv" => (bool)$cachedRow['has_lmv'],
-            "dl_photo_path" => $cachedRow['dl_photo_path']
-        ]
-    ]);
-    exit;
+    if ($cachedRow = mysqli_fetch_assoc($cacheResult)) {
+        echo json_encode([
+            "success" => true,
+            "source" => "cache",
+            "message" => "Verified from Database Cache (₹0 Cost)",
+            "data" => [
+                "name" => $cachedRow['holder_name'],
+                "license_number" => $cachedRow['dl_number'],
+                "dob" => $cachedRow['dob'],
+                "expiry_date" => $cachedRow['expiry_date'],
+                "issue_date" => $cachedRow['issue_date'],
+                "permanent_address" => $cachedRow['permanent_address'],
+                "has_lmv" => (bool)$cachedRow['has_lmv'],
+                "dl_photo_path" => $cachedRow['dl_photo_path']
+            ]
+        ]);
+        exit;
+    }
 }
 
 // 3. EXECUTE SUREPASS API AUTOMATICALLY
@@ -112,13 +119,13 @@ $resData = json_decode($apiResponse, true);
 if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $resData['success'] === true) {
     $dl = $resData['data'];
 
-    $holder_name = mysqli_real_escape_string($conn, $dl['name'] ?? '');
-    $expiry_date = mysqli_real_escape_string($conn, $dl['doe'] ?? $dl['expiry_date'] ?? '');
-    $issue_date = mysqli_real_escape_string($conn, $dl['doi'] ?? $dl['issue_date'] ?? '');
-    $address = mysqli_real_escape_string($conn, $dl['permanent_address'] ?? '');
+    $holder_name = $dl['name'] ?? $dl['holder_name'] ?? '';
+    $expiry_date = $dl['doe'] ?? $dl['expiry_date'] ?? '';
+    $issue_date = $dl['doi'] ?? $dl['issue_date'] ?? '';
+    $address = $dl['permanent_address'] ?? '';
     
     $vehicle_classes = isset($dl['vehicle_classes']) ? json_encode($dl['vehicle_classes']) : '["LMV"]';
-    $has_lmv = (is_array($dl['vehicle_classes']) && in_array("LMV", $dl['vehicle_classes'])) ? 1 : 1;
+    $has_lmv = 1;
 
     // Base64 Photo Extraction to JPG
     $dl_photo_path = "";
@@ -132,21 +139,23 @@ if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $res
         file_put_contents($dl_photo_path, $imgBinary);
     }
 
-    // Save to Database
+    // Save to Database (Safely escaped)
+    $dl_esc = mysqli_real_escape_string($conn, $license_no);
+    $dob_esc = mysqli_real_escape_string($conn, $dob);
+    $name_esc = mysqli_real_escape_string($conn, $holder_name);
+    $issue_esc = mysqli_real_escape_string($conn, $issue_date);
+    $exp_esc = mysqli_real_escape_string($conn, $expiry_date);
+    $classes_esc = mysqli_real_escape_string($conn, $vehicle_classes);
+    $photo_esc = mysqli_real_escape_string($conn, $dl_photo_path);
+    $addr_esc = mysqli_real_escape_string($conn, $address);
+
     $saveSql = "INSERT INTO driver_dl_verifications 
         (dl_number, dob, holder_name, issue_date, expiry_date, vehicle_classes, has_lmv, dl_photo_path, permanent_address, verification_status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'VERIFIED')
+        VALUES ('$dl_esc', '$dob_esc', '$name_esc', '$issue_esc', '$exp_esc', '$classes_esc', 1, '$photo_esc', '$addr_esc', 'VERIFIED')
         ON DUPLICATE KEY UPDATE 
-        holder_name=?, expiry_date=?, has_lmv=?, dl_photo_path=?, verification_status='VERIFIED'";
+        holder_name='$name_esc', expiry_date='$exp_esc', has_lmv=1, dl_photo_path='$photo_esc', verification_status='VERIFIED'";
 
-    $stmt = mysqli_prepare($conn, $saveSql);
-    if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ssssssisisis", 
-            $license_no, $dob, $holder_name, $issue_date, $expiry_date, $vehicle_classes, $has_lmv, $dl_photo_path, $address,
-            $holder_name, $expiry_date, $has_lmv, $dl_photo_path
-        );
-        mysqli_stmt_execute($stmt);
-    }
+    mysqli_query($conn, $saveSql);
 
     echo json_encode([
         "success" => true,
@@ -159,7 +168,7 @@ if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $res
             "expiry_date" => $expiry_date,
             "issue_date" => $issue_date,
             "permanent_address" => $address,
-            "has_lmv" => (bool)$has_lmv,
+            "has_lmv" => true,
             "dl_photo_path" => $dl_photo_path
         ]
     ]);
