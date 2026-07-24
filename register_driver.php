@@ -181,6 +181,24 @@ try {
     }
     mysqli_stmt_close($stmt);
 
+    // 2. Upsert into driver_dl_verifications so it appears in the admin driver_dl_verifications dashboard
+    if (!empty($license_no)) {
+        $ver_sql = "INSERT INTO driver_dl_verifications 
+            (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status) 
+            VALUES (?, ?, ?, ?, ?, 'VERIFIED')
+            ON DUPLICATE KEY UPDATE 
+            holder_name = VALUES(holder_name), 
+            dob = VALUES(dob), 
+            expiry_date = VALUES(expiry_date), 
+            permanent_address = VALUES(permanent_address)";
+        $ver_stmt = mysqli_prepare($conn, $ver_sql);
+        if ($ver_stmt) {
+            mysqli_stmt_bind_param($ver_stmt, "sssss", $license_no, $date_of_birth, $full_name, $license_doe, $driver_address);
+            mysqli_stmt_execute($ver_stmt);
+            mysqli_stmt_close($ver_stmt);
+        }
+    }
+
     // 2. Link driver to vendor if vendor_number is provided
     if (!empty($vendor_number)) {
         $join_sql = "INSERT IGNORE INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?)";
