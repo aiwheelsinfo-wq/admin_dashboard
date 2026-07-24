@@ -89,7 +89,11 @@ if (!empty($searchQuery)) {
     $whereClause .= " AND (dl_number LIKE '%$searchQuery%' OR holder_name LIKE '%$searchQuery%' OR permanent_address LIKE '%$searchQuery%')";
 }
 
-$sql = "SELECT * FROM driver_dl_verifications $whereClause ORDER BY verified_at DESC";
+$sql = "SELECT v.*, d.phone_number as driver_phone, d.agency_name, d.driver_city 
+        FROM driver_dl_verifications v 
+        LEFT JOIN drivers d ON (REPLACE(REPLACE(UPPER(d.license_no), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(v.dl_number), ' ', ''), '-', '')) 
+        $whereClause 
+        ORDER BY v.verified_at DESC";
 $result = mysqli_query($conn, $sql);
 ?>
 
@@ -310,9 +314,9 @@ $result = mysqli_query($conn, $sql);
                         <tr>
                             <th>Driver / Photo</th>
                             <th>DL Number</th>
+                            <th>Permanent / License Address</th>
                             <th>Issue Date</th>
                             <th>Expiry Date</th>
-                            <th>Category</th>
                             <th>Verification Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
@@ -331,13 +335,17 @@ $result = mysqli_query($conn, $sql);
                                 } else {
                                     $photoPath = 'https://ui-avatars.com/api/?name=' . urlencode($row['holder_name'] ?? 'Driver') . '&background=2563EB&color=fff';
                                 }
+                                $phoneNum = $row['driver_phone'] ?? '';
                             ?>
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
                                             <img src="<?php echo htmlspecialchars($photoPath); ?>" class="driver-avatar" alt="Photo" onerror="this.src='https://ui-avatars.com/api/?name=<?php echo urlencode($row['holder_name'] ?? 'Driver'); ?>&background=2563EB&color=fff'">
                                             <div>
-                                                <div class="fw-bold text-dark"><?php echo htmlspecialchars($row['holder_name'] ?? 'N/A'); ?></div>
+                                                <div class="fw-bold text-dark fs-6"><?php echo htmlspecialchars($row['holder_name'] ?? 'N/A'); ?></div>
+                                                <?php if(!empty($phoneNum)): ?>
+                                                    <div class="small text-primary"><i class="fas fa-phone me-1"></i><?php echo htmlspecialchars($phoneNum); ?></div>
+                                                <?php endif; ?>
                                                 <small class="text-muted">DOB: <?php echo htmlspecialchars($row['dob']); ?></small>
                                             </div>
                                         </div>
@@ -347,6 +355,12 @@ $result = mysqli_query($conn, $sql);
                                             <?php echo htmlspecialchars($row['dl_number']); ?>
                                         </span>
                                     </td>
+                                    <td>
+                                        <div class="small text-dark" style="max-width: 280px; word-wrap: break-word;">
+                                            <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                            <?php echo htmlspecialchars(!empty($row['permanent_address']) ? $row['permanent_address'] : 'N/A'); ?>
+                                        </div>
+                                    </td>
                                     <td><?php echo !empty($row['issue_date']) ? date('d M Y', strtotime($row['issue_date'])) : 'N/A'; ?></td>
                                     <td>
                                         <div class="fw-bold <?php echo $isExpired ? 'text-danger' : 'text-success'; ?>">
@@ -355,11 +369,6 @@ $result = mysqli_query($conn, $sql);
                                         <?php if($isExpired): ?>
                                             <small class="badge bg-danger bg-opacity-10 text-danger p-1">Expired</small>
                                         <?php endif; ?>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info bg-opacity-10 text-info fw-bold">
-                                            <?php echo ($row['has_lmv'] ? 'LMV (CAR)' : 'NON-LMV'); ?>
-                                        </span>
                                     </td>
                                     <td>
                                         <?php 
@@ -413,12 +422,23 @@ $result = mysqli_query($conn, $sql);
                                                         </div>
                                                         <hr>
                                                         <div class="row g-3 fs-6">
+                                                            <?php if(!empty($phoneNum)): ?>
+                                                                <div class="col-6"><strong>Phone Number:</strong><br><span class="text-primary fw-bold"><i class="fas fa-phone me-1"></i><?php echo htmlspecialchars($phoneNum); ?></span></div>
+                                                            <?php endif; ?>
+                                                            <?php if(!empty($row['agency_name'])): ?>
+                                                                <div class="col-6"><strong>Agency / Fleet:</strong><br><span class="fw-semibold"><?php echo htmlspecialchars($row['agency_name']); ?></span></div>
+                                                            <?php endif; ?>
                                                             <div class="col-6"><strong>Date of Birth:</strong><br><?php echo htmlspecialchars($row['dob']); ?></div>
-                                                            <div class="col-6"><strong>Issue Date:</strong><br><?php echo htmlspecialchars($row['issue_date']); ?></div>
-                                                            <div class="col-6"><strong>Expiry Date:</strong><br><span class="<?php echo $isExpired?'text-danger':'text-success'; ?> fw-bold"><?php echo htmlspecialchars($row['expiry_date']); ?></span></div>
+                                                            <div class="col-6"><strong>Issue Date:</strong><br><?php echo !empty($row['issue_date']) ? htmlspecialchars($row['issue_date']) : 'N/A'; ?></div>
+                                                            <div class="col-6"><strong>Expiry Date:</strong><br><span class="<?php echo $isExpired?'text-danger':'text-success'; ?> fw-bold"><?php echo !empty($row['expiry_date']) ? htmlspecialchars($row['expiry_date']) : 'N/A'; ?></span></div>
                                                             <div class="col-6"><strong>Vehicle Class:</strong><br>LMV (Car / Jeep)</div>
-                                                            <div class="col-12"><strong>Permanent Address:</strong><br><span class="text-muted"><?php echo htmlspecialchars($row['permanent_address'] ?? 'N/A'); ?></span></div>
-                                                            <div class="col-12"><strong>Verification Timestamp:</strong><br><span class="text-muted"><?php echo htmlspecialchars($row['verified_at']); ?></span></div>
+                                                            <div class="col-12">
+                                                                <div class="p-3 bg-light rounded-3 border">
+                                                                    <strong class="text-dark"><i class="fas fa-map-marker-alt text-danger me-1"></i> Permanent / License Address:</strong><br>
+                                                                    <span class="text-secondary fw-medium"><?php echo htmlspecialchars(!empty($row['permanent_address']) ? $row['permanent_address'] : 'N/A'); ?></span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-12"><small class="text-muted">Verification Timestamp: <?php echo htmlspecialchars($row['verified_at']); ?></small></div>
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer border-top-0 pt-0">
