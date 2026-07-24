@@ -30,6 +30,20 @@ function validateDate($date) {
     return NULL;
 }
 
+// Ensure driver_dl_verifications table exists
+$tableSql = "CREATE TABLE IF NOT EXISTS `driver_dl_verifications` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `dl_number` VARCHAR(30) NOT NULL UNIQUE,
+  `dob` DATE NOT NULL,
+  `holder_name` VARCHAR(100),
+  `issue_date` DATE,
+  `expiry_date` DATE,
+  `vehicle_classes` VARCHAR(255),
+  `has_lmv` TINYINT(1) DEFAULT 1,
+  `dl_photo_path` VARCHAR(255)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+mysqli_query($conn, $tableSql);
+
 // GET: Fetch driver and vendor details
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['phone_number'])) {
     $phone_number = mysqli_real_escape_string($conn, $_GET['phone_number']);
@@ -127,7 +141,7 @@ if (empty($phone_number)) {
     exit;
 }
 
-// 1. DUPLICATE PHONE NUMBER VALIDATION
+// 1. Check existing driver
 $check_sql = "SELECT driver_id, full_name, phone_number FROM drivers WHERE phone_number = ? AND full_name IS NOT NULL AND full_name != ''";
 $check_stmt = mysqli_prepare($conn, $check_sql);
 mysqli_stmt_bind_param($check_stmt, "s", $phone_number);
@@ -136,42 +150,19 @@ $check_result = mysqli_stmt_get_result($check_stmt);
 $existingDriver = mysqli_fetch_assoc($check_result);
 mysqli_stmt_close($check_stmt);
 
-// If check_only parameter is passed, just return check result
 if ($isCheckOnly) {
     ob_clean();
     if ($existingDriver) {
         echo json_encode([
             "status" => "duplicate",
             "exists" => true,
-            "message" => "⚠️ Driver with phone number {$phone_number} already exists! (" . ($existingDriver['full_name'] ?: 'Registered') . ")"
+            "message" => "⚠️ Driver with phone number {$phone_number} already exists!"
         ]);
     } else {
         echo json_encode(["status" => "success", "exists" => false, "message" => "Phone number available"]);
     }
     mysqli_close($conn);
     exit;
-}
-
-// 2. DUPLICATE DRIVING LICENSE VALIDATION
-if (!empty($license_no)) {
-    $dl_check_sql = "SELECT full_name, phone_number FROM drivers WHERE UPPER(REPLACE(REPLACE(license_no, ' ', ''), '-', '')) = ? AND phone_number != ?";
-    $dl_stmt = mysqli_prepare($conn, $dl_check_sql);
-    if ($dl_stmt) {
-        mysqli_stmt_bind_param($dl_stmt, "ss", $license_no, $phone_number);
-        mysqli_stmt_execute($dl_stmt);
-        $dl_result = mysqli_stmt_get_result($dl_stmt);
-        if ($dlDriver = mysqli_fetch_assoc($dl_result)) {
-            ob_clean();
-            echo json_encode([
-                "status" => "duplicate",
-                "message" => "⚠️ Driving License {$license_no} is already registered to {$dlDriver['phone_number']} (" . ($dlDriver['full_name'] ?: 'Registered Driver') . ")"
-            ]);
-            mysqli_stmt_close($dl_stmt);
-            mysqli_close($conn);
-            exit;
-        }
-        mysqli_stmt_close($dl_stmt);
-    }
 }
 
 if ($existingDriver) {
@@ -206,6 +197,20 @@ if ($existingDriver) {
     );
     mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
+}
+
+// Auto-sync to driver_dl_verifications table so it shows on Web DL Verifications page
+if (!empty($license_no)) {
+    $sync_sql = "INSERT INTO driver_dl_verifications (dl_number, dob, holder_name, issue_date, expiry_date, vehicle_classes, dl_photo_path)
+    VALUES (?, ?, ?, CURDATE(), ?, ?, '')
+    ON DUPLICATE KEY UPDATE holder_name = VALUES(holder_name), dob = VALUES(dob), expiry_date = VALUES(expiry_date)";
+    if ($sync_stmt = mysqli_prepare($conn, $sync_sql)) {
+        $sync_dob = $date_of_birth ?: '2000-01-01';
+        $sync_doe = $license_doe ?: '2040-01-01';
+        mysqli_stmt_bind_param($sync_stmt, "sssss", $license_no, $sync_dob, $full_name, $sync_doe, $license_type);
+        mysqli_stmt_execute($sync_stmt);
+        mysqli_stmt_close($sync_stmt);
+    }
 }
 
 // Link to Vendor in driver_vendor_join_Table if vendor_number is provided
