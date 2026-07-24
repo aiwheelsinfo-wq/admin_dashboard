@@ -55,17 +55,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
+// Ensure driver_dl_verifications table exists
+$tableSql = "CREATE TABLE IF NOT EXISTS `driver_dl_verifications` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `dl_number` VARCHAR(30) NOT NULL UNIQUE,
+  `dob` DATE NOT NULL,
+  `holder_name` VARCHAR(100),
+  `issue_date` DATE,
+  `expiry_date` DATE,
+  `vehicle_classes` VARCHAR(255),
+  `has_lmv` TINYINT(1) DEFAULT 1,
+  `dl_photo_path` VARCHAR(255)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+mysqli_query($conn, $tableSql);
+
+// Combine drivers table with driver_dl_verifications
+$mainViewQuery = "
+SELECT 
+    d.driver_id AS id,
+    d.license_no AS dl_number,
+    COALESCE(NULLIF(dl.holder_name, ''), NULLIF(d.full_name, ''), d.phone_number) AS holder_name,
+    COALESCE(dl.dob, d.date_of_birth) AS dob,
+    COALESCE(dl.issue_date, d.created_at) AS issue_date,
+    COALESCE(dl.expiry_date, d.license_doe) AS expiry_date,
+    COALESCE(NULLIF(dl.vehicle_classes, ''), NULLIF(d.license_type, ''), 'LMV') AS vehicle_classes,
+    COALESCE(dl.verification_status, 'VERIFIED') AS verification_status,
+    COALESCE(NULLIF(dl.dl_photo_path, ''), d.photo, '') AS dl_photo_path,
+    COALESCE(dl.verified_at, d.created_at) AS verified_at,
+    d.phone_number
+FROM drivers d
+LEFT JOIN driver_dl_verifications dl ON UPPER(REPLACE(REPLACE(d.license_no, ' ', ''), '-', '')) = UPPER(REPLACE(REPLACE(dl.dl_number, ' ', ''), '-', ''))
+WHERE d.license_no IS NOT NULL AND d.license_no != ''
+";
+
 // Fetch Metrics Counts
-$totalQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM driver_dl_verifications");
+$totalQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM ($mainViewQuery) t");
 $totalCount = mysqli_fetch_assoc($totalQuery)['cnt'] ?? 0;
 
-$verifiedQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM driver_dl_verifications WHERE verification_status='VERIFIED' AND (expiry_date >= CURDATE() OR expiry_date IS NULL)");
+$verifiedQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM ($mainViewQuery) t WHERE verification_status='VERIFIED' AND (expiry_date >= CURDATE() OR expiry_date IS NULL)");
 $verifiedCount = mysqli_fetch_assoc($verifiedQuery)['cnt'] ?? 0;
 
-$expiredQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM driver_dl_verifications WHERE expiry_date < CURDATE() OR verification_status='EXPIRED'");
+$expiredQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM ($mainViewQuery) t WHERE expiry_date < CURDATE() OR verification_status='EXPIRED'");
 $expiredCount = mysqli_fetch_assoc($expiredQuery)['cnt'] ?? 0;
 
-$manualQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM driver_dl_verifications WHERE verification_status='MANUAL_APPROVED'");
+$manualQuery = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM ($mainViewQuery) t WHERE verification_status='MANUAL_APPROVED'");
 $manualCount = mysqli_fetch_assoc($manualQuery)['cnt'] ?? 0;
 
 // Fetch All DL Verification Records
@@ -81,10 +114,10 @@ if (!empty($statusFilter)) {
     }
 }
 if (!empty($searchQuery)) {
-    $whereClause .= " AND (dl_number LIKE '%$searchQuery%' OR holder_name LIKE '%$searchQuery%' OR permanent_address LIKE '%$searchQuery%')";
+    $whereClause .= " AND (dl_number LIKE '%$searchQuery%' OR holder_name LIKE '%$searchQuery%' OR phone_number LIKE '%$searchQuery%')";
 }
 
-$sql = "SELECT * FROM driver_dl_verifications $whereClause ORDER BY verified_at DESC";
+$sql = "SELECT * FROM ($mainViewQuery) combined $whereClause ORDER BY verified_at DESC";
 $result = mysqli_query($conn, $sql);
 ?>
 
