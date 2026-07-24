@@ -40,11 +40,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $msgType = "warning";
         }
     } elseif ($_POST['action'] === 'delete') {
-        $deleteSql = "DELETE FROM driver_dl_verifications WHERE dl_number='$action_dl'";
-        if (mysqli_query($conn, $deleteSql)) {
-            $msg = "Driver DL $action_dl record deleted successfully!";
-            $msgType = "danger";
+        // Complete Wipe: Delete DL verification, drivers table entry, and join table entry
+        $pQuery = mysqli_query($conn, "SELECT phone_number FROM drivers WHERE license_no='$action_dl'");
+        if ($pRow = mysqli_fetch_assoc($pQuery)) {
+            $pNum = $pRow['phone_number'];
+            mysqli_query($conn, "DELETE FROM driver_vendor_join_Table WHERE driver_id='$pNum'");
+            mysqli_query($conn, "DELETE FROM drivers WHERE phone_number='$pNum'");
         }
+        mysqli_query($conn, "DELETE FROM driver_dl_verifications WHERE dl_number='$action_dl'");
+        mysqli_query($conn, "DELETE FROM drivers WHERE license_no='$action_dl'");
+
+        $msg = "Driver DL $action_dl and all associated data wiped successfully!";
+        $msgType = "danger";
     }
 }
 
