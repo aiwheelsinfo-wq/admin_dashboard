@@ -14,10 +14,10 @@ $stored_number = trim($_POST['stored_number'] ?? $_GET['stored_number'] ?? '');
 
 if (!empty($stored_number)) {
     // 1. Check if vendor exists in vendors table
-    $vSql = "SELECT * FROM vendors WHERE phone_number = ? OR contact_number = ?";
+    $vSql = "SELECT * FROM vendors WHERE phone_number = ?";
     $vStmt = $conn->prepare($vSql);
     if ($vStmt) {
-        $vStmt->bind_param("ss", $stored_number, $stored_number);
+        $vStmt->bind_param("s", $stored_number);
         $vStmt->execute();
         $vRes = $vStmt->get_result();
         if ($vRes && $vRes->num_rows > 0) {
