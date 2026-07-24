@@ -132,11 +132,18 @@ try {
         sendJsonResponse("error", "Phone number is required");
     }
 
-    // Override status logic
-    if ($userType === 'Vendor') {
+    // Override status for Vendor
+    if (strcasecmp($userType, 'Vendor') === 0) {
         $status = 'active';
+        $userType = 'vendor';
+    } elseif (strcasecmp($userType, 'Driver') === 0) {
+        $status = 'filled';
+        $userType = 'driver';
     } elseif ($vendor_number) {
         $status = 'filled';
+        $userType = 'driver';
+    } else {
+        $userType = strtolower($userType);
     }
 
     // 1. UPSERT Driver into `drivers` table safely
