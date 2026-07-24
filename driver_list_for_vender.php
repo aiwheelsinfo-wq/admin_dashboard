@@ -125,7 +125,7 @@ switch ($method) {
         break;
 
     /* =====================================================
-       DELETE → Delete Driver
+       DELETE → Delete Driver (Protects Primary Vendor Accounts)
     ===================================================== */
    case 'DELETE':
         $deleteData = json_decode(file_get_contents("php://input"), true);
@@ -138,7 +138,7 @@ switch ($method) {
         $conn->begin_transaction();
 
         try {
-            $stmtGet = $conn->prepare("SELECT phone_number FROM drivers WHERE driver_id = ?");
+            $stmtGet = $conn->prepare("SELECT phone_number, userType FROM drivers WHERE driver_id = ?");
             $stmtGet->bind_param("i", $driver_id);
             $stmtGet->execute();
             $result = $stmtGet->get_result();
@@ -150,15 +150,21 @@ switch ($method) {
             }
 
             $phone = $driver['phone_number'];
+            $userType = strtolower(trim($driver['userType'] ?? ''));
+
+            // Always remove from join table
             $stmt1 = $conn->prepare("DELETE FROM driver_vendor_join_Table WHERE driver_id = ?");
             $stmt1->bind_param("s", $phone);
             $stmt1->execute();
             $stmt1->close();
 
-            $stmt2 = $conn->prepare("DELETE FROM drivers WHERE driver_id = ?");
-            $stmt2->bind_param("i", $driver_id);
-            $stmt2->execute();
-            $stmt2->close();
+            // DO NOT delete vendor primary account from drivers table
+            if ($userType !== 'vendor') {
+                $stmt2 = $conn->prepare("DELETE FROM drivers WHERE driver_id = ?");
+                $stmt2->bind_param("i", $driver_id);
+                $stmt2->execute();
+                $stmt2->close();
+            }
 
             $conn->commit();
             echo json_encode(["status" => true, "message" => "Driver deleted"]);
