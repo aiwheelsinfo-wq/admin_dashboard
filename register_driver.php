@@ -184,67 +184,55 @@ if (!in_array($userType, ['Driver', 'Vendor', ''])) {
     exit;
 }
 
-// Check if driver exists
-$check_sql = "SELECT 1 FROM drivers WHERE phone_number = ?";
-$check_stmt = mysqli_prepare($conn, $check_sql);
-if (!$check_stmt) {
-    file_put_contents('debug.log', "Error preparing check query: " . mysqli_error($conn) . "\n", FILE_APPEND);
-    ob_clean();
-    echo json_encode(["status" => "error", "message" => "Error preparing query: " . mysqli_error($conn)]);
-    mysqli_close($conn);
-    exit;
-}
-mysqli_stmt_bind_param($check_stmt, "s", $phone_number);
-if (!mysqli_stmt_execute($check_stmt)) {
-    file_put_contents('debug.log', "Error executing check query: " . mysqli_stmt_error($check_stmt) . "\n", FILE_APPEND);
-    ob_clean();
-    echo json_encode(["status" => "error", "message" => "Error executing check query: " . mysqli_stmt_error($check_stmt)]);
-    mysqli_stmt_close($check_stmt);
-    mysqli_close($conn);
-    exit;
-}
-$check_result = mysqli_stmt_get_result($check_stmt);
-if (mysqli_num_rows($check_result) === 0) {
-    file_put_contents('debug.log', "No driver found with phone number: $phone_number\n", FILE_APPEND);
-    ob_clean();
-    echo json_encode(["status" => "error", "message" => "No driver found with phone number: $phone_number"]);
-    mysqli_stmt_close($check_stmt);
-    mysqli_close($conn);
-    exit;
-}
-mysqli_stmt_close($check_stmt);
+// INSERT new driver or UPDATE existing one
+$sql = "INSERT INTO drivers 
+    (phone_number, full_name, email, date_of_birth, driver_address, pin_code,
+     license_no, license_doe, license_type, adhaar_card_no, pan_card_no,
+     photo, driver_city, agency_name, second_number, status, userType)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON DUPLICATE KEY UPDATE
+    full_name = VALUES(full_name),
+    email = VALUES(email),
+    date_of_birth = VALUES(date_of_birth),
+    driver_address = VALUES(driver_address),
+    pin_code = VALUES(pin_code),
+    license_no = VALUES(license_no),
+    license_doe = VALUES(license_doe),
+    license_type = VALUES(license_type),
+    adhaar_card_no = VALUES(adhaar_card_no),
+    pan_card_no = VALUES(pan_card_no),
+    photo = VALUES(photo),
+    driver_city = VALUES(driver_city),
+    agency_name = VALUES(agency_name),
+    second_number = VALUES(second_number),
+    status = VALUES(status),
+    userType = VALUES(userType)";
 
-// Update driver
-$sql = "UPDATE drivers SET 
-    full_name = ?, email = ?, date_of_birth = ?, driver_address = ?, pin_code = ?, 
-    license_no = ?, license_doe = ?, license_type = ?, adhaar_card_no = ?, pan_card_no = ?, 
-    photo = ?, driver_city = ?, agency_name = ?, second_number = ?, status = ?, userType = ?
-    WHERE phone_number = ?";
 if ($stmt = mysqli_prepare($conn, $sql)) {
     mysqli_stmt_bind_param(
         $stmt, "sssssssssssssssss",
-        $full_name, $email, $date_of_birth, $driver_address, $pin_code,
+        $phone_number, $full_name, $email, $date_of_birth, $driver_address, $pin_code,
         $license_no, $license_doe, $license_type, $adhaar_card_no, $pan_card_no,
-        $photo, $driver_city, $agency_name, $second_number, $status, $userType, $phone_number
+        $photo, $driver_city, $agency_name, $second_number, $status, $userType
     );
     if (mysqli_stmt_execute($stmt)) {
         $affected_rows = mysqli_stmt_affected_rows($stmt);
         $response = [
-            "status" => $affected_rows > 0 ? "success" : "warning",
-            "message" => $affected_rows > 0 ? "Profile updated successfully" : "No changes were made",
+            "status" => "success",
+            "message" => "Driver saved successfully",
             "rows_affected" => $affected_rows
         ];
         file_put_contents('debug.log', "POST response: " . json_encode($response) . "\n", FILE_APPEND);
         ob_clean();
         echo json_encode($response);
     } else {
-        file_put_contents('debug.log', "Error executing update: " . mysqli_stmt_error($stmt) . "\n", FILE_APPEND);
+        file_put_contents('debug.log', "Error executing upsert: " . mysqli_stmt_error($stmt) . "\n", FILE_APPEND);
         ob_clean();
-        echo json_encode(["status" => "error", "message" => "Error executing update: " . mysqli_stmt_error($stmt)]);
+        echo json_encode(["status" => "error", "message" => "Error saving driver: " . mysqli_stmt_error($stmt)]);
     }
     mysqli_stmt_close($stmt);
 } else {
-    file_put_contents('debug.log', "Error preparing update query: " . mysqli_error($conn) . "\n", FILE_APPEND);
+    file_put_contents('debug.log', "Error preparing upsert query: " . mysqli_error($conn) . "\n", FILE_APPEND);
     ob_clean();
     echo json_encode(["status" => "error", "message" => "Error preparing query: " . mysqli_error($conn)]);
 }
