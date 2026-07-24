@@ -39,6 +39,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $msg = "Driver DL $action_dl marked as REJECTED.";
             $msgType = "warning";
         }
+    } elseif ($_POST['action'] === 'delete') {
+        $deleteSql = "DELETE FROM driver_dl_verifications WHERE dl_number='$action_dl'";
+        if (mysqli_query($conn, $deleteSql)) {
+            $msg = "Driver DL $action_dl record deleted successfully!";
+            $msgType = "danger";
+        }
     }
 }
 
@@ -303,12 +309,21 @@ $result = mysqli_query($conn, $sql);
                         <?php if (mysqli_num_rows($result) > 0): ?>
                             <?php while ($row = mysqli_fetch_assoc($result)): 
                                 $isExpired = (!empty($row['expiry_date']) && strtotime($row['expiry_date']) < strtotime(date('Y-m-d')));
-                                $photoPath = !empty($row['dl_photo_path']) ? $row['dl_photo_path'] : 'images/default_avatar.png';
+                                $rawPhoto = $row['dl_photo_path'] ?? '';
+                                if (!empty($rawPhoto)) {
+                                    if (strpos($rawPhoto, 'http') === 0) {
+                                        $photoPath = $rawPhoto;
+                                    } else {
+                                        $photoPath = 'https://agnicarrental.com/driver2025/' . ltrim($rawPhoto, '/');
+                                    }
+                                } else {
+                                    $photoPath = 'https://ui-avatars.com/api/?name=' . urlencode($row['holder_name'] ?? 'Driver') . '&background=2563EB&color=fff';
+                                }
                             ?>
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center gap-3">
-                                            <img src="<?php echo htmlspecialchars($photoPath); ?>" class="driver-avatar" alt="Photo" onerror="this.src='https://ui-avatars.com/api/?name=<?php echo urlencode($row['holder_name']); ?>&background=2563EB&color=fff'">
+                                            <img src="<?php echo htmlspecialchars($photoPath); ?>" class="driver-avatar" alt="Photo" onerror="this.src='https://ui-avatars.com/api/?name=<?php echo urlencode($row['holder_name'] ?? 'Driver'); ?>&background=2563EB&color=fff'">
                                             <div>
                                                 <div class="fw-bold text-dark"><?php echo htmlspecialchars($row['holder_name'] ?? 'N/A'); ?></div>
                                                 <small class="text-muted">DOB: <?php echo htmlspecialchars($row['dob']); ?></small>
@@ -373,8 +388,18 @@ $result = mysqli_query($conn, $sql);
                                                     <form method="POST" action="">
                                                         <input type="hidden" name="dl_number" value="<?php echo htmlspecialchars($row['dl_number']); ?>">
                                                         <input type="hidden" name="action" value="reject">
-                                                        <button type="submit" class="dropdown-item text-danger">
+                                                        <button type="submit" class="dropdown-item text-warning">
                                                             <i class="fas fa-ban me-2"></i> Mark Rejected
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <form method="POST" action="" onsubmit="return confirm('Are you sure you want to delete DL record for <?php echo htmlspecialchars($row['holder_name']); ?>?');">
+                                                        <input type="hidden" name="dl_number" value="<?php echo htmlspecialchars($row['dl_number']); ?>">
+                                                        <input type="hidden" name="action" value="delete">
+                                                        <button type="submit" class="dropdown-item text-danger fw-bold">
+                                                            <i class="fas fa-trash-alt me-2"></i> Delete Record
                                                         </button>
                                                     </form>
                                                 </li>
