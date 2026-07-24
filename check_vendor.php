@@ -30,7 +30,7 @@ if ($vCheck && mysqli_num_rows($vCheck) == 0) {
 $vRes = mysqli_query($conn, "SELECT * FROM vendors WHERE phone_number LIKE '%$phone%'");
 $vData = $vRes ? mysqli_fetch_all($vRes, MYSQLI_ASSOC) : [];
 
-$dRes = mysqli_query($conn, "SELECT id, phone_number, agency_name, full_name, status FROM drivers WHERE phone_number LIKE '%$phone%'");
+$dRes = mysqli_query($conn, "SELECT driver_id, phone_number, agency_name, full_name, status FROM drivers WHERE phone_number LIKE '%$phone%'");
 $dData = $dRes ? mysqli_fetch_all($dRes, MYSQLI_ASSOC) : [];
 
 echo json_encode([
