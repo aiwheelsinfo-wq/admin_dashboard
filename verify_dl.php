@@ -141,7 +141,7 @@ if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $res
 
     $stmt = mysqli_prepare($conn, $saveSql);
     if ($stmt) {
-        mysqli_stmt_bind_param($stmt, "ssssssisssss", 
+        mysqli_stmt_bind_param($stmt, "ssssssisisis", 
             $license_no, $dob, $holder_name, $issue_date, $expiry_date, $vehicle_classes, $has_lmv, $dl_photo_path, $address,
             $holder_name, $expiry_date, $has_lmv, $dl_photo_path
         );
