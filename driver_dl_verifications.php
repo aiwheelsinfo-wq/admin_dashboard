@@ -14,6 +14,8 @@ $tableSql = "CREATE TABLE IF NOT EXISTS `driver_dl_verifications` (
   `has_lmv` TINYINT(1) DEFAULT 1,
   `dl_photo_path` VARCHAR(255),
   `permanent_address` TEXT,
+  `verification_status` ENUM('VERIFIED', 'EXPIRED', 'REJECTED', 'MANUAL_APPROVED') DEFAULT 'VERIFIED',
+  `verified_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 )";
 mysqli_query($conn, $tableSql);
 
