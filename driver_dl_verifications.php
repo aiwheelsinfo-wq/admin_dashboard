@@ -14,17 +14,19 @@ $tableSql = "CREATE TABLE IF NOT EXISTS `driver_dl_verifications` (
   `has_lmv` TINYINT(1) DEFAULT 1,
   `dl_photo_path` VARCHAR(255),
   `permanent_address` TEXT,
-  `verification_status` ENUM('VERIFIED', 'EXPIRED', 'REJECTED', 'MANUAL_APPROVED') DEFAULT 'VERIFIED',
-  `verified_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+)";
 mysqli_query($conn, $tableSql);
 
 // Auto-sync drivers from main drivers table into driver_dl_verifications if not present
-$syncSql = "INSERT INTO driver_dl_verifications (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status)
-    SELECT TRIM(license_no), IF(date_of_birth IS NULL OR date_of_birth = '0000-00-00', '1970-01-01', date_of_birth), IFNULL(full_name, 'Driver'), IF(license_doe IS NULL OR license_doe = '0000-00-00', '2030-01-01', license_doe), IFNULL(driver_address, ''), 'VERIFIED'
+$syncSql = "INSERT IGNORE INTO driver_dl_verifications (dl_number, dob, holder_name, expiry_date, permanent_address, verification_status)
+    SELECT TRIM(license_no), 
+           IF(date_of_birth IS NULL OR date_of_birth = '0000-00-00', '1970-01-01', date_of_birth), 
+           IFNULL(full_name, 'Driver'), 
+           IF(license_doe IS NULL OR license_doe = '0000-00-00', '2030-01-01', license_doe), 
+           IFNULL(driver_address, ''), 
+           'VERIFIED'
     FROM drivers 
-    WHERE license_no IS NOT NULL AND TRIM(license_no) != '' AND LOWER(TRIM(license_no)) != 'null' AND CHAR_LENGTH(TRIM(license_no)) >= 5
-    ON DUPLICATE KEY UPDATE 
-    holder_name=IF(VALUES(holder_name) != '', VALUES(holder_name), holder_name)";
+    WHERE license_no IS NOT NULL AND TRIM(license_no) != '' AND LOWER(TRIM(license_no)) != 'null' AND CHAR_LENGTH(TRIM(license_no)) >= 5";
 mysqli_query($conn, $syncSql);
 
 // Handle Admin Action (Manual Approval / Override / Block)
