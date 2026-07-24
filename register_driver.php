@@ -8,10 +8,15 @@ header('Content-Type: application/json');
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 ini_set('error_log', 'php_errors.log');
+ini_set('display_startup_errors', 0);
 error_reporting(E_ALL);
+
+// Log request details
+file_put_contents('debug.log', "Request: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI'] . " at " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
 
 include 'db_connect.php';
 if (!$conn) {
+    file_put_contents('debug.log', "Database connection failed: " . mysqli_connect_error() . "\n", FILE_APPEND);
     ob_clean();
     echo json_encode(["status" => "error", "message" => "Database connection failed: " . mysqli_connect_error()]);
     exit;
@@ -30,212 +35,264 @@ function validateDate($date) {
     return NULL;
 }
 
-// Ensure driver_dl_verifications table exists
-$tableSql = "CREATE TABLE IF NOT EXISTS `driver_dl_verifications` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `dl_number` VARCHAR(30) NOT NULL UNIQUE,
-  `dob` DATE NOT NULL,
-  `holder_name` VARCHAR(100),
-  `issue_date` DATE,
-  `expiry_date` DATE,
-  `vehicle_classes` VARCHAR(255),
-  `has_lmv` TINYINT(1) DEFAULT 1,
-  `dl_photo_path` VARCHAR(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-mysqli_query($conn, $tableSql);
-
 // GET: Fetch driver and vendor details
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['phone_number'])) {
+    file_put_contents('debug.log', "GET request for phone_number: " . $_GET['phone_number'] . "\n", FILE_APPEND);
+    
     $phone_number = mysqli_real_escape_string($conn, $_GET['phone_number']);
+    
+    // Initialize response
     $response = ["status" => "success", "driversdata" => [], "vendorsdata" => []];
 
     // Fetch driver details
     $driver_sql = "SELECT * FROM drivers WHERE phone_number = ?";
     $driver_stmt = mysqli_prepare($conn, $driver_sql);
-    if ($driver_stmt) {
-        mysqli_stmt_bind_param($driver_stmt, "s", $phone_number);
-        mysqli_stmt_execute($driver_stmt);
-        $driver_result = mysqli_stmt_get_result($driver_stmt);
-        if ($driver = mysqli_fetch_assoc($driver_result)) {
-            $response["driversdata"] = [$driver];
-        }
+    if (!$driver_stmt) {
+        file_put_contents('debug.log', "Error preparing driver query: " . mysqli_error($conn) . "\n", FILE_APPEND);
+        ob_clean();
+        echo json_encode(["status" => "error", "message" => "Error preparing driver query: " . mysqli_error($conn)]);
+        mysqli_close($conn);
+        exit;
+    }
+    mysqli_stmt_bind_param($driver_stmt, "s", $phone_number);
+    if (!mysqli_stmt_execute($driver_stmt)) {
+        file_put_contents('debug.log', "Error executing driver query: " . mysqli_stmt_error($driver_stmt) . "\n", FILE_APPEND);
+        ob_clean();
+        echo json_encode(["status" => "error", "message" => "Error executing driver query: " . mysqli_stmt_error($driver_stmt)]);
         mysqli_stmt_close($driver_stmt);
+        mysqli_close($conn);
+        exit;
+    }
+    $driver_result = mysqli_stmt_get_result($driver_stmt);
+    $driver = mysqli_fetch_assoc($driver_result);
+    mysqli_stmt_close($driver_stmt);
+
+    if ($driver) {
+        array_walk_recursive($driver, function (&$item) {
+            if (is_string($item)) {
+                $item = mb_convert_encoding($item, 'UTF-8', 'auto');
+            }
+        });
+        $response["driversdata"] = [$driver];
     }
 
-    // Fetch vendor details
-    $vendor_sql = "SELECT * FROM vendors WHERE phone_number = ?";
-    $vendor_stmt = mysqli_prepare($conn, $vendor_sql);
-    if ($vendor_stmt) {
+    // Fetch vendor details (check if vendors table exists)
+    $vendor_sql = "SELECT 1 FROM information_schema.tables WHERE table_name = 'vendors'";
+    $table_check = mysqli_query($conn, $vendor_sql);
+    if (mysqli_num_rows($table_check) > 0) {
+        $vendor_sql = "SELECT * FROM vendors WHERE phone_number = ?";
+        $vendor_stmt = mysqli_prepare($conn, $vendor_sql);
+        if (!$vendor_stmt) {
+            file_put_contents('debug.log', "Error preparing vendor query: " . mysqli_error($conn) . "\n", FILE_APPEND);
+            ob_clean();
+            echo json_encode(["status" => "error", "message" => "Error preparing vendor query: " . mysqli_error($conn)]);
+            mysqli_close($conn);
+            exit;
+        }
         mysqli_stmt_bind_param($vendor_stmt, "s", $phone_number);
-        mysqli_stmt_execute($vendor_stmt);
+        if (!mysqli_stmt_execute($vendor_stmt)) {
+            file_put_contents('debug.log', "Error executing vendor query: " . mysqli_stmt_error($vendor_stmt) . "\n", FILE_APPEND);
+            ob_clean();
+            echo json_encode(["status" => "error", "message" => "Error executing vendor query: " . mysqli_stmt_error($vendor_stmt)]);
+            mysqli_stmt_close($vendor_stmt);
+            mysqli_close($conn);
+            exit;
+        }
         $vendor_result = mysqli_stmt_get_result($vendor_stmt);
-        if ($vendor = mysqli_fetch_assoc($vendor_result)) {
+        $vendor = mysqli_fetch_assoc($vendor_result);
+        mysqli_stmt_close($vendor_stmt);
+
+        if ($vendor) {
+            array_walk_recursive($vendor, function (&$item) {
+                if (is_string($item)) {
+                    $item = mb_convert_encoding($item, 'UTF-8', 'auto');
+                }
+            });
             $response["vendorsdata"] = [$vendor];
         }
-        mysqli_stmt_close($vendor_stmt);
+    } else {
+        file_put_contents('debug.log', "Vendors table does not exist\n", FILE_APPEND);
     }
 
+    if (empty($response["driversdata"]) && empty($response["vendorsdata"])) {
+        $response = ["status" => "error", "message" => "No driver or vendor found for phone number: $phone_number"];
+    }
+
+    file_put_contents('debug.log', "GET response: " . json_encode($response) . "\n", FILE_APPEND);
     ob_clean();
     echo json_encode($response);
     mysqli_close($conn);
     exit;
 }
 
-// Support JSON, POST, and GET parameters
-$rawInput = file_get_contents("php://input");
-$data = json_decode($rawInput, true) ?? [];
+// POST: Update driver
+$data = json_decode(file_get_contents("php://input"), true);
+if (!$data) {
+    file_put_contents('debug.log', "Invalid JSON input\n", FILE_APPEND);
+    ob_clean();
+    echo json_encode(["status" => "error", "message" => "Invalid JSON input"]);
+    mysqli_close($conn);
+    exit;
+}
 
-$rawPhone = $data['phone_number'] ?? $_POST['phone_number'] ?? $_GET['phone_number'] ?? '';
-$phone_number = mysqli_real_escape_string($conn, trim($rawPhone));
+file_put_contents('debug.log', "Received POST data: " . print_r($data, true) . "\n", FILE_APPEND);
 
-$rawName = $data['full_name'] ?? $_POST['full_name'] ?? $_GET['full_name'] ?? '';
-$full_name = mysqli_real_escape_string($conn, trim($rawName));
+// Extract and sanitize
+$phone_number = isset($data['phone_number']) ? mysqli_real_escape_string($conn, $data['phone_number']) : '';
+$full_name = isset($data['full_name']) ? mysqli_real_escape_string($conn, $data['full_name']) : NULL;
+$email = isset($data['email']) ? mysqli_real_escape_string($conn, $data['email']) : NULL;
+$date_of_birth = isset($data['date_of_birth']) ? validateDate($data['date_of_birth']) : NULL;
+$driver_address = isset($data['driver_address']) ? mysqli_real_escape_string($conn, $data['driver_address']) : NULL;
+$pin_code = isset($data['pin_code']) ? mysqli_real_escape_string($conn, $data['pin_code']) : NULL;
+$license_no = isset($data['license_no']) ? mysqli_real_escape_string($conn, $data['license_no']) : NULL;
+$license_doe = isset($data['license_doe']) ? validateDate($data['license_doe']) : NULL;
+$license_type = isset($data['license_type']) ? mysqli_real_escape_string($conn, $data['license_type']) : NULL;
+$adhaar_card_no = isset($data['adhaar_card_no']) ? mysqli_real_escape_string($conn, $data['adhaar_card_no']) : NULL;
+$pan_card_no = isset($data['pan_card_no']) ? mysqli_real_escape_string($conn, $data['pan_card_no']) : NULL;
+$photo = isset($data['photo']) ? mysqli_real_escape_string($conn, $data['photo']) : 'NO';
+$driver_city = isset($data['driver_city']) ? mysqli_real_escape_string($conn, $data['driver_city']) : NULL;
+$agency_name = isset($data['agency_name']) ? mysqli_real_escape_string($conn, $data['agency_name']) : NULL;
+$second_number = isset($data['second_number']) ? mysqli_real_escape_string($conn, $data['second_number']) : NULL;
+$vendor_number = isset($data['vendor_number']) ? mysqli_real_escape_string($conn, $data['vendor_number']) : NULL;
+$status = isset($data['status']) ? mysqli_real_escape_string($conn, $data['status']) : NULL;
+$userType = isset($data['userType']) ? mysqli_real_escape_string($conn, $data['userType']) : '';
 
-$rawEmail = $data['email'] ?? $_POST['email'] ?? $_GET['email'] ?? NULL;
-$email = $rawEmail ? mysqli_real_escape_string($conn, trim($rawEmail)) : NULL;
-
-$rawDob = $data['date_of_birth'] ?? $_POST['date_of_birth'] ?? $_GET['date_of_birth'] ?? '';
-$date_of_birth = validateDate($rawDob);
-
-$rawAddr = $data['driver_address'] ?? $_POST['driver_address'] ?? $_GET['driver_address'] ?? NULL;
-$driver_address = $rawAddr ? mysqli_real_escape_string($conn, $rawAddr) : NULL;
-
-$rawPin = $data['pin_code'] ?? $_POST['pin_code'] ?? $_GET['pin_code'] ?? NULL;
-$pin_code = $rawPin ? mysqli_real_escape_string($conn, $rawPin) : NULL;
-
-$rawDl = $data['license_no'] ?? $_POST['license_no'] ?? $_GET['license_no'] ?? NULL;
-$license_no = $rawDl ? mysqli_real_escape_string($conn, strtoupper(trim(preg_replace('/[\s\-]/', '', $rawDl)))) : NULL;
-
-$rawDoe = $data['license_doe'] ?? $_POST['license_doe'] ?? $_GET['license_doe'] ?? '';
-$license_doe = validateDate($rawDoe);
-
-$rawType = $data['license_type'] ?? $_POST['license_type'] ?? $_GET['license_type'] ?? 'LMV';
-$license_type = mysqli_real_escape_string($conn, $rawType);
-
-$rawAadhaar = $data['adhaar_card_no'] ?? $_POST['adhaar_card_no'] ?? $_GET['adhaar_card_no'] ?? NULL;
-$adhaar_card_no = $rawAadhaar ? mysqli_real_escape_string($conn, $rawAadhaar) : NULL;
-
-$rawPan = $data['pan_card_no'] ?? $_POST['pan_card_no'] ?? $_GET['pan_card_no'] ?? NULL;
-$pan_card_no = $rawPan ? mysqli_real_escape_string($conn, $rawPan) : NULL;
-
-$photo = $data['photo'] ?? $_POST['photo'] ?? $_GET['photo'] ?? 'NO';
-$driver_city = $data['driver_city'] ?? $_POST['driver_city'] ?? $_GET['driver_city'] ?? NULL;
-$agency_name = $data['agency_name'] ?? $_POST['agency_name'] ?? $_GET['agency_name'] ?? NULL;
-$second_number = $data['second_number'] ?? $_POST['second_number'] ?? $_GET['second_number'] ?? NULL;
-
-$rawVendor = $data['vendor_number'] ?? $_POST['vendor_number'] ?? $_GET['vendor_number'] ?? '';
-$vendor_number = mysqli_real_escape_string($conn, trim($rawVendor));
-
-$rawStatus = $data['status'] ?? $_POST['status'] ?? $_GET['status'] ?? 'filled';
-$status = mysqli_real_escape_string($conn, $rawStatus);
-
-$rawUserType = $data['userType'] ?? $_POST['userType'] ?? $_GET['userType'] ?? 'Driver';
-$userType = mysqli_real_escape_string($conn, $rawUserType);
-
-$isCheckOnly = isset($data['check_only']) || isset($_GET['check_only']);
+// Override status for Vendor
+if ($userType === 'Vendor') {
+    $status = 'active';
+}
+elseif ($userType === 'Driver') {
+    $status = 'filled'; // For drivers with vendor_number
+}
+elseif ($vendor_number) {
+    $status = 'filled'; // For drivers with vendor_number
+}
 
 if (empty($phone_number)) {
+    file_put_contents('debug.log', "Phone number is required\n", FILE_APPEND);
     ob_clean();
     echo json_encode(["status" => "error", "message" => "Phone number is required"]);
     mysqli_close($conn);
     exit;
 }
 
-// 1. Check existing driver
-$check_sql = "SELECT driver_id, full_name, phone_number FROM drivers WHERE phone_number = ? AND full_name IS NOT NULL AND full_name != ''";
-$check_stmt = mysqli_prepare($conn, $check_sql);
-mysqli_stmt_bind_param($check_stmt, "s", $phone_number);
-mysqli_stmt_execute($check_stmt);
-$check_result = mysqli_stmt_get_result($check_stmt);
-$existingDriver = mysqli_fetch_assoc($check_result);
-mysqli_stmt_close($check_stmt);
-
-if ($isCheckOnly) {
+if (!in_array($userType, ['Driver', 'Vendor', ''])) {
+    file_put_contents('debug.log', "Invalid userType: $userType\n", FILE_APPEND);
     ob_clean();
-    if ($existingDriver) {
-        echo json_encode([
-            "status" => "duplicate",
-            "exists" => true,
-            "message" => "⚠️ Driver with phone number {$phone_number} already exists!"
-        ]);
-    } else {
-        echo json_encode(["status" => "success", "exists" => false, "message" => "Phone number available"]);
-    }
+    echo json_encode(["status" => "error", "message" => "Invalid userType"]);
     mysqli_close($conn);
     exit;
 }
 
-if ($existingDriver) {
-    // UPDATE EXISTING DRIVER
-    $sql = "UPDATE drivers SET 
-        full_name = ?, email = ?, date_of_birth = ?, driver_address = ?, pin_code = ?, 
-        license_no = ?, license_doe = ?, license_type = ?, adhaar_card_no = ?, pan_card_no = ?, 
-        photo = ?, driver_city = ?, agency_name = ?, second_number = ?, status = ?, userType = ?
-        WHERE phone_number = ?";
-    $stmt = mysqli_prepare($conn, $sql);
+// Check if driver exists
+$check_sql = "SELECT 1 FROM drivers WHERE phone_number = ?";
+$check_stmt = mysqli_prepare($conn, $check_sql);
+if (!$check_stmt) {
+    file_put_contents('debug.log', "Error preparing check query: " . mysqli_error($conn) . "\n", FILE_APPEND);
+    ob_clean();
+    echo json_encode(["status" => "error", "message" => "Error preparing query: " . mysqli_error($conn)]);
+    mysqli_close($conn);
+    exit;
+}
+mysqli_stmt_bind_param($check_stmt, "s", $phone_number);
+if (!mysqli_stmt_execute($check_stmt)) {
+    file_put_contents('debug.log', "Error executing check query: " . mysqli_stmt_error($check_stmt) . "\n", FILE_APPEND);
+    ob_clean();
+    echo json_encode(["status" => "error", "message" => "Error executing check query: " . mysqli_stmt_error($check_stmt)]);
+    mysqli_stmt_close($check_stmt);
+    mysqli_close($conn);
+    exit;
+}
+$check_result = mysqli_stmt_get_result($check_stmt);
+if (mysqli_num_rows($check_result) === 0) {
+    file_put_contents('debug.log', "No driver found with phone number: $phone_number\n", FILE_APPEND);
+    ob_clean();
+    echo json_encode(["status" => "error", "message" => "No driver found with phone number: $phone_number"]);
+    mysqli_stmt_close($check_stmt);
+    mysqli_close($conn);
+    exit;
+}
+mysqli_stmt_close($check_stmt);
+
+// Update driver
+$sql = "UPDATE drivers SET 
+    full_name = ?, email = ?, date_of_birth = ?, driver_address = ?, pin_code = ?, 
+    license_no = ?, license_doe = ?, license_type = ?, adhaar_card_no = ?, pan_card_no = ?, 
+    photo = ?, driver_city = ?, agency_name = ?, second_number = ?, status = ?, userType = ?
+    WHERE phone_number = ?";
+if ($stmt = mysqli_prepare($conn, $sql)) {
     mysqli_stmt_bind_param(
         $stmt, "sssssssssssssssss",
         $full_name, $email, $date_of_birth, $driver_address, $pin_code,
         $license_no, $license_doe, $license_type, $adhaar_card_no, $pan_card_no,
         $photo, $driver_city, $agency_name, $second_number, $status, $userType, $phone_number
     );
-    mysqli_stmt_execute($stmt);
+    if (mysqli_stmt_execute($stmt)) {
+        $affected_rows = mysqli_stmt_affected_rows($stmt);
+        $response = [
+            "status" => $affected_rows > 0 ? "success" : "warning",
+            "message" => $affected_rows > 0 ? "Profile updated successfully" : "No changes were made",
+            "rows_affected" => $affected_rows
+        ];
+        file_put_contents('debug.log', "POST response: " . json_encode($response) . "\n", FILE_APPEND);
+        ob_clean();
+        echo json_encode($response);
+    } else {
+        file_put_contents('debug.log', "Error executing update: " . mysqli_stmt_error($stmt) . "\n", FILE_APPEND);
+        ob_clean();
+        echo json_encode(["status" => "error", "message" => "Error executing update: " . mysqli_stmt_error($stmt)]);
+    }
     mysqli_stmt_close($stmt);
 } else {
-    // INSERT NEW DRIVER
-    $sql = "INSERT INTO drivers (
-        phone_number, full_name, email, date_of_birth, driver_address, pin_code, 
-        license_no, license_doe, license_type, adhaar_card_no, pan_card_no, 
-        photo, driver_city, agency_name, second_number, status, userType
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param(
-        $stmt, "sssssssssssssssss",
-        $phone_number, $full_name, $email, $date_of_birth, $driver_address, $pin_code,
-        $license_no, $license_doe, $license_type, $adhaar_card_no, $pan_card_no,
-        $photo, $driver_city, $agency_name, $second_number, $status, $userType
-    );
-    mysqli_stmt_execute($stmt);
-    mysqli_stmt_close($stmt);
+    file_put_contents('debug.log', "Error preparing update query: " . mysqli_error($conn) . "\n", FILE_APPEND);
+    ob_clean();
+    echo json_encode(["status" => "error", "message" => "Error preparing query: " . mysqli_error($conn)]);
 }
 
-// Auto-sync to driver_dl_verifications table so it shows on Web DL Verifications page
-if (!empty($license_no)) {
-    $sync_sql = "INSERT INTO driver_dl_verifications (dl_number, dob, holder_name, issue_date, expiry_date, vehicle_classes, dl_photo_path)
-    VALUES (?, ?, ?, CURDATE(), ?, ?, '')
-    ON DUPLICATE KEY UPDATE holder_name = VALUES(holder_name), dob = VALUES(dob), expiry_date = VALUES(expiry_date)";
-    if ($sync_stmt = mysqli_prepare($conn, $sync_sql)) {
-        $sync_dob = $date_of_birth ?: '2000-01-01';
-        $sync_doe = $license_doe ?: '2040-01-01';
-        mysqli_stmt_bind_param($sync_stmt, "sssss", $license_no, $sync_dob, $full_name, $sync_doe, $license_type);
-        mysqli_stmt_execute($sync_stmt);
-        mysqli_stmt_close($sync_stmt);
+// Handle driver_vendor_join_Table only if vendor_number is provided
+if ($status === 'filled' && !empty($vendor_number)) {
+    $insert_sql = "INSERT INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?)";
+    if ($insert_stmt = mysqli_prepare($conn, $insert_sql)) {
+        mysqli_stmt_bind_param($insert_stmt, "ss", $phone_number, $vendor_number);
+        if (!mysqli_stmt_execute($insert_stmt)) {
+            file_put_contents('debug.log', "Failed to insert into driver_vendor_join_Table: " . mysqli_stmt_error($insert_stmt) . "\n", FILE_APPEND);
+            ob_clean();
+            echo json_encode(["status" => "error", "message" => "Failed to insert into driver_vendor_join_Table: " . mysqli_stmt_error($insert_stmt)]);
+            mysqli_close($conn);
+            exit;
+        }
+        mysqli_stmt_close($insert_stmt);
+    } else {
+        file_put_contents('debug.log', "Error preparing insert query: " . mysqli_error($conn) . "\n", FILE_APPEND);
+        ob_clean();
+        echo json_encode(["status" => "error", "message" => "Error preparing insert query: " . mysqli_error($conn)]);
+        mysqli_close($conn);
+        exit;
     }
 }
 
-// Link to Vendor in driver_vendor_join_Table if vendor_number is provided
-if (!empty($vendor_number)) {
-    $del_stmt = mysqli_prepare($conn, "DELETE FROM driver_vendor_join_Table WHERE driver_id = ?");
-    if ($del_stmt) {
-        mysqli_stmt_bind_param($del_stmt, "s", $phone_number);
-        mysqli_stmt_execute($del_stmt);
-        mysqli_stmt_close($del_stmt);
-    }
-
-    $ins_stmt = mysqli_prepare($conn, "INSERT INTO driver_vendor_join_Table (driver_id, vendor_id) VALUES (?, ?)");
-    if ($ins_stmt) {
-        mysqli_stmt_bind_param($ins_stmt, "ss", $phone_number, $vendor_number);
-        mysqli_stmt_execute($ins_stmt);
-        mysqli_stmt_close($ins_stmt);
+// Update status to 'filled' if 'join'
+if ($status === 'join') {
+    $sql = "UPDATE drivers SET status = 'filled' WHERE phone_number = ?";
+    if ($stmt = mysqli_prepare($conn, $sql)) {
+        mysqli_stmt_bind_param($stmt, "s", $phone_number);
+        if (!mysqli_stmt_execute($stmt)) {
+            file_put_contents('debug.log', "Error updating status: " . mysqli_stmt_error($stmt) . "\n", FILE_APPEND);
+            ob_clean();
+            echo json_encode(["status" => "error", "message" => "Error updating status: " . mysqli_stmt_error($stmt)]);
+            mysqli_close($conn);
+            exit;
+        }
+        mysqli_stmt_close($stmt);
+    } else {
+        file_put_contents('debug.log', "Error preparing status update query: " . mysqli_error($conn) . "\n", FILE_APPEND);
+        ob_clean();
+        echo json_encode(["status" => "error", "message" => "Error preparing status update query: " . mysqli_error($conn)]);
+        mysqli_close($conn);
+        exit;
     }
 }
 
-ob_clean();
-echo json_encode([
-    "status" => "success",
-    "message" => "Driver registered/updated successfully",
-    "phone_number" => $phone_number
-]);
 mysqli_close($conn);
 ob_end_flush();
 ?>

@@ -41,18 +41,18 @@ if (!empty($stored_number)) {
         $driver = $result->fetch_assoc();
         $currStatus = strtolower(trim($driver['status'] ?? ''));
 
-        // PRESERVE ACTIVE/FILLED STATUS! DO NOT OVERWRITE BACK TO 'not filled'!
-        if (in_array($currStatus, ['active', 'filled', 'not car', 'notified'])) {
+        // If status is already filled, active, not car, or notified, keep it active!
+        if (in_array($currStatus, ['filled', 'active', 'not car', 'notified'])) {
             echo json_encode([
                 "success" => true,
-                "message" => "Account already active",
+                "message" => "Account active",
                 "current_status" => $currStatus
             ]);
             exit;
         }
 
-        // Check required fields for new registrations
-        $requiredFields = ['full_name', 'phone_number'];
+        // Check required fields
+        $requiredFields = ['agency_name', 'full_name', 'driver_address', 'email', 'driver_city', 'pin_code'];
         $hasEmpty = false;
         foreach ($requiredFields as $field) {
             if (empty($driver[$field])) {
