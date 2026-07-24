@@ -125,8 +125,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['phone_number'])) {
     exit;
 }
 
-// POST: Update driver
-$data = json_decode(file_get_contents("php://input"), true);
+// POST: Accept JSON body OR form-encoded POST data
+$rawInput = file_get_contents("php://input");
+$data = null;
+if (!empty($rawInput)) {
+    $data = json_decode($rawInput, true);
+}
+// Fallback: form-encoded POST
+if (!$data && !empty($_POST)) {
+    $data = $_POST;
+}
 if (!$data) {
     file_put_contents('debug.log', "Invalid JSON input\n", FILE_APPEND);
     ob_clean();
