@@ -107,7 +107,7 @@ curl_setopt_array($ch, [
         "X-Customer-Id: " . $customer_id,
         "Content-Type: application/json"
     ],
-    CURLOPT_TIMEOUT => 15
+    CURLOPT_TIMEOUT => 25
 ]);
 
 $apiResponse = curl_exec($ch);
