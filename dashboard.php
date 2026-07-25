@@ -64,6 +64,7 @@ if (!isset($_SESSION['admin_id'])) {
             <ul>
                 <li><a href="#" id="driver"><i class="fas fa-user me-2"></i> Driver</a></li>
                 <li><a href="driver_dl_verifications.php" id="dl_verifications"><i class="fas fa-id-card me-2"></i> DL Verifications</a></li>
+                <li><a href="driver_rc_verifications.php" id="rc_verifications"><i class="fas fa-car me-2"></i> RC Verifications</a></li>
                 <li><a href="#" id="cab"><i class="fas fa-taxi me-2"></i> Cab</a></li>
                 <li><a href="https://agnicarrental.com/admin2025/dashboard.php" id="booking"><i class="fas fa-calendar me-2"></i> Booking</a></li>
                 <li><a href="#" id="Complete"><i class="fas fa-calendar-check me-2"></i> Completed</a></li>
