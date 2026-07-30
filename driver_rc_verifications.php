@@ -60,9 +60,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $msgType = "warning";
         }
     } elseif ($_POST['action'] === 'delete') {
+        mysqli_query($conn, "UPDATE drivers SET rc_no=NULL WHERE rc_no='$action_rc'");
         $deleteSql = "DELETE FROM driver_rc_verifications WHERE rc_number='$action_rc'";
         if (mysqli_query($conn, $deleteSql)) {
-            $msg = "Vehicle RC $action_rc record deleted successfully!";
+            $msg = "Vehicle RC $action_rc record permanently deleted successfully!";
             $msgType = "danger";
         }
     }

@@ -55,9 +55,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $msgType = "warning";
         }
     } elseif ($_POST['action'] === 'delete') {
+        // Fetch phone numbers before deletion for join table cleanup
+        $pRes = mysqli_query($conn, "SELECT phone_number FROM drivers WHERE license_no='$action_dl'");
+        while ($pRow = mysqli_fetch_assoc($pRes)) {
+            $pNum = mysqli_real_escape_string($conn, $pRow['phone_number']);
+            mysqli_query($conn, "DELETE FROM driver_vendor_join_Table WHERE driver_id='$pNum'");
+        }
+        mysqli_query($conn, "DELETE FROM drivers WHERE license_no='$action_dl'");
         $deleteSql = "DELETE FROM driver_dl_verifications WHERE dl_number='$action_dl'";
         if (mysqli_query($conn, $deleteSql)) {
-            $msg = "Driver DL $action_dl record deleted successfully!";
+            $msg = "Driver DL $action_dl permanently deleted successfully!";
             $msgType = "danger";
         }
     }
