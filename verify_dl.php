@@ -123,6 +123,8 @@ if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $res
     $expiry_date = $dl['doe'] ?? $dl['expiry_date'] ?? '';
     $issue_date = $dl['doi'] ?? $dl['issue_date'] ?? '';
     $address = $dl['permanent_address'] ?? '';
+    $pincode = $dl['permanent_zip'] ?? $dl['temporary_zip'] ?? $dl['pincode'] ?? $dl['zip'] ?? '';
+    $city = $dl['city_name'] ?? $dl['city'] ?? $dl['district'] ?? '';
     
     $vehicle_classes = isset($dl['vehicle_classes']) ? json_encode($dl['vehicle_classes']) : '["LMV"]';
     $has_lmv = 1;
@@ -168,6 +170,8 @@ if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $res
             "expiry_date" => $expiry_date,
             "issue_date" => $issue_date,
             "permanent_address" => $address,
+            "pincode" => $pincode,
+            "city" => $city,
             "has_lmv" => true,
             "dl_photo_path" => $dl_photo_path
         ]
