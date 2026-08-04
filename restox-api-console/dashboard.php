@@ -1309,10 +1309,54 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Awaiting Verification</span>
                             </div>
                         <?php else: ?>
-                            <h3 class="card-title" style="margin-bottom: 24px;"><i class="fa-solid fa-shield-halved"></i> Live Access Keys</h3>
+                            <!-- 1. SANDBOX TEST CREDENTIALS -->
+                            <div style="margin-bottom: 36px; padding-bottom: 28px; border-bottom: 1px dashed rgba(255, 255, 255, 0.1);">
+                                <h3 class="card-title" style="margin-bottom: 8px; color: var(--warning-color); display:flex; align-items:center; gap:10px;">
+                                    <i class="fa-solid fa-vial-circle-check"></i> 🧪 Sandbox Test Credentials (Development Mode)
+                                </h3>
+                                <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 20px;">
+                                    Use these Sandbox credentials to safely test your web integration. Bookings created with <code style="color:var(--warning-color)">TEST_</code> keys generate test trips (e.g. <code style="color:var(--warning-color)">TEST-PB...</code>) and <strong>do not dispatch real drivers</strong>.
+                                </p>
+
+                                <div style="margin-bottom: 20px;">
+                                    <span class="info-label" style="margin-bottom: 8px; display:block;">Sandbox X-API-Key (Testing)</span>
+                                    <div class="key-input-wrapper" style="border-color: rgba(245, 158, 11, 0.3);">
+                                        <code class="key-content" id="testApiKeyPlain" style="color: var(--warning-color);">••••••••••••••••••••••••••••••••••••••••</code>
+                                        <div class="key-actions">
+                                            <button class="btn-key-icon" onclick="toggleKeyVisibility('testApiKeyPlain', 'TEST_<?= htmlspecialchars($p['api_key']) ?>', this)" title="Show/Hide">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                            <button class="btn-key-icon" onclick="copyToClipboard('TEST_<?= htmlspecialchars($p['api_key']) ?>')" title="Copy to Clipboard">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <span class="info-label" style="margin-bottom: 8px; display:block;">Sandbox X-Secret-Key</span>
+                                    <div class="key-input-wrapper" style="border-color: rgba(245, 158, 11, 0.3);">
+                                        <code class="key-content" id="testSecretKeyPlain" style="color: var(--warning-color);">••••••••••••••••••••••••••••••••••••••••</code>
+                                        <div class="key-actions">
+                                            <button class="btn-key-icon" onclick="toggleKeyVisibility('testSecretKeyPlain', '<?= htmlspecialchars($p['secret_key']) ?>', this)" title="Show/Hide">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                            <button class="btn-key-icon" onclick="copyToClipboard('<?= htmlspecialchars($p['secret_key']) ?>')" title="Copy to Clipboard">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. LIVE PRODUCTION CREDENTIALS -->
+                            <h3 class="card-title" style="margin-bottom: 8px;"><i class="fa-solid fa-shield-halved"></i> 🚀 Live Access Keys (Production Mode)</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 20px;">
+                                Use these Live production keys on your live website. All bookings created with these keys dispatch real drivers and trigger live driver alerts.
+                            </p>
 
                             <div style="margin-bottom: 28px;">
-                                <span class="info-label" style="margin-bottom: 8px; display:block;">X-API-Key</span>
+                                <span class="info-label" style="margin-bottom: 8px; display:block;">Production X-API-Key</span>
                                 <div class="key-input-wrapper">
                                     <code class="key-content" id="apiKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
                                     <div class="key-actions">
@@ -1327,7 +1371,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                             </div>
 
                             <div style="margin-bottom: 28px;">
-                                <span class="info-label" style="margin-bottom: 8px; display:block;">X-Secret-Key</span>
+                                <span class="info-label" style="margin-bottom: 8px; display:block;">Production X-Secret-Key</span>
                                 <div class="key-input-wrapper">
                                     <code class="key-content" id="secretKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
                                     <div class="key-actions">
