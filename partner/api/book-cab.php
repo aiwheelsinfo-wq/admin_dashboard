@@ -66,7 +66,18 @@ if (!function_exists('is_within_bounds')) {
     }
 }
 
-$trip_type = trim($body['trip_type'] ?? '');
+$raw_trip_type = trim($body['trip_type'] ?? '');
+if (strcasecmp($raw_trip_type, 'Local-Taxi') === 0 || strcasecmp($raw_trip_type, 'Local-taxi') === 0 || strcasecmp($raw_trip_type, 'Local Taxi') === 0) {
+    $trip_type = 'Local-taxi';
+} elseif (strcasecmp($raw_trip_type, 'Local-Duty') === 0 || strcasecmp($raw_trip_type, 'Local Duty') === 0) {
+    $trip_type = 'Local-Duty';
+} elseif (strcasecmp($raw_trip_type, 'One-way') === 0 || strcasecmp($raw_trip_type, 'One Way') === 0) {
+    $trip_type = 'One-way';
+} elseif (strcasecmp($raw_trip_type, 'Round-Trip') === 0 || strcasecmp($raw_trip_type, 'Round Trip') === 0) {
+    $trip_type = 'Round-Trip';
+} else {
+    $trip_type = $raw_trip_type;
+}
 
 // Required fields validation
 $required = ['from_address','trip_type','car_type','date','time','user_name','user_mobile'];
