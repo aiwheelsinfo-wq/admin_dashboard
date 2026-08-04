@@ -148,8 +148,17 @@ if ($trip_type === 'One-way' || $trip_type === 'Round-Trip') {
     }
 }
 
+// Detect Sandbox mode
+$is_sandbox = !empty($partner['is_sandbox']);
+$is_sandbox_int = $is_sandbox ? 1 : 0;
+$initial_status = $is_sandbox ? 'sandbox_test' : 'Pending';
+
 // Generate booking ID
-$booking_id = 'PB' . strtoupper(substr(md5(uniqid($partner['api_key'], true)), 0, 10));
+if ($is_sandbox) {
+    $booking_id = 'TEST-PB' . strtoupper(substr(md5(uniqid($partner['api_key'], true)), 0, 10));
+} else {
+    $booking_id = 'PB' . strtoupper(substr(md5(uniqid($partner['api_key'], true)), 0, 10));
+}
 
 // ── Ensure user exists in users table so they show up in admin joins ──────
 $user_check = mysqli_prepare($conn, "SELECT phone_number FROM users WHERE phone_number = ? LIMIT 1");
@@ -187,8 +196,8 @@ $insert_sql = "INSERT INTO bookings
      date, time, booker_id, mobile, otp,
      distance, total_amount, return_date, return_time,
      vendor_amount, agni_amount,
-     booking_status, booked_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NOW())";
+     booking_status, is_test, booked_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
 
 $stmt = mysqli_prepare($conn, $insert_sql);
 
@@ -269,11 +278,11 @@ if ($trip_type === 'One-way') {
     }
 }
 
-mysqli_stmt_bind_param($stmt, 'ssssssssssddssdd',
+mysqli_stmt_bind_param($stmt, 'ssssssssssddssddsi',
     $booking_id, $from, $to, $trip_type, $car_type,
     $date, $time, $user_mobile, $user_mobile, $otp,
     $distance, $amount, $ret_date, $ret_time,
-    $vendor_amount, $agni_amount
+    $vendor_amount, $agni_amount, $initial_status, $is_sandbox_int
 );
 
 if (!mysqli_stmt_execute($stmt)) {
@@ -286,30 +295,31 @@ mysqli_stmt_close($stmt);
 // Record in partner_bookings cross-reference
 $pb = mysqli_prepare($conn,
     "INSERT INTO partner_bookings (partner_id, booking_id, partner_booking_ref, trip_type, status)
-     VALUES (?, ?, ?, ?, 'pending')"
+     VALUES (?, ?, ?, ?, ?)"
 );
 if ($pb) {
-    mysqli_stmt_bind_param($pb, 'isss', $partner['id'], $booking_id, $partner_ref, $trip_type);
+    mysqli_stmt_bind_param($pb, 'issss', $partner['id'], $booking_id, $partner_ref, $trip_type, $initial_status);
     mysqli_stmt_execute($pb);
     mysqli_stmt_close($pb);
 }
 
 $response = [
-    'status'  => true,
-    'message' => 'Booking created successfully',
-    'data'    => [
-        'booking_id'         => $booking_id,
-        'partner_booking_ref'=> $partner_ref,
-        'booking_status'     => 'Pending',
-        'from_address'       => $from,
-        'to_address'         => $to,
-        'trip_type'          => $trip_type,
-        'car_type'           => $car_type,
-        'date'               => $date,
-        'time'               => $time,
-        'passenger_name'     => $user_name,
-        'passenger_mobile'   => $user_mobile,
-        'note'               => 'Booking is pending vendor acceptance. Track status using /booking-status?booking_id=' . $booking_id,
+    'status'      => true,
+    'environment' => $is_sandbox ? 'sandbox' : 'production',
+    'message'     => $is_sandbox ? '[SANDBOX TEST MODE] Booking created successfully. No live drivers notified.' : 'Booking created successfully',
+    'data'        => [
+        'booking_id'          => $booking_id,
+        'partner_booking_ref' => $partner_ref,
+        'booking_status'      => $initial_status,
+        'from_address'        => $from,
+        'to_address'          => $to,
+        'trip_type'           => $trip_type,
+        'car_type'            => $car_type,
+        'date'                => $date,
+        'time'                => $time,
+        'passenger_name'      => $user_name,
+        'passenger_mobile'    => $user_mobile,
+        'note'                => $is_sandbox ? 'Sandbox test booking created. No live drivers assigned.' : 'Booking is pending vendor acceptance. Track status using /booking-status?booking_id=' . $booking_id,
     ],
 ];
 

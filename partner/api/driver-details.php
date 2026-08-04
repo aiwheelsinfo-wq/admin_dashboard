@@ -31,6 +31,31 @@ if (!mysqli_fetch_assoc($pb_result)) {
 }
 mysqli_stmt_close($pb_stmt);
 
+$is_sandbox = !empty($partner['is_sandbox']) || (strpos($booking_id, 'TEST-') === 0);
+
+if ($is_sandbox) {
+    $response = [
+        'status'      => true,
+        'environment' => 'sandbox',
+        'message'     => '[SANDBOX TEST MODE] Mock driver details returned for integration testing',
+        'data'        => [
+            'booking_id'      => $booking_id,
+            'booking_status'  => 'Assigned',
+            'driver_assigned' => true,
+            'driver_name'     => 'Sandbox Test Driver',
+            'driver_mobile'   => '9900000000',
+            'vehicle_number'  => 'KL00TEST1234',
+            'vehicle_name'    => 'ERTIGA VXI',
+            'driver_city'     => 'Kozhikode',
+            'current_latitude' => '11.2588',
+            'current_longitude'=> '75.7804'
+        ],
+    ];
+    log_api_request($partner['id'], $_API_NAME, ['booking_id'=>$booking_id], $response, 'success');
+    echo json_encode($response);
+    exit();
+}
+
 // Get booking with driver info
 $b_stmt = mysqli_prepare($conn, "SELECT b.booking_id, b.booking_status, b.driver_id, b.driver_name, b.vehicle_id, d.driver_city, d.license_doe FROM bookings b LEFT JOIN drivers d ON d.phone_number = b.driver_id WHERE b.booking_id = ? LIMIT 1");
 mysqli_stmt_bind_param($b_stmt, 's', $booking_id_esc);
@@ -46,9 +71,10 @@ if (!$booking) {
 
 $driver_assigned = !empty($booking['driver_id']);
 $response = [
-    'status'  => true,
-    'message' => $driver_assigned ? 'Driver details retrieved' : 'No driver assigned yet',
-    'data'    => [
+    'status'      => true,
+    'environment' => 'production',
+    'message'     => $driver_assigned ? 'Driver details retrieved' : 'No driver assigned yet',
+    'data'        => [
         'booking_id'      => $booking['booking_id'],
         'booking_status'  => $booking['booking_status'],
         'driver_assigned' => $driver_assigned,

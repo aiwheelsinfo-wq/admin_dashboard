@@ -45,14 +45,18 @@ if (empty($api_key) || empty($secret_key)) {
     exit();
 }
 
+// ── Sandbox Key Detection ──────────────────────────────────────────────────
+$is_sandbox_key = (strpos($api_key, 'TEST_') === 0);
+$lookup_key = $is_sandbox_key ? substr($api_key, 5) : $api_key;
+
 // ── Query partner from DB ──────────────────────────────────────────────────
-$stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE api_key = ? AND secret_key = ? LIMIT 1");
+$stmt = mysqli_prepare($conn, "SELECT * FROM partners WHERE (api_key = ? OR api_key = ?) AND secret_key = ? LIMIT 1");
 if (!$stmt) {
     http_response_code(500);
     echo json_encode(['status' => false, 'message' => 'Internal server error (DB prepare failed).']);
     exit();
 }
-mysqli_stmt_bind_param($stmt, 'ss', $api_key, $secret_key);
+mysqli_stmt_bind_param($stmt, 'sss', $api_key, $lookup_key, $secret_key);
 mysqli_stmt_execute($stmt);
 $result  = mysqli_stmt_get_result($stmt);
 $partner = mysqli_fetch_assoc($result);
@@ -63,6 +67,9 @@ if (!$partner) {
     echo json_encode(['status' => false, 'message' => 'Invalid API Key or Secret Key.']);
     exit();
 }
+
+// Set global sandbox flag boolean on partner object
+$partner['is_sandbox'] = ($is_sandbox_key || !empty($partner['is_sandbox']));
 
 // ── Check if partner is blocked ────────────────────────────────────────────
 if ($partner['status'] === 'blocked') {
