@@ -112,15 +112,51 @@ if (strpos($car_key, 'sedan') !== false || strpos($car_key, 'dzire') !== false) 
 }
 $car_type = $car_type_normalized;
 
+// ── Helper: Check Active City Boundaries ────────────────────────────────────
+function is_inside_city_boundary($lat, $lng, $conn) {
+    if ($lat === null || $lng === null) return true;
+    
+    $cnt_sql = "SELECT COUNT(*) FROM city_boundaries WHERE status = 'active'";
+    $res = mysqli_query($conn, $cnt_sql);
+    if ($res) {
+        $row = mysqli_fetch_row($res);
+        if ($row[0] == 0) return true;
+    }
+
+    $sql = "SELECT city_name FROM city_boundaries 
+            WHERE status = 'active' 
+              AND ? BETWEEN min_lat AND max_lat 
+              AND ? BETWEEN min_lng AND max_lng 
+            LIMIT 1";
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, "dd", $lat, $lng);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_store_result($stmt);
+        $count = mysqli_stmt_num_rows($stmt);
+        mysqli_stmt_close($stmt);
+        if ($count > 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+$from_coords = get_geocode_coords($from);
+$fromLat = $from_coords ? $from_coords['lat'] : null;
+$fromLon = $from_coords ? $from_coords['lng'] : null;
+
+// Enforce City Boundary check for pickup location
+if ($from_coords !== null && !is_inside_city_boundary($fromLat, $fromLon, $conn)) {
+    log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Pickup location is outside Rentox active operational service cities.'], 'error');
+    api_error('Pickup location is outside Rentox active operational service cities. Please choose a pickup location within our active service areas.', 400);
+}
+
 // Enforce One-way / Round-Trip short distance block unless it's a special route
 if ($trip_type === 'One-way' || $trip_type === 'Round-Trip') {
-    $from_coords = get_geocode_coords($from);
-    $to_coords   = get_geocode_coords($to);
-
-    $fromLat = $from_coords ? $from_coords['lat'] : null;
-    $fromLon = $from_coords ? $from_coords['lng'] : null;
-    $toLat   = $to_coords ? $to_coords['lat'] : null;
-    $toLon   = $to_coords ? $to_coords['lng'] : null;
+    $to_coords = get_geocode_coords($to);
+    $toLat     = $to_coords ? $to_coords['lat'] : null;
+    $toLon     = $to_coords ? $to_coords['lng'] : null;
 
     $is_special = false;
     if ($fromLat !== null && $fromLon !== null && $toLat !== null && $toLon !== null) {
