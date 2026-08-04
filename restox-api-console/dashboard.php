@@ -1171,6 +1171,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         </div>
                     </div>
 
+                    <?php if ($p['status'] === 'pending'): ?>
+                        <div class="alert-banner" style="background-color: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.25);">
+                            <i class="fa-solid fa-hourglass-half alert-banner-icon" style="color: var(--warning-color); font-size: 1.6rem;"></i>
+                            <div class="alert-banner-content">
+                                <h4 class="alert-banner-title" style="font-size: 1.05rem;">Account Pending Administrator Approval</h4>
+                                <p class="alert-banner-desc" style="color: #D1D5DB; font-size: 0.92rem;">Your B2B partner registration has been submitted successfully! The Rentox Admin team is reviewing your business & GST profile. Your API keys, secret credentials, and developer test console will automatically unlock here as soon as your account is approved by Rentox Admin.</p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <!-- Incomplete Profile Warning -->
                     <?php 
                     $profile_incomplete = empty($p['partner_name']) || empty($p['company_owner_name']) || empty($p['mobile_number']) || empty($p['gst_number']);
