@@ -94,8 +94,8 @@ if ($cacheStmt) {
 }
 
 // 2. Call Surepass Sandbox RC OTP Initiate API
-$surepass_url = "https://sandbox.surepass.app/api/v1/rc/rc-to-mobile-number";
-$api_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4NDA5Nzc2MCwianRpIjoiZGU2YjkxZGItZTE4MC00M2EzLWI0MmUtOWM5YTM0MWEzYWQ0IiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoiZGV2LmFnbmljYXJyZW50YWxfMTg9NDE3QHN1cmVwYXNzLmlvIiwibmJmIjoxNzg0MDk3NzYwLCJleHAiOjE3ODY2ODk3NjAsImVtYWlsIjoiYWduaWNhcnJlbnRhbF8xODk0MTdAc3VyZXBhc3MuaW8iLCJ0ZW5hbnRfaWQiOiJtYWluIiwidXNlcl9jbGFpbXMiOnsic2NvcGVzIjpbInVzZXIiXX19.9lcZoAJ98v5fv5NF9pg4QuCIrkQ7jLMuq4E4oM6ZjIQ";
+$surepass_url = "https://sandbox.surepass.io/api/v1/rc/rc-to-mobile-number";
+$api_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4NDA5Nzc2MCwianRpIjoiZGU2YjkxZGItZTE4MC00M2EzLWI0MmUtOWM5YTM0MWEzYWQ0IiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoiZGV2LmFnbmljYXJyZW50YWxfMTg5NDE3QHN1cmVwYXNzLmlvIiwibmJmIjoxNzg0MDk3NzYwLCJleHAiOjE3ODY2ODk3NjAsImVtYWlsIjoiYWduaWNhcnJlbnRhbF8xODk0MTdAc3VyZXBhc3MuaW8iLCJ0ZW5hbnRfaWQiOiJtYWluIiwidXNlcl9jbGFpbXMiOnsic2NvcGVzIjpbInVzZXIiXX19.9lcZoAJ98v5fv5NF9pg4QuCIrkQ7jLMuq4E4oM6ZjIQ";
 $customer_id = "agnicarrental_189417";
 
 $payload = json_encode([
@@ -135,7 +135,7 @@ if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $res
     ]);
 } else {
     // Fallback: Direct full RC fetch if Sandbox initiate API isn't enabled or bypasses OTP
-    $fallbackUrl = "https://sandbox.surepass.app/api/v1/rc/rc-full";
+    $fallbackUrl = "https://sandbox.surepass.io/api/v1/rc/rc-full";
     $ch2 = curl_init();
     curl_setopt_array($ch2, [
         CURLOPT_URL => $fallbackUrl,
