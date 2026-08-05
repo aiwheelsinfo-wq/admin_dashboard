@@ -106,8 +106,8 @@ if (!empty($rcDetails)) {
     $seat_capacity      = trim((string)($rc['seat_capacity'] ?? ''));
     $permit_number      = trim($rc['permit_number'] ?? '');
     $permit_valid_upto  = !empty($rc['permit_valid_upto']) ? $rc['permit_valid_upto'] : NULL;
-    $pucc_number        = trim($rc['pucc_number'] ?? $rc['puc_number'] ?? '');
-    $pucc_upto          = !empty($rc['pucc_upto']) ? $rc['pucc_upto'] : (!empty($rc['puc_upto']) ? $rc['puc_upto'] : NULL);
+    $pucc_number        = trim($rc['pucc_number'] ?? $rc['puc_number'] ?? $rc['pucc_no'] ?? $rc['puc_no'] ?? $rc['puc_doi'] ?? '');
+    $pucc_upto          = !empty($rc['pucc_upto']) ? $rc['pucc_upto'] : (!empty($rc['puc_upto']) ? $rc['puc_upto'] : (!empty($rc['puc_doe']) ? $rc['puc_doe'] : NULL));
     $rc_status          = trim($rc['rc_status'] ?? 'ACTIVE');
     $permanent_address  = trim($rc['permanent_address'] ?? $rc['present_address'] ?? '');
 
