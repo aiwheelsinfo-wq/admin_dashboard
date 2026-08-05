@@ -35,43 +35,9 @@ if (empty($rc_number)) {
     sendJsonResponse(false, "RC Number is required");
 }
 
-// Check database cache first
-$cacheStmt = mysqli_prepare($conn, "SELECT * FROM driver_rc_verifications WHERE rc_number = ? AND verification_status IN ('VERIFIED', 'MANUAL_APPROVED')");
-if ($cacheStmt) {
-    mysqli_stmt_bind_param($cacheStmt, "s", $rc_number);
-    mysqli_stmt_execute($cacheStmt);
-    $cacheResult = mysqli_stmt_get_result($cacheStmt);
-
-    if ($cachedRow = mysqli_fetch_assoc($cacheResult)) {
-        sendJsonResponse(true, "Verified from Database Cache", [
-            "otp_required" => false,
-            "data" => [
-                "rc_number" => $cachedRow['rc_number'],
-                "owner_name" => $cachedRow['owner_name'],
-                "maker_model" => $cachedRow['maker_model'],
-                "maker_description" => $cachedRow['maker_description'],
-                "registration_date" => $cachedRow['registration_date'],
-                "fit_up_to" => $cachedRow['fit_up_to'],
-                "insurance_policy_number" => $cachedRow['insurance_policy_number'],
-                "insurance_upto" => $cachedRow['insurance_upto'],
-                "insurance_company" => $cachedRow['insurance_company'],
-                "fuel_type" => $cachedRow['fuel_type'],
-                "color" => $cachedRow['color'],
-                "seat_capacity" => $cachedRow['seat_capacity'],
-                "permit_number" => $cachedRow['permit_number'],
-                "permit_valid_upto" => $cachedRow['permit_valid_upto'],
-                "rc_status" => $cachedRow['rc_status'],
-                "permanent_address" => $cachedRow['permanent_address'],
-                "verification_status" => $cachedRow['verification_status']
-            ]
-        ]);
-    }
-    mysqli_stmt_close($cacheStmt);
-}
-
 // Initiate Surepass RC OTP
 $surepass_url = "https://sandbox.surepass.io/api/v1/rc/rc-to-mobile-number";
-$api_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4NDA5Nzc2MCwianRpIjoiZGU2YjkxZGItZTE4MC00M2EzLWI0MmUtOWM5YTM0MWEzYWQ0IiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoiZGV2LmFnbmljYXJyZW50YWxfMTg5NDE3QHN1cmVwYXNzLmlvIiwibmJmIjoxNzg0MDk3NzYwLCJleHAiOjE3ODY2ODk3NjAsImVtYWlsIjoiYWduaWNhcnJlbnRhbF8xODk0MTdAc3VyZXBhc3MuaW8iLCJ0ZW5hbnRfaWQiOiJtYWluIiwidXNlcl9jbGFpbXMiOnsic2NvcGVzIjpbInVzZXIiXX19.9lcZoAJ98v5fv5NF9pg4QuCIrkQ7jLMuq4E4oM6ZjIQ";
+$api_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4NDA5Nzc2MCwianRpIjoiZGU2YjkxZGItZTE4MC00M2EzLWI0MmUtOWM5YTM0MWEzYWQ0IiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoiZGV2LmFnbmljYXJyZW50YWxfMTg9NDE3QHN1cmVwYXNzLmlvIiwibmJmIjoxNzg0MDk3NzYwLCJleHAiOjE3ODY2ODk3NjAsImVtYWlsIjoiYWduaWNhcnJlbnRhbF8xODk0MTdAc3VyZXBhc3MuaW8iLCJ0ZW5hbnRfaWQiOiJtYWluIiwidXNlcl9jbGFpbXMiOnsic2NvcGVzIjpbInVzZXIiXX19.9lcZoAJ98v5fv5NF9pg4QuCIrkQ7jLMuq4E4oM6ZjIQ";
 $customer_id = "agnicarrental_189417";
 
 $payload = json_encode([
