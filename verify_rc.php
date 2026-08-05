@@ -55,6 +55,16 @@ mysqli_query($conn, $tableSql);
 $rawInput = file_get_contents('php://input');
 $inputData = json_decode($rawInput, true);
 
+$action = strtolower(trim($inputData['action'] ?? $_POST['action'] ?? $_GET['action'] ?? ''));
+
+if ($action === 'send_otp') {
+    include __DIR__ . '/send_rc_otp.php';
+    exit;
+} elseif ($action === 'submit_otp' || $action === 'verify_otp') {
+    include __DIR__ . '/verify_rc_otp.php';
+    exit;
+}
+
 $rawRc = $inputData['rc_number'] ?? $inputData['rc_no'] ?? $inputData['id_number'] ?? $_POST['rc_number'] ?? $_POST['rc_no'] ?? $_GET['rc_number'] ?? '';
 $rc_number = strtoupper(trim(preg_replace('/[\s\-]/', '', $rawRc)));
 
