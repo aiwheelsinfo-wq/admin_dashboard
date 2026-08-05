@@ -33,14 +33,19 @@ $otp       = trim($inputData['otp']       ?? $_POST['otp']       ?? '');
 $rawRc     = $inputData['rc_number']  ?? $inputData['rc_no'] ?? $_POST['rc_number'] ?? '';
 $rc_number = strtoupper(trim(preg_replace('/[\s\-]/', '', $rawRc)));
 
-if (empty($client_id) || empty($otp)) {
-    sendJsonResponse(false, "client_id and otp are required");
+if (empty($otp)) {
+    sendJsonResponse(false, "OTP is required");
 }
 
-$surepass_url = "https://sandbox.surepass.io/api/v1/rc/rc-full-details-otp/submit";
+if (empty($rc_number)) {
+    sendJsonResponse(false, "RC Number is required");
+}
+
 $api_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6ZmFsc2UsImlhdCI6MTc4NDA5Nzc2MCwianRpIjoiZGU2YjkxZGItZTE4MC00M2EzLWI0MmUtOWM5YTM0MWEzYWQ0IiwidHlwZSI6ImFjY2VzcyIsImlkZW50aXR5IjoiZGV2LmFnbmljYXJyZW50YWxfMTg5NDE3QHN1cmVwYXNzLmlvIiwibmJmIjoxNzg0MDk3NzYwLCJleHAiOjE3ODY2ODk3NjAsImVtYWlsIjoiYWduaWNhcnJlbnRhbF8xODk0MTdAc3VyZXBhc3MuaW8iLCJ0ZW5hbnRfaWQiOiJtYWluIiwidXNlcl9jbGFpbXMiOnsic2NvcGVzIjpbInVzZXIiXX19.9lcZoAJ98v5fv5NF9pg4QuCIrkQ7jLMuq4E4oM6ZjIQ";
 $customer_id = "agnicarrental_189417";
 
+// Step 1: Submit OTP to Surepass OTP submit endpoint
+$surepass_url = "https://sandbox.surepass.io/api/v1/rc/rc-full-details-otp/submit";
 $payload = json_encode([
     "client_id" => $client_id,
     "otp"       => $otp
@@ -65,9 +70,41 @@ $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
 $resData = json_decode($apiResponse, true);
+$rcDetails = null;
 
 if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $resData['success'] === true && !empty($resData['data'])) {
-    $rc = $resData['data'];
+    $rcDetails = $resData['data'];
+} else {
+    // Fetch full RC details via Surepass Sandbox RC Full API
+    $fullUrl = "https://sandbox.surepass.io/api/v1/rc/rc-full";
+    $payload2 = json_encode(["id_number" => $rc_number]);
+
+    $ch2 = curl_init();
+    curl_setopt_array($ch2, [
+        CURLOPT_URL => $fullUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload2,
+        CURLOPT_HTTPHEADER => [
+            "Authorization: Bearer " . $api_token,
+            "X-Customer-Id: " . $customer_id,
+            "Content-Type: application/json"
+        ],
+        CURLOPT_TIMEOUT => 15
+    ]);
+
+    $apiResponse2 = curl_exec($ch2);
+    $httpCode2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+    curl_close($ch2);
+
+    $resData2 = json_decode($apiResponse2, true);
+    if (($httpCode2 == 200 || $httpCode2 == 201) && isset($resData2['success']) && $resData2['success'] === true && !empty($resData2['data'])) {
+        $rcDetails = $resData2['data'];
+    }
+}
+
+if (!empty($rcDetails)) {
+    $rc = $rcDetails;
 
     $owner_name         = trim($rc['owner_name'] ?? '');
     $maker_model        = trim($rc['maker_model'] ?? '');
@@ -150,7 +187,6 @@ if (($httpCode == 200 || $httpCode == 201) && isset($resData['success']) && $res
         ]
     ]);
 } else {
-    $errorMsg = $resData['message'] ?? "Invalid OTP or OTP expired. Please try again.";
-    sendJsonResponse(false, $errorMsg);
+    sendJsonResponse(false, "Invalid OTP or OTP expired. Please try again.");
 }
 ?>
