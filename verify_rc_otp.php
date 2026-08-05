@@ -41,14 +41,14 @@ if (empty($rc_number)) {
     sendJsonResponse(false, "RC Number is required");
 }
 
-// 1. Verify OTP against rc_otp_sessions OR allow test OTP fallback
+// 1. Verify OTP against rc_otp_sessions OR allow fallback test OTP 123456
 $isValidOtp = false;
 $checkStmt = mysqli_prepare($conn, "SELECT * FROM rc_otp_sessions WHERE (client_id = ? OR rc_number = ?) AND (otp = ? OR ? = '123456') ORDER BY id DESC LIMIT 1");
 if ($checkStmt) {
     mysqli_stmt_bind_param($checkStmt, "ssss", $client_id, $rc_number, $otp, $otp);
     mysqli_stmt_execute($checkStmt);
     $res = mysqli_stmt_get_result($checkStmt);
-    if (mysqli_fetch_assoc($res) || $otp === '123456' || strlen($otp) == 6) {
+    if (mysqli_fetch_assoc($res) || $otp === '123456') {
         $isValidOtp = true;
     }
     mysqli_stmt_close($checkStmt);
@@ -88,109 +88,92 @@ $rcDetails = null;
 
 if (($httpCode2 == 200 || $httpCode2 == 201) && isset($resData2['success']) && $resData2['success'] === true && !empty($resData2['data'])) {
     $rcDetails = $resData2['data'];
-} else {
-    // Fallback data if Surepass API balance is exhausted or in sandbox testing mode
-    $rcDetails = [
-        "rc_number" => $rc_number,
-        "owner_name" => "ABDULLA",
-        "maker_model" => "MARUTI ALTO",
-        "maker_description" => "MARUTI SUZUKI INDIA LTD",
-        "registration_date" => "2009-08-19",
-        "fit_up_to" => "2029-08-18",
-        "insurance_policy_number" => "76220031250200005587",
-        "insurance_upto" => "2026-08-11",
-        "insurance_company" => "The New India Assurance Company Limited",
-        "fuel_type" => "PETROL",
-        "color" => "SILKY SILVER",
-        "seat_capacity" => "5",
-        "permit_number" => "KL7320230001",
-        "permit_valid_upto" => "2028-08-18",
-        "rc_status" => "ACTIVE",
-        "permanent_address" => "Wayanad, Kerala, 673579",
-        "verification_status" => "VERIFIED"
-    ];
 }
 
-$rc = $rcDetails;
+if (!empty($rcDetails)) {
+    $rc = $rcDetails;
 
-$owner_name         = trim($rc['owner_name'] ?? '');
-$maker_model        = trim($rc['maker_model'] ?? '');
-$maker_description  = trim($rc['maker_description'] ?? '');
-$registration_date  = !empty($rc['registration_date']) ? $rc['registration_date'] : NULL;
-$fit_up_to          = !empty($rc['fit_up_to']) ? $rc['fit_up_to'] : NULL;
-$insurance_policy   = trim($rc['insurance_policy_number'] ?? '');
-$insurance_upto     = !empty($rc['insurance_upto']) ? $rc['insurance_upto'] : NULL;
-$insurance_company  = trim($rc['insurance_company'] ?? '');
-$fuel_type          = trim($rc['fuel_type'] ?? '');
-$color              = trim($rc['color'] ?? '');
-$seat_capacity      = trim((string)($rc['seat_capacity'] ?? ''));
-$permit_number      = trim($rc['permit_number'] ?? '');
-$permit_valid_upto  = !empty($rc['permit_valid_upto']) ? $rc['permit_valid_upto'] : NULL;
-$rc_status          = trim($rc['rc_status'] ?? 'ACTIVE');
-$permanent_address  = trim($rc['permanent_address'] ?? $rc['present_address'] ?? '');
+    $owner_name         = trim($rc['owner_name'] ?? '');
+    $maker_model        = trim($rc['maker_model'] ?? '');
+    $maker_description  = trim($rc['maker_description'] ?? '');
+    $registration_date  = !empty($rc['registration_date']) ? $rc['registration_date'] : NULL;
+    $fit_up_to          = !empty($rc['fit_up_to']) ? $rc['fit_up_to'] : NULL;
+    $insurance_policy   = trim($rc['insurance_policy_number'] ?? '');
+    $insurance_upto     = !empty($rc['insurance_upto']) ? $rc['insurance_upto'] : NULL;
+    $insurance_company  = trim($rc['insurance_company'] ?? '');
+    $fuel_type          = trim($rc['fuel_type'] ?? '');
+    $color              = trim($rc['color'] ?? '');
+    $seat_capacity      = trim((string)($rc['seat_capacity'] ?? ''));
+    $permit_number      = trim($rc['permit_number'] ?? '');
+    $permit_valid_upto  = !empty($rc['permit_valid_upto']) ? $rc['permit_valid_upto'] : NULL;
+    $rc_status          = trim($rc['rc_status'] ?? 'ACTIVE');
+    $permanent_address  = trim($rc['permanent_address'] ?? $rc['present_address'] ?? '');
 
-$ver_status = 'VERIFIED';
-$today = date('Y-m-d');
-if (($insurance_upto && $insurance_upto < $today) || ($fit_up_to && $fit_up_to < $today)) {
-    $ver_status = 'EXPIRED';
-}
-
-if (!empty($rc_number)) {
-    $saveSql = "INSERT INTO driver_rc_verifications 
-        (rc_number, owner_name, maker_model, maker_description, registration_date, fit_up_to, 
-         insurance_policy_number, insurance_upto, insurance_company, fuel_type, color, 
-         seat_capacity, permit_number, permit_valid_upto, rc_status, permanent_address, verification_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE 
-        owner_name=VALUES(owner_name), 
-        maker_model=VALUES(maker_model), 
-        maker_description=VALUES(maker_description),
-        registration_date=VALUES(registration_date),
-        fit_up_to=VALUES(fit_up_to), 
-        insurance_policy_number=VALUES(insurance_policy_number),
-        insurance_upto=VALUES(insurance_upto), 
-        insurance_company=VALUES(insurance_company),
-        fuel_type=VALUES(fuel_type), 
-        color=VALUES(color), 
-        seat_capacity=VALUES(seat_capacity),
-        permit_number=VALUES(permit_number), 
-        permit_valid_upto=VALUES(permit_valid_upto), 
-        rc_status=VALUES(rc_status),
-        permanent_address=VALUES(permanent_address), 
-        verification_status=VALUES(verification_status)";
-
-    $stmt = mysqli_prepare($conn, $saveSql);
-    if ($stmt) {
-        mysqli_stmt_bind_param(
-            $stmt, "sssssssssssssssss",
-            $rc_number, $owner_name, $maker_model, $maker_description, $registration_date, $fit_up_to,
-            $insurance_policy, $insurance_upto, $insurance_company, $fuel_type, $color,
-            $seat_capacity, $permit_number, $permit_valid_upto, $rc_status, $permanent_address, $ver_status
-        );
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
+    $ver_status = 'VERIFIED';
+    $today = date('Y-m-d');
+    if (($insurance_upto && $insurance_upto < $today) || ($fit_up_to && $fit_up_to < $today)) {
+        $ver_status = 'EXPIRED';
     }
-}
 
-sendJsonResponse(true, "RC OTP Verified successfully!", [
-    "data" => [
-        "rc_number" => $rc_number,
-        "owner_name" => $owner_name,
-        "maker_model" => $maker_model,
-        "maker_description" => $maker_description,
-        "registration_date" => $registration_date,
-        "fit_up_to" => $fit_up_to,
-        "insurance_policy_number" => $insurance_policy,
-        "insurance_upto" => $insurance_upto,
-        "insurance_company" => $insurance_company,
-        "fuel_type" => $fuel_type,
-        "color" => $color,
-        "seat_capacity" => $seat_capacity,
-        "permit_number" => $permit_number,
-        "permit_valid_upto" => $permit_valid_upto,
-        "rc_status" => $rc_status,
-        "permanent_address" => $permanent_address,
-        "verification_status" => $ver_status
-    ]
-]);
+    if (!empty($rc_number)) {
+        $saveSql = "INSERT INTO driver_rc_verifications 
+            (rc_number, owner_name, maker_model, maker_description, registration_date, fit_up_to, 
+             insurance_policy_number, insurance_upto, insurance_company, fuel_type, color, 
+             seat_capacity, permit_number, permit_valid_upto, rc_status, permanent_address, verification_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+            owner_name=VALUES(owner_name), 
+            maker_model=VALUES(maker_model), 
+            maker_description=VALUES(maker_description),
+            registration_date=VALUES(registration_date),
+            fit_up_to=VALUES(fit_up_to), 
+            insurance_policy_number=VALUES(insurance_policy_number),
+            insurance_upto=VALUES(insurance_upto), 
+            insurance_company=VALUES(insurance_company),
+            fuel_type=VALUES(fuel_type), 
+            color=VALUES(color), 
+            seat_capacity=VALUES(seat_capacity),
+            permit_number=VALUES(permit_number), 
+            permit_valid_upto=VALUES(permit_valid_upto), 
+            rc_status=VALUES(rc_status),
+            permanent_address=VALUES(permanent_address), 
+            verification_status=VALUES(verification_status)";
+
+        $stmt = mysqli_prepare($conn, $saveSql);
+        if ($stmt) {
+            mysqli_stmt_bind_param(
+                $stmt, "sssssssssssssssss",
+                $rc_number, $owner_name, $maker_model, $maker_description, $registration_date, $fit_up_to,
+                $insurance_policy, $insurance_upto, $insurance_company, $fuel_type, $color,
+                $seat_capacity, $permit_number, $permit_valid_upto, $rc_status, $permanent_address, $ver_status
+            );
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_close($stmt);
+        }
+    }
+
+    sendJsonResponse(true, "RC OTP Verified successfully!", [
+        "data" => [
+            "rc_number" => $rc_number,
+            "owner_name" => $owner_name,
+            "maker_model" => $maker_model,
+            "maker_description" => $maker_description,
+            "registration_date" => $registration_date,
+            "fit_up_to" => $fit_up_to,
+            "insurance_policy_number" => $insurance_policy,
+            "insurance_upto" => $insurance_upto,
+            "insurance_company" => $insurance_company,
+            "fuel_type" => $fuel_type,
+            "color" => $color,
+            "seat_capacity" => $seat_capacity,
+            "permit_number" => $permit_number,
+            "permit_valid_upto" => $permit_valid_upto,
+            "rc_status" => $rc_status,
+            "permanent_address" => $permanent_address,
+            "verification_status" => $ver_status
+        ]
+    ]);
+} else {
+    sendJsonResponse(false, "Failed to retrieve RC details from Government database.");
+}
 ?>
