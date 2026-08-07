@@ -157,8 +157,8 @@ $from_coords = get_geocode_coords($from);
 $fromLat = $from_coords ? $from_coords['lat'] : null;
 $fromLon = $from_coords ? $from_coords['lng'] : null;
 
-// Enforce City Boundary check for pickup location
-if ($from_coords !== null && !is_inside_city_boundary($fromLat, $fromLon, $conn)) {
+// Enforce City Boundary check for pickup location (bypassed for Sandbox testing)
+if ($from_coords !== null && empty($partner['is_sandbox']) && !is_inside_city_boundary($fromLat, $fromLon, $conn)) {
     log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>'Pickup location is outside Rentox active operational service cities.'], 'error');
     api_error('Pickup location is outside Rentox active operational service cities. Please choose a pickup location within our active service areas.', 400);
 }
