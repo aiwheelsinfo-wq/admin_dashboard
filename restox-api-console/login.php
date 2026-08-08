@@ -294,7 +294,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="password"><i class="fa-solid fa-lock"></i> Password</label>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label class="form-label" for="password"><i class="fa-solid fa-lock"></i> Password</label>
+                    <a href="forgot-password.php" style="color:var(--primary-accent); font-size:0.85rem; text-decoration:none; font-weight:500;">Forgot Password?</a>
+                </div>
                 <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
             </div>
 

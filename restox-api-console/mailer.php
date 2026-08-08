@@ -479,4 +479,52 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
     trigger_background_mailer();
     return true;
 }
+
+/**
+ * Returns the HTML email template for Password Reset OTP.
+ */
+function get_reset_password_email_body($otp, $to_name) {
+    return '
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff; color: #1f2937;">
+        <h2 style="color: #6c63ff; margin-top: 0;">Redox API Service</h2>
+        <p style="font-size: 15px; line-height: 1.5;">Hello ' . htmlspecialchars($to_name) . ',</p>
+        <p style="font-size: 15px; line-height: 1.5;">We received a request to reset your B2B Partner Developer Console password. Please use the following One-Time Password (OTP) code to proceed:</p>
+        <div style="font-size: 32px; font-weight: bold; color: #6c63ff; background-color: #f3f4f6; border: 1px solid #e5e7eb; padding: 14px; border-radius: 8px; text-align: center; letter-spacing: 6px; margin: 24px 0;">
+            ' . $otp . '
+        </div>
+        <p style="font-size: 14px; color: #6b7280;">This OTP code is valid for 10 minutes. If you did not request a password reset, please ignore this email.</p>
+        <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+        <p style="font-size: 12px; color: #9ca3af; text-align: center;">&copy; 2026 Redox API Service. All rights reserved.</p>
+    </div>
+    ';
+}
+
+/**
+ * Sends a password reset OTP email to a B2B partner (Synchronous & resilient fallback).
+ */
+function send_reset_password_otp_email($to_email, $otp, $to_name = 'Partner') {
+    log_mail_debug("send_reset_password_otp_email: Started for $to_email with OTP $otp");
+    
+    if (send_email_via_api($to_email, 'Password Reset OTP - Redox API Service', get_reset_password_email_body($otp, $to_name), $to_name)) {
+        return true;
+    }
+
+    try {
+        $mail = new PHPMailer(true);
+        $mail->isMail(); 
+        $mail->setFrom('noreply@agnicarrental.com', 'Redox API Service');
+        $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+        $mail->addAddress($to_email, $to_name);
+        $mail->isHTML(true);
+        $mail->Subject = 'Password Reset OTP - Redox API Service';
+        $mail->Body    = get_reset_password_email_body($otp, $to_name);
+        
+        $mail->send();
+        log_mail_debug("send_reset_password_otp_email: Native mail succeeded");
+        return true;
+    } catch (Exception $e) {
+        log_mail_debug("send_reset_password_otp_email: Failed: " . $e->getMessage());
+        return false;
+    }
+}
 ?>
