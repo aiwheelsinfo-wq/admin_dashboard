@@ -337,6 +337,7 @@ if (!mysqli_stmt_execute($stmt)) {
     log_api_request($partner['id'], $_API_NAME, $body, ['status'=>false,'message'=>$err], 'error');
     api_error('Booking failed: ' . $err, 500);
 }
+$inserted_db_id = mysqli_insert_id($conn);
 mysqli_stmt_close($stmt);
 
 // Record in partner_bookings cross-reference
@@ -348,6 +349,18 @@ if ($pb) {
     mysqli_stmt_bind_param($pb, 'issss', $partner['id'], $booking_id, $partner_ref, $trip_type, $initial_status);
     mysqli_stmt_execute($pb);
     mysqli_stmt_close($pb);
+}
+
+// ── Trigger Live Vendor App Push Notification for Production Bookings ────────
+if (!$is_sandbox && $inserted_db_id) {
+    @require_once __DIR__ . '/../../send_new_booking_notification.php';
+    if (function_exists('trigger_new_booking_notification')) {
+        try {
+            trigger_new_booking_notification($inserted_db_id, $fromLat, $fromLon);
+        } catch (Throwable $eNotif) {
+            error_log("Partner API FCM notification failed for booking {$inserted_db_id}: " . $eNotif->getMessage());
+        }
+    }
 }
 
 $response = [
