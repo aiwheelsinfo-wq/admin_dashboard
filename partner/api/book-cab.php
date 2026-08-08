@@ -353,12 +353,18 @@ if ($pb) {
 
 // ── Trigger Live Vendor App Push Notification for Production Bookings ────────
 if (!$is_sandbox && $inserted_db_id) {
-    @require_once __DIR__ . '/../../send_new_booking_notification.php';
-    if (function_exists('trigger_new_booking_notification')) {
-        try {
-            trigger_new_booking_notification($inserted_db_id, $fromLat, $fromLon);
-        } catch (Throwable $eNotif) {
-            error_log("Partner API FCM notification failed for booking {$inserted_db_id}: " . $eNotif->getMessage());
+    $notif_script = __DIR__ . '/../../../2025/send_new_booking_notification.php';
+    if (!file_exists($notif_script)) {
+        $notif_script = '/var/www/html/2025/send_new_booking_notification.php';
+    }
+    if (file_exists($notif_script)) {
+        @require_once $notif_script;
+        if (function_exists('trigger_new_booking_notification')) {
+            try {
+                trigger_new_booking_notification($inserted_db_id, $fromLat, $fromLon);
+            } catch (Throwable $eNotif) {
+                error_log("Partner API FCM notification failed for booking {$inserted_db_id}: " . $eNotif->getMessage());
+            }
         }
     }
 }
