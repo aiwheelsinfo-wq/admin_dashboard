@@ -80,6 +80,22 @@ if ($partner['status'] === 'blocked') {
     exit();
 }
 
+// ── Check Payment Requirement for Live Production API Access ──────────────
+if (!$is_sandbox_key) {
+    $is_paid = (($partner['payment_status'] ?? '') === 'paid' || $partner['status'] === 'active');
+    if (!$is_paid) {
+        http_response_code(403);
+        require_once __DIR__ . '/logger.php';
+        log_api_request($partner['id'], $_API_NAME ?? 'unknown', [], ['status' => false, 'message' => 'Payment Required for Live Production API Access'], 'payment_required');
+        echo json_encode([
+            'status' => false,
+            'message' => 'Payment Required: Live Production API access requires a completed setup payment of ₹10,000. Please complete payment in your partner console dashboard.',
+            'payment_url' => 'https://agnicarrental.com/admin2025/restox-api-console/dashboard.php'
+        ]);
+        exit();
+    }
+}
+
 // ── Run rate limiter ───────────────────────────────────────────────────────
 require_once __DIR__ . '/rate_limiter.php';
 check_rate_limit($partner, $conn);
