@@ -3,6 +3,13 @@ session_start();
 require_once __DIR__ . '/../db_connect.php';
 require_once __DIR__ . '/mailer.php';
 
+if (file_exists(__DIR__ . '/../../2025/razorpay_config.php')) {
+    require_once __DIR__ . '/../../2025/razorpay_config.php';
+}
+if (!defined('RAZORPAY_ACTIVE_KEY')) {
+    define('RAZORPAY_ACTIVE_KEY', 'rzp_test_GIqSfPJk12gAgz');
+}
+
 // Auth Check (must be logged in as partner)
 if (!isset($_SESSION['partner_id'])) {
     header("Location: login.php");
@@ -12,6 +19,35 @@ if (!isset($_SESSION['partner_id'])) {
 $id = $_SESSION['partner_id'];
 $error = '';
 $success = '';
+
+// Handle Razorpay Payment Verification
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'verify_payment') {
+    header('Content-Type: application/json');
+    $payment_id = trim($_POST['razorpay_payment_id'] ?? '');
+
+    if (empty($payment_id)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid payment ID.']);
+        exit;
+    }
+
+    try {
+        $stmt_pay = mysqli_prepare($conn, 
+            "UPDATE partners 
+             SET status = 'active', payment_status = 'paid', payment_id = ?, payment_amount = 10000.00, paid_at = NOW() 
+             WHERE id = ?"
+        );
+        mysqli_stmt_bind_param($stmt_pay, 'si', $payment_id, $id);
+        if (mysqli_stmt_execute($stmt_pay)) {
+            echo json_encode(['success' => true, 'message' => 'Payment of ₹10,000 verified successfully! Your API Production keys are now unlocked.']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to record payment in database.']);
+        }
+        mysqli_stmt_close($stmt_pay);
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+    exit;
+}
 
 // Handle Profile Update Request (AJAX or normal POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_profile') {
@@ -1182,6 +1218,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 <p class="alert-banner-desc" style="color: #D1D5DB; font-size: 0.92rem;">Your B2B partner registration has been submitted successfully! The Rentox Admin team is reviewing your business & GST profile. Your API keys, secret credentials, and developer test console will automatically unlock here as soon as your account is approved by Rentox Admin.</p>
                             </div>
                         </div>
+                    <?php elseif ($p['status'] === 'approved' || (($p['payment_status'] ?? '') !== 'paid' && $p['status'] !== 'blocked')): ?>
+                        <div class="alert-banner" style="background-color: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.3); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+                            <div style="display:flex; align-items:flex-start; gap:16px;">
+                                <i class="fa-solid fa-circle-check alert-banner-icon" style="color: var(--success-color); font-size: 1.8rem; margin-top:2px;"></i>
+                                <div class="alert-banner-content">
+                                    <h4 class="alert-banner-title" style="font-size: 1.1rem; color:#FFF;">Partner Account Approved by Admin!</h4>
+                                    <p class="alert-banner-desc" style="color: #D1D5DB; font-size: 0.92rem;">Your registration has been approved by Rentox Admin! Complete the <strong>₹10,000 One-Time API Activation Fee</strong> via Razorpay to activate your Live Production Access Keys.</p>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn-primary-action" onclick="payWithRazorpay()" style="background:linear-gradient(135deg, #10B981, #059669); font-weight:700; font-size:0.95rem; padding:12px 24px; box-shadow:0 4px 15px rgba(16,185,129,0.35);">
+                                    <i class="fa-solid fa-credit-card"></i> Pay ₹10,000 via Razorpay
+                                </button>
+                            </div>
+                        </div>
                     <?php endif; ?>
 
                     <!-- Incomplete Profile Warning -->
@@ -1955,6 +2006,54 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 showToast("Network connection error", true);
             });
         });
+    </script>
+
+    <!-- Razorpay Checkout SDK & Payment Handler -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        function payWithRazorpay() {
+            const options = {
+                "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
+                "amount": 1000000,
+                "currency": "INR",
+                "name": "Redox API Service",
+                "description": "B2B Partner API Integration & Activation Fee",
+                "handler": function (response) {
+                    if (response.razorpay_payment_id) {
+                        verifyPartnerPayment(response.razorpay_payment_id);
+                    }
+                },
+                "prefill": {
+                    "name": "<?= htmlspecialchars($p['contact_person'] ?? $p['partner_name']) ?>",
+                    "email": "<?= htmlspecialchars($p['email']) ?>",
+                    "contact": "<?= htmlspecialchars($p['mobile_number']) ?>"
+                },
+                "theme": {
+                    "color": "#6c63ff"
+                }
+            };
+            const rzp = new Razorpay(options);
+            rzp.open();
+        }
+
+        function verifyPartnerPayment(paymentId) {
+            showToast("Verifying ₹10,000 payment...", false);
+            const formData = new FormData();
+            formData.append('action', 'verify_payment');
+            formData.append('razorpay_payment_id', paymentId);
+
+            fetch('dashboard.php', { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message, false);
+                        setTimeout(() => location.reload(), 1500);
+                    } else {
+                        showToast(data.message || 'Payment verification failed', true);
+                    }
+                })
+                .catch(err => showToast('Error: ' + err.message, true));
+        }
     </script>
 </body>
 </html>
