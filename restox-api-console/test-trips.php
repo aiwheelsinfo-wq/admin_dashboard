@@ -304,6 +304,9 @@ foreach ($test_bookings as $tb) {
                 <a href="dashboard.php#keys" class="nav-item">
                     <i class="fa-solid fa-key"></i> API Credentials
                 </a>
+                <a href="payments.php" class="nav-item">
+                    <i class="fa-solid fa-credit-card"></i> Payments & Billing
+                </a>
                 <a href="test-trips.php" class="nav-item active">
                     <i class="fa-solid fa-flask-vial"></i> Test Trips Simulator
                 </a>

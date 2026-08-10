@@ -1143,6 +1143,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 <a href="#keys" class="nav-item" onclick="switchTab('#keys')">
                     <i class="fa-solid fa-key"></i> API Credentials
                 </a>
+                <a href="payments.php" class="nav-item">
+                    <i class="fa-solid fa-credit-card"></i> Payments & Billing
+                </a>
                 <a href="test-trips.php" class="nav-item">
                     <i class="fa-solid fa-flask-vial"></i> Test Trips Simulator
                 </a>
