@@ -1549,178 +1549,223 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                 <section class="tab-section d-none" id="tab-docs">
                     <div class="page-header">
                         <div class="page-title-desc">
-                            <h1>API Documentation Reference</h1>
-                            <p>Integrate search, booking, tariff, and tracking endpoints on your B2B server.</p>
+                            <h1>API Documentation & Integration Guide</h1>
+                            <p>Complete technical guide for headers, authentication modes, endpoints, code snippets, and error handling.</p>
                         </div>
                     </div>
 
                     <div class="api-ref-container">
 
-                        <!-- Base configuration alert -->
-                        <div class="panel-card" style="margin-bottom:0;">
-                            <h3 class="card-title" style="margin-bottom:14px;"><i class="fa-solid fa-network-wired"></i> Connection Parameters</h3>
+                        <!-- 1. Connection & Header Parameters -->
+                        <div class="panel-card" style="margin-bottom:24px;">
+                            <h3 class="card-title" style="margin-bottom:14px;"><i class="fa-solid fa-network-wired" style="color:var(--primary-accent);"></i> Base Connection & Required HTTP Headers</h3>
                             <p style="color:var(--text-secondary); font-size:0.92rem; line-height:1.6; margin-bottom:16px;">
-                                All endpoints are hosted on Rentox's primary domain. Base API URL:
+                                All API requests must be sent over HTTPS to our primary endpoint domain. Your request must include authentication headers on every single request.
                             </p>
-                            <div class="key-input-wrapper" style="max-width:100%;">
-                                <code class="key-content" style="color:#FFF;">https://agnicarrental.com/admin2025/partner/api</code>
-                                <button class="btn-key-icon" onclick="copyToClipboard('https://agnicarrental.com/admin2025/partner/api')" title="Copy URL">
+                            <div class="key-input-wrapper" style="max-width:100%; margin-bottom:20px;">
+                                <code class="key-content" style="color:#FFF; font-weight:700;">https://agnicarrental.com/admin2025/partner/api</code>
+                                <button class="btn-key-icon" onclick="copyToClipboard('https://agnicarrental.com/admin2025/partner/api')" title="Copy Base URL">
                                     <i class="fa-solid fa-copy"></i>
                                 </button>
                             </div>
-                            <p style="color:var(--text-secondary); font-size:0.85rem; line-height:1.5; margin-top:8px;">
-                                Required Headers:<br>
-                                <code>X-API-Key: &lt;your_api_key&gt;</code><br>
-                                <code>X-Secret-Key: &lt;your_secret_key&gt;</code><br>
-                                <code>Content-Type: application/json</code>
-                            </p>
+
+                            <h4 style="font-size:1rem; margin-bottom:12px; color:#FFF;">Required HTTP Headers Table</h4>
+                            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; overflow:hidden; margin-bottom:16px;">
+                                <table class="custom-table" style="width:100%; border-collapse:collapse;">
+                                    <thead>
+                                        <tr style="background:rgba(255,255,255,0.03);">
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Header Name</th>
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Type</th>
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Required</th>
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Example Header Value</th>
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><code style="color:var(--primary-accent); font-weight:700;">X-API-Key</code></td>
+                                            <td style="padding:14px 16px;">String</td>
+                                            <td style="padding:14px 16px;"><span style="color:var(--danger-color); font-weight:700;">REQUIRED</span></td>
+                                            <td style="padding:14px 16px;"><code style="font-size:0.82rem; color:#A5B4FC;"><?= htmlspecialchars($p['api_key'] ?? 'SDFFDDF_45CFF4A65129DCF...') ?></code></td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Your B2B Partner API Access Key. Use <code style="color:var(--warning-color)">TEST_</code> prefix for Sandbox.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><code style="color:var(--primary-accent); font-weight:700;">X-Secret-Key</code></td>
+                                            <td style="padding:14px 16px;">String</td>
+                                            <td style="padding:14px 16px;"><span style="color:var(--danger-color); font-weight:700;">REQUIRED</span></td>
+                                            <td style="padding:14px 16px;"><code style="font-size:0.82rem; color:#A5B4FC;"><?= htmlspecialchars($p['secret_key'] ?? '715a8d6f8c1e9442a6...') ?></code></td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Your B2B Partner API Secret Key for request authentication.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><code style="color:var(--success-color); font-weight:700;">Content-Type</code></td>
+                                            <td style="padding:14px 16px;">String</td>
+                                            <td style="padding:14px 16px;"><span style="color:var(--warning-color); font-weight:700;">POST Requests</span></td>
+                                            <td style="padding:14px 16px;"><code style="font-size:0.82rem;">application/json</code></td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Mandatory for all POST request payloads. Body must be valid JSON.</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:14px 16px;"><code style="color:var(--secondary-accent); font-weight:700;">Accept</code></td>
+                                            <td style="padding:14px 16px;">String</td>
+                                            <td style="padding:14px 16px;"><span style="color:var(--text-secondary)">Optional</span></td>
+                                            <td style="padding:14px 16px;"><code style="font-size:0.82rem;">application/json</code></td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Informs the server to return JSON-formatted responses.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
-                        <!-- Endpoint 1: Search Cab -->
+                        <!-- 2. Sandbox vs Production Environment Header Rules -->
+                        <div class="panel-card" style="margin-bottom:24px; border-color:rgba(99,102,241,0.3); background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(17,24,39,0.9));">
+                            <h3 class="card-title" style="margin-bottom:14px;"><i class="fa-solid fa-sliders" style="color:var(--warning-color);"></i> Sandbox vs Production Environment Setup</h3>
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-top:16px;">
+                                <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:12px; padding:20px;">
+                                    <h4 style="color:var(--warning-color); font-size:1.05rem; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                                        <i class="fa-solid fa-vial"></i> 🧪 1. Sandbox Test Mode
+                                    </h4>
+                                    <p style="font-size:0.88rem; color:var(--text-secondary); line-height:1.5; margin-bottom:12px;">
+                                        Prefix your <code style="color:#FFF">X-API-Key</code> with <strong><code>TEST_</code></strong>:
+                                    </p>
+                                    <code style="display:block; background:rgba(0,0,0,0.4); padding:8px 12px; border-radius:6px; font-size:0.8rem; color:var(--warning-color); font-family:var(--font-mono); margin-bottom:12px;">
+                                        X-API-Key: TEST_<?= htmlspecialchars($p['api_key'] ?? 'SDFFDDF_45CFF4A65129DCF...') ?>
+                                    </code>
+                                    <ul style="font-size:0.85rem; color:var(--text-secondary); padding-left:18px; line-height:1.6;">
+                                        <li>Bypasses city bounds (allows worldwide location testing).</li>
+                                        <li>Generates test trip reference numbers (e.g. <code>TEST-PB...</code>).</li>
+                                        <li>Does <strong>not</strong> notify live drivers or incur real charges.</li>
+                                    </ul>
+                                </div>
+
+                                <div style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); border-radius:12px; padding:20px;">
+                                    <h4 style="color:var(--success-color); font-size:1.05rem; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                                        <i class="fa-solid fa-rocket"></i> 🚀 2. Live Production Mode
+                                    </h4>
+                                    <p style="font-size:0.88rem; color:var(--text-secondary); line-height:1.5; margin-bottom:12px;">
+                                        Use your standard Production Key <strong>without</strong> the <code>TEST_</code> prefix:
+                                    </p>
+                                    <code style="display:block; background:rgba(0,0,0,0.4); padding:8px 12px; border-radius:6px; font-size:0.8rem; color:var(--success-color); font-family:var(--font-mono); margin-bottom:12px;">
+                                        X-API-Key: <?= htmlspecialchars($p['api_key'] ?? 'SDFFDDF_45CFF4A65129DCF...') ?>
+                                    </code>
+                                    <ul style="font-size:0.85rem; color:var(--text-secondary); padding-left:18px; line-height:1.6;">
+                                        <li>Enforces city boundaries & active fleet availability.</li>
+                                        <li>Generates real booking reference numbers (e.g. <code>PB...</code>).</li>
+                                        <li>Dispatches <strong>real-time push notifications</strong> to live vendor drivers.</li>
+                                        <li>Requires completed ₹10,000 API activation payment.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. API Endpoints Reference -->
+
+                        <!-- Endpoint 1: Get Fare -->
                         <div class="endpoint-card">
                             <div class="endpoint-header">
-                                <span class="method-badge badge-post">POST</span>
-                                <span class="endpoint-url">/search-cab.php</span>
+                                <span class="method-badge badge-get">GET</span>
+                                <span class="endpoint-url">/get-fare.php</span>
                             </div>
                             <div class="endpoint-desc">
-                                Search for active vehicle fleets, rates, categories, and inventory parameters for specified dates and travel points.
+                                Calculate trip fare estimates, kilometer rates, driver allowances, toll estimates, and GST tax breakdowns.
                             </div>
                             <div class="endpoint-docs-grid">
                                 <div class="params-section">
-                                    <h4 class="params-title">Body Parameters</h4>
+                                    <h4 class="params-title">Query Parameters</h4>
                                     <table class="params-table">
                                         <tr>
-                                            <td class="param-name">pickup_city <span class="param-required">*</span></td>
+                                            <td class="param-name">from_address <span class="param-required">*</span></td>
                                             <td class="param-type">string</td>
-                                            <td class="param-desc">Pickup location city</td>
+                                            <td class="param-desc">Pickup location city or address</td>
                                         </tr>
                                         <tr>
-                                            <td class="param-name">drop_city <span class="param-required">*</span></td>
+                                            <td class="param-name">to_address <span class="param-required">*</span></td>
                                             <td class="param-type">string</td>
-                                            <td class="param-desc">Drop-off destination city</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="param-name">pickup_date <span class="param-required">*</span></td>
-                                            <td class="param-type">string</td>
-                                            <td class="param-desc">Format: YYYY-MM-DD</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="param-name">pickup_time <span class="param-required">*</span></td>
-                                            <td class="param-type">string</td>
-                                            <td class="param-desc">Format: HH:MM:SS</td>
+                                            <td class="param-desc">Drop location city or address</td>
                                         </tr>
                                         <tr>
                                             <td class="param-name">trip_type <span class="param-required">*</span></td>
                                             <td class="param-type">string</td>
-                                            <td class="param-desc">"one_way" or "round_trip"</td>
+                                            <td class="param-desc">"One-way" or "Round-trip"</td>
                                         </tr>
-                                    </table>
-                                </div>
-                                <div class="code-section">
-                                    <div class="code-snippet-header">
-                                        <span class="code-snippet-title">cURL Command</span>
-                                        <button class="btn-key-icon" style="width:24px; height:24px;" onclick="copyToClipboard('curl -X POST https://agnicarrental.com/admin2025/partner/api/search-cab.php \\\n  -H \&quot;X-API-Key: YOUR_API_KEY\&quot; \\\n  -H \&quot;X-Secret-Key: YOUR_SECRET_KEY\&quot; \\\n  -H \&quot;Content-Type: application/json\&quot; \\\n  -d \'{\n    \&quot;pickup_city\&quot;: \&quot;Mumbai\&quot;,\n    \&quot;drop_city\&quot;: \&quot;Pune\&quot;,\n    \&quot;pickup_date\&quot;: \&quot;2026-06-12\&quot;,\n    \&quot;pickup_time\&quot;: \&quot;10:00:00\&quot;,\n    \&quot;trip_type\&quot;: \&quot;one_way\&quot;\n  }\'\')" title="Copy Command">
-                                            <i class="fa-solid fa-copy"></i>
-                                        </button>
-                                    </div>
-                                    <pre class="code-snippet-box"><code>curl -X POST https://agnicarrental.com/admin2025/partner/api/search-cab.php \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "X-Secret-Key: YOUR_SECRET_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "pickup_city": "Mumbai",
-    "drop_city": "Pune",
-    "pickup_date": "2026-06-12",
-    "pickup_time": "10:00:00",
-    "trip_type": "one_way"
-  }'</code></pre>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Endpoint 2: Get Fare -->
-                        <div class="endpoint-card">
-                            <div class="endpoint-header">
-                                <span class="method-badge badge-post">POST</span>
-                                <span class="endpoint-url">/get-fare.php</span>
-                            </div>
-                            <div class="endpoint-desc">
-                                Fetch tariff estimations and route distance pricing options for specific vehicle categories.
-                            </div>
-                            <div class="endpoint-docs-grid">
-                                <div class="params-section">
-                                    <h4 class="params-title">Body Parameters</h4>
-                                    <table class="params-table">
                                         <tr>
-                                            <td class="param-name">category_id <span class="param-required">*</span></td>
-                                            <td class="param-type">int</td>
-                                            <td class="param-desc">ID of the car category</td>
+                                            <td class="param-name">car_type <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">"Sedan", "Ertiga", "Innova", "Crysta"</td>
                                         </tr>
                                         <tr>
                                             <td class="param-name">distance_km <span class="param-required">*</span></td>
                                             <td class="param-type">float</td>
-                                            <td class="param-desc">Estimated transit distance</td>
+                                            <td class="param-desc">Trip distance in kilometers</td>
                                         </tr>
                                     </table>
                                 </div>
                                 <div class="code-section">
                                     <div class="code-snippet-header">
-                                        <span class="code-snippet-title">cURL Command</span>
-                                        <button class="btn-key-icon" style="width:24px; height:24px;" onclick="copyToClipboard('curl -X POST https://agnicarrental.com/admin2025/partner/api/get-fare.php \\\n  -H \&quot;X-API-Key: YOUR_API_KEY\&quot; \\\n  -H \&quot;X-Secret-Key: YOUR_SECRET_KEY\&quot; \\\n  -H \&quot;Content-Type: application/json\&quot; \\\n  -d \'{\n    \&quot;category_id\&quot;: 3,\n    \&quot;distance_km\&quot;: 150.5\n  }\'\')" title="Copy Command">
+                                        <span class="code-snippet-title">cURL Request</span>
+                                        <button class="btn-key-icon" style="width:24px; height:24px;" onclick="copyToClipboard('curl -X GET \&quot;https://agnicarrental.com/admin2025/partner/api/get-fare.php?from_address=Mumbai&to_address=Pune&trip_type=One-way&car_type=Sedan&distance_km=147.9\&quot; \\\n  -H \&quot;X-API-Key: YOUR_API_KEY\&quot; \\\n  -H \&quot;X-Secret-Key: YOUR_SECRET_KEY\&quot;')" title="Copy Command">
                                             <i class="fa-solid fa-copy"></i>
                                         </button>
                                     </div>
-                                    <pre class="code-snippet-box"><code>curl -X POST https://agnicarrental.com/admin2025/partner/api/get-fare.php \
+                                    <pre class="code-snippet-box"><code>curl -X GET "https://agnicarrental.com/admin2025/partner/api/get-fare.php?from_address=Mumbai&to_address=Pune&trip_type=One-way&car_type=Sedan&distance_km=147.9" \
   -H "X-API-Key: YOUR_API_KEY" \
-  -H "X-Secret-Key: YOUR_SECRET_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "category_id": 3,
-    "distance_km": 150.5
-  }'</code></pre>
+  -H "X-Secret-Key: YOUR_SECRET_KEY"</code></pre>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Endpoint 3: Book Cab -->
+                        <!-- Endpoint 2: Book Cab -->
                         <div class="endpoint-card">
                             <div class="endpoint-header">
                                 <span class="method-badge badge-post">POST</span>
                                 <span class="endpoint-url">/book-cab.php</span>
                             </div>
                             <div class="endpoint-desc">
-                                Create an instant booking for a customer ride and trigger booking validation.
+                                Create a new cab booking for a customer and dispatch live driver push notifications.
                             </div>
                             <div class="endpoint-docs-grid">
                                 <div class="params-section">
-                                    <h4 class="params-title">Body Parameters</h4>
+                                    <h4 class="params-title">Body Parameters (JSON)</h4>
                                     <table class="params-table">
+                                        <tr>
+                                            <td class="param-name">from_address <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">Pickup address location</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">to_address <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">Drop destination address</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">trip_type <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">"One-way" or "Round-trip"</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">car_type <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">"Sedan", "Ertiga", "Innova", "Crysta"</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">user_name <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">Passenger full name</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="param-name">user_mobile <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">10-digit mobile number</td>
+                                        </tr>
                                         <tr>
                                             <td class="param-name">partner_booking_ref <span class="param-required">*</span></td>
                                             <td class="param-type">string</td>
                                             <td class="param-desc">Your internal reference ID</td>
                                         </tr>
-                                        <tr>
-                                            <td class="param-name">user_mobile <span class="param-required">*</span></td>
-                                            <td class="param-type">string</td>
-                                            <td class="param-desc">Customer contact phone</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="param-name">user_name <span class="param-required">*</span></td>
-                                            <td class="param-type">string</td>
-                                            <td class="param-desc">Customer full name</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="param-name">user_email</td>
-                                            <td class="param-type">string</td>
-                                            <td class="param-desc">Customer email address</td>
-                                        </tr>
                                     </table>
                                 </div>
                                 <div class="code-section">
                                     <div class="code-snippet-header">
-                                        <span class="code-snippet-title">cURL Command</span>
-                                        <button class="btn-key-icon" style="width:24px; height:24px;" onclick="copyToClipboard('curl -X POST https://agnicarrental.com/admin2025/partner/api/book-cab.php \\\n  -H \&quot;X-API-Key: YOUR_API_KEY\&quot; \\\n  -H \&quot;X-Secret-Key: YOUR_SECRET_KEY\&quot; \\\n  -H \&quot;Content-Type: application/json\&quot; \\\n  -d \'{\n    \&quot;partner_booking_ref\&quot;: \&quot;TX1289371\&quot;,\n    \&quot;user_mobile\&quot;: \&quot;9876543210\&quot;,\n    \&quot;user_name\&quot;: \&quot;Jane Doe\&quot;,\n    \&quot;user_email\&quot;: \&quot;jane@example.com\&quot;\n  }\'\')" title="Copy Command">
+                                        <span class="code-snippet-title">cURL Request</span>
+                                        <button class="btn-key-icon" style="width:24px; height:24px;" onclick="copyToClipboard('curl -X POST https://agnicarrental.com/admin2025/partner/api/book-cab.php \\\n  -H \&quot;X-API-Key: YOUR_API_KEY\&quot; \\\n  -H \&quot;X-Secret-Key: YOUR_SECRET_KEY\&quot; \\\n  -H \&quot;Content-Type: application/json\&quot; \\\n  -d \'{\n    \&quot;from_address\&quot;: \&quot;Mumbai Airport, Mumbai\&quot;,\n    \&quot;to_address\&quot;: \&quot;Pune Railway Station, Pune\&quot;,\n    \&quot;trip_type\&quot;: \&quot;One-way\&quot;,\n    \&quot;car_type\&quot;: \&quot;Sedan\&quot;,\n    \&quot;distance_km\&quot;: 147.9,\n    \&quot;date\&quot;: \&quot;2026-08-15\&quot;,\n    \&quot;time\&quot;: \&quot;10:00\&quot;,\n    \&quot;user_name\&quot;: \&quot;Ramesh Kumar\&quot;,\n    \&quot;user_mobile\&quot;: \&quot;9876543210\&quot;,\n    \&quot;partner_booking_ref\&quot;: \&quot;REF-783990\&quot;\n  }\'\')" title="Copy Command">
                                             <i class="fa-solid fa-copy"></i>
                                         </button>
                                     </div>
@@ -1729,12 +1774,150 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
   -H "X-Secret-Key: YOUR_SECRET_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "partner_booking_ref": "TX1289371",
+    "from_address": "Mumbai Airport, Mumbai",
+    "to_address": "Pune Railway Station, Pune",
+    "trip_type": "One-way",
+    "car_type": "Sedan",
+    "distance_km": 147.9,
+    "date": "2026-08-15",
+    "time": "10:00",
+    "user_name": "Ramesh Kumar",
     "user_mobile": "9876543210",
-    "user_name": "Jane Doe",
-    "user_email": "jane@example.com"
+    "partner_booking_ref": "REF-783990"
   }'</code></pre>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Endpoint 3: Booking Status -->
+                        <div class="endpoint-card">
+                            <div class="endpoint-header">
+                                <span class="method-badge badge-get">GET</span>
+                                <span class="endpoint-url">/booking-status.php</span>
+                            </div>
+                            <div class="endpoint-desc">
+                                Fetch real-time status of a booking (Pending, Accepted, Started, Completed, Cancelled).
+                            </div>
+                            <div class="endpoint-docs-grid">
+                                <div class="params-section">
+                                    <h4 class="params-title">Query Parameters</h4>
+                                    <table class="params-table">
+                                        <tr>
+                                            <td class="param-name">booking_id <span class="param-required">*</span></td>
+                                            <td class="param-type">string</td>
+                                            <td class="param-desc">Booking ID (e.g. PB85AE2481640)</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="code-section">
+                                    <div class="code-snippet-header">
+                                        <span class="code-snippet-title">cURL Request</span>
+                                        <button class="btn-key-icon" style="width:24px; height:24px;" onclick="copyToClipboard('curl -X GET \&quot;https://agnicarrental.com/admin2025/partner/api/booking-status.php?booking_id=PB85AE2481640\&quot; \\\n  -H \&quot;X-API-Key: YOUR_API_KEY\&quot; \\\n  -H \&quot;X-Secret-Key: YOUR_SECRET_KEY\&quot;')" title="Copy Command">
+                                            <i class="fa-solid fa-copy"></i>
+                                        </button>
+                                    </div>
+                                    <pre class="code-snippet-box"><code>curl -X GET "https://agnicarrental.com/admin2025/partner/api/booking-status.php?booking_id=PB85AE2481640" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "X-Secret-Key: YOUR_SECRET_KEY"</code></pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Multi-Language Code Snippets -->
+                        <div class="panel-card" style="margin-bottom:24px;">
+                            <h3 class="card-title" style="margin-bottom:16px;"><i class="fa-solid fa-code" style="color:var(--secondary-accent);"></i> Multi-Language Code Examples</h3>
+                            
+                            <h4 style="font-size:0.95rem; color:#FFF; margin-bottom:8px;">Node.js / JavaScript (Fetch API):</h4>
+                            <pre class="code-snippet-box" style="margin-bottom:20px;"><code>const response = await fetch('https://agnicarrental.com/admin2025/partner/api/get-fare.php?from_address=Mumbai&to_address=Pune&trip_type=One-way&car_type=Sedan&distance_km=147.9', {
+    method: 'GET',
+    headers: {
+        'X-API-Key': 'YOUR_API_KEY',
+        'X-Secret-Key': 'YOUR_SECRET_KEY'
+    }
+});
+const data = await response.json();
+console.log(data);</code></pre>
+
+                            <h4 style="font-size:0.95rem; color:#FFF; margin-bottom:8px;">Python (Requests):</h4>
+                            <pre class="code-snippet-box" style="margin-bottom:20px;"><code>import requests
+
+headers = {
+    'X-API-Key': 'YOUR_API_KEY',
+    'X-Secret-Key': 'YOUR_SECRET_KEY',
+    'Content-Type': 'application/json'
+}
+
+response = requests.get(
+    'https://agnicarrental.com/admin2025/partner/api/get-fare.php',
+    params={'from_address': 'Mumbai', 'to_address': 'Pune', 'trip_type': 'One-way', 'car_type': 'Sedan', 'distance_km': 147.9},
+    headers=headers
+)
+print(response.json())</code></pre>
+
+                            <h4 style="font-size:0.95rem; color:#FFF; margin-bottom:8px;">PHP (cURL):</h4>
+                            <pre class="code-snippet-box"><code>$ch = curl_init("https://agnicarrental.com/admin2025/partner/api/get-fare.php?from_address=Mumbai&to_address=Pune&trip_type=One-way&car_type=Sedan&distance_km=147.9");
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'X-API-Key: YOUR_API_KEY',
+    'X-Secret-Key: YOUR_SECRET_KEY'
+]);
+$result = curl_exec($ch);
+curl_close($ch);
+$data = json_decode($result, true);</code></pre>
+                        </div>
+
+                        <!-- 5. HTTP Response & Error Codes -->
+                        <div class="panel-card">
+                            <h3 class="card-title" style="margin-bottom:16px;"><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger-color);"></i> HTTP Status Codes & Error Definitions</h3>
+                            <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; overflow:hidden;">
+                                <table class="custom-table" style="width:100%; border-collapse:collapse;">
+                                    <thead>
+                                        <tr style="background:rgba(255,255,255,0.03);">
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">HTTP Status</th>
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Response Status</th>
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Reason / Cause</th>
+                                            <th style="padding:12px 16px; font-size:0.8rem; color:var(--text-secondary);">Recommended Solution</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><span class="status-pill pill-completed">200 OK</span></td>
+                                            <td style="padding:14px 16px; font-weight:700; color:var(--success-color)">true</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Request processed successfully.</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem;">Parse returned JSON <code style="color:#FFF">data</code> object.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><span class="status-pill pill-pending">400 Bad Request</span></td>
+                                            <td style="padding:14px 16px; font-weight:700; color:var(--warning-color)">false</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Missing or invalid request parameters.</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem;">Check error message for missing parameter name.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><span class="status-pill pill-blocked">401 Unauthorized</span></td>
+                                            <td style="padding:14px 16px; font-weight:700; color:var(--danger-color)">false</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Invalid API Key or Secret Key header.</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem;">Check <code style="color:#FFF">X-API-Key</code> and <code style="color:#FFF">X-Secret-Key</code> headers.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><span class="status-pill pill-blocked">403 Forbidden</span></td>
+                                            <td style="padding:14px 16px; font-weight:700; color:var(--danger-color)">false</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Live API key used before completing ₹10,000 fee.</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem;">Pay ₹10,000 fee in Payments & Billing page or use Sandbox.</td>
+                                        </tr>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px;"><span class="status-pill pill-pending">429 Too Many Requests</span></td>
+                                            <td style="padding:14px 16px; font-weight:700; color:var(--warning-color)">false</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Rate limit exceeded (60 req/min).</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem;">Throttle requests or contact support for higher limits.</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding:14px 16px;"><span class="status-pill pill-blocked">500 Server Error</span></td>
+                                            <td style="padding:14px 16px; font-weight:700; color:var(--danger-color)">false</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">Internal database or backend error.</td>
+                                            <td style="padding:14px 16px; font-size:0.88rem;">Retry request or contact Rentox developer support.</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
