@@ -61,11 +61,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'finish_trip') {
+        require_once __DIR__ . '/wallet_helper.php';
         $closing_km = (int)($_POST['closing_km'] ?? 12575);
-        $stmt_act = mysqli_prepare($conn, "UPDATE bookings SET booking_status = 'Completed', closing_km = ?, closing_time = CURTIME(), closing_date = CURDATE(), settlement_status = 'Paid' WHERE booking_id = ? AND (is_test = 1 OR booking_id LIKE 'TEST-PB%')");
+        $stmt_act = mysqli_prepare($conn, "UPDATE bookings SET booking_status = 'Completed', closing_km = ?, closing_time = CURTIME(), closing_date = CURDATE(), settlement_status = 'Paid' WHERE booking_id = ?");
         mysqli_stmt_bind_param($stmt_act, 'is', $closing_km, $booking_id);
         if (mysqli_stmt_execute($stmt_act)) {
-            echo json_encode(['success' => true, 'message' => "Test Trip {$booking_id} finished successfully at {$closing_km} KM! Status marked as Completed."]);
+            process_partner_trip_commission($conn, $booking_id);
+            echo json_encode(['success' => true, 'message' => "Trip {$booking_id} finished successfully at {$closing_km} KM! Status marked as Completed. 10% API fee deducted."]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to finish trip.']);
         }

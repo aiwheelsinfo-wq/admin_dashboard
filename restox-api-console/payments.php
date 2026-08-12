@@ -63,6 +63,24 @@ if (!$p) {
     exit();
 }
 
+// Fetch wallet transactions for this partner
+$wallet_txs = [];
+$total_deducted = 0.00;
+$stmt_tx_list = mysqli_prepare($conn, "SELECT * FROM partner_wallet_transactions WHERE partner_id = ? ORDER BY id DESC LIMIT 100");
+if ($stmt_tx_list) {
+    mysqli_stmt_bind_param($stmt_tx_list, 'i', $id);
+    mysqli_stmt_execute($stmt_tx_list);
+    $res_tx = mysqli_stmt_get_result($stmt_tx_list);
+    while ($row_tx = mysqli_fetch_assoc($res_tx)) {
+        $wallet_txs[] = $row_tx;
+        $total_deducted += (float)($row_tx['deduction_amount'] ?? 0);
+    }
+    mysqli_stmt_close($stmt_tx_list);
+}
+
+$wallet_balance = (float)($p['wallet_balance'] ?? 10000.00);
+$initial_deposit = (float)($p['initial_deposit'] ?? 10000.00);
+
 $is_paid = (($p['payment_status'] ?? '') === 'paid');
 $payment_id_val = $p['payment_id'] ?? 'N/A';
 $paid_at_val = !empty($p['paid_at']) ? date('d M Y, h:i A', strtotime($p['paid_at'])) : 'N/A';
@@ -187,6 +205,11 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
         .info-label { font-size: 0.82rem; color: var(--text-secondary); font-weight: 500; }
         .info-value { font-size: 0.95rem; font-weight: 600; color: #FFF; }
 
+        table.custom-table { width: 100%; border-collapse: collapse; text-align: left; }
+        table.custom-table th { padding: 14px 16px; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border-color); }
+        table.custom-table td { padding: 16px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; vertical-align: middle; }
+        table.custom-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+
         /* Buttons */
         .btn-pay {
             background: linear-gradient(135deg, #10B981, #059669); color: #FFF;
@@ -266,8 +289,8 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
 
             <div class="page-header">
                 <div>
-                    <h1>💳 Payments & Billing Details</h1>
-                    <p>Manage your API activation payment, view transactions, and download tax invoices.</p>
+                    <h1>💳 Payments & Prepaid Wallet Billing</h1>
+                    <p>Track your API wallet balance, 10% trip commission deductions, transactions, and tax invoices.</p>
                 </div>
                 <?php if ($is_paid): ?>
                     <button class="btn-print" onclick="window.print()">
@@ -279,37 +302,33 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
             <!-- Summary Metrics Grid -->
             <div class="metrics-grid">
                 <div class="metric-card">
-                    <span class="metric-label">API Integration Status</span>
-                    <div class="metric-value">
-                        <?php if ($is_paid): ?>
-                            <span class="status-badge badge-paid"><i class="fa-solid fa-circle-check"></i> Live / Active</span>
-                        <?php else: ?>
-                            <span class="status-badge badge-unpaid"><i class="fa-solid fa-hourglass-half"></i> Payment Pending</span>
-                        <?php endif; ?>
+                    <span class="metric-label">Current Wallet Balance</span>
+                    <div class="metric-value" style="color:var(--success-color);">
+                        ₹<?= number_format($wallet_balance, 2) ?>
                     </div>
-                    <span class="metric-desc"><?= $is_paid ? 'Live Production Access Unlocked' : '₹10,000 setup fee required' ?></span>
+                    <span class="metric-desc"><i class="fa-solid fa-wallet" style="color:var(--success-color)"></i> Available for 10% fee deductions</span>
                 </div>
 
                 <div class="metric-card">
-                    <span class="metric-label">Setup & Activation Fee</span>
-                    <div class="metric-value">₹<?= $paid_amount_val ?></div>
-                    <span class="metric-desc">One-time API onboarding fee</span>
+                    <span class="metric-label">Initial Activation Deposit</span>
+                    <div class="metric-value">₹<?= number_format($initial_deposit, 2) ?></div>
+                    <span class="metric-desc">Prepaid API activation balance</span>
                 </div>
 
                 <div class="metric-card">
-                    <span class="metric-label">Payment ID / Ref</span>
-                    <div class="metric-value" style="font-size:1.1rem; font-family:var(--font-mono); color:var(--primary-accent); margin-top:14px;">
-                        <?= htmlspecialchars($payment_id_val) ?>
+                    <span class="metric-label">Total 10% Fees Deducted</span>
+                    <div class="metric-value" style="color:var(--warning-color);">
+                        -₹<?= number_format($total_deducted, 2) ?>
                     </div>
-                    <span class="metric-desc">Razorpay Transaction Reference</span>
+                    <span class="metric-desc">10% commission on completed trips</span>
                 </div>
 
                 <div class="metric-card">
-                    <span class="metric-label">Payment Date</span>
-                    <div class="metric-value" style="font-size:1.15rem; margin-top:14px;">
-                        <?= htmlspecialchars($paid_at_val) ?>
+                    <span class="metric-label">Completed Trips Billed</span>
+                    <div class="metric-value" style="color:var(--primary-accent);">
+                        <?= count($wallet_txs) ?>
                     </div>
-                    <span class="metric-desc">Timestamp of verification</span>
+                    <span class="metric-desc">Total completed API trips</span>
                 </div>
             </div>
 
@@ -399,6 +418,65 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                             <i class="fa-solid fa-print"></i> Download & Print Invoice
                         </button>
                     </div>
+                </div>
+
+                <!-- 10% Trip Commission Ledger & Transactions Panel -->
+                <div class="panel-card" style="margin-top:30px;">
+                    <div class="card-header-flex">
+                        <h3 class="card-title"><i class="fa-solid fa-wallet" style="color:var(--primary-accent);"></i> 10% Trip Commission Wallet Ledger</h3>
+                        <span class="status-badge badge-paid"><i class="fa-solid fa-clock-rotate-left"></i> Real-time Deductions</span>
+                    </div>
+                    
+                    <?php if (empty($wallet_txs)): ?>
+                        <div style="text-align:center; padding:36px 10px; color:var(--text-secondary);">
+                            <i class="fa-solid fa-receipt" style="font-size:2.8rem; opacity:0.3; margin-bottom:12px; color:var(--primary-accent);"></i>
+                            <h4 style="font-size:1.05rem; color:#FFF; margin-bottom:6px;">No Trip Fee Deductions Yet</h4>
+                            <p style="font-size:0.9rem; max-width:500px; margin:0 auto; line-height:1.5;">When a trip booked via your B2B API is finished, a 10% trip fee deduction will be automatically recorded here in real-time.</p>
+                        </div>
+                    <?php else: ?>
+                        <div style="overflow-x:auto;">
+                            <table class="custom-table" style="width:100%; border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:rgba(255,255,255,0.03); text-align:left;">
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Date & Time</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Booking Ref</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Total Trip Fare</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Commission</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Amount Deducted</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Remaining Wallet Balance</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($wallet_txs as $tx): ?>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">
+                                                <?= date('d M Y, h:i A', strtotime($tx['created_at'])) ?>
+                                            </td>
+                                            <td style="padding:14px 16px; font-family:var(--font-mono); font-weight:700; color:var(--primary-accent);">
+                                                #<?= htmlspecialchars($tx['booking_id']) ?>
+                                            </td>
+                                            <td style="padding:14px 16px; font-weight:600;">
+                                                ₹<?= number_format($tx['trip_amount'], 2) ?>
+                                            </td>
+                                            <td style="padding:14px 16px; color:var(--warning-color); font-weight:700;">
+                                                10.00%
+                                            </td>
+                                            <td style="padding:14px 16px; font-weight:800; color:var(--danger-color); font-family:var(--font-mono);">
+                                                -₹<?= number_format($tx['deduction_amount'], 2) ?>
+                                            </td>
+                                            <td style="padding:14px 16px; font-weight:800; color:var(--success-color); font-family:var(--font-mono);">
+                                                ₹<?= number_format($tx['balance_after'], 2) ?>
+                                            </td>
+                                            <td style="padding:14px 16px;">
+                                                <span class="status-badge badge-paid" style="font-size:0.75rem;"><i class="fa-solid fa-check"></i> Deducted</span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
 
