@@ -357,7 +357,7 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
             <div class="page-header">
                 <div>
                     <h1>💳 Payments & Prepaid Wallet Billing</h1>
-                    <p>Track your API wallet balance, 10% trip commission deductions, transactions, and tax invoices.</p>
+                    <p>Track your API wallet balance, <?= number_format($commission_rate, 0) ?>% trip commission deductions, transactions, and tax invoices.</p>
                 </div>
                 <?php if ($is_paid): ?>
                     <button class="btn-print" onclick="window.print()">
@@ -373,21 +373,21 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                     <div class="metric-value" style="color:var(--success-color);">
                         ₹<?= number_format($wallet_balance, 2) ?>
                     </div>
-                    <span class="metric-desc"><i class="fa-solid fa-wallet" style="color:var(--success-color)"></i> Available for 10% fee deductions</span>
+                    <span class="metric-desc"><i class="fa-solid fa-wallet" style="color:var(--success-color)"></i> Available for <?= number_format($commission_rate, 0) ?>% fee deductions</span>
                 </div>
 
                 <div class="metric-card">
                     <span class="metric-label">Initial Activation Deposit</span>
-                    <div class="metric-value">₹<?= number_format($initial_deposit, 2) ?></div>
-                    <span class="metric-desc">Prepaid API activation balance</span>
+                    <div class="metric-value">₹<?= number_format($activation_deposit_required, 2) ?></div>
+                    <span class="metric-desc">Required API onboarding balance</span>
                 </div>
 
                 <div class="metric-card">
-                    <span class="metric-label">Total 10% Fees Deducted</span>
+                    <span class="metric-label">Total <?= number_format($commission_rate, 0) ?>% Fees Deducted</span>
                     <div class="metric-value" style="color:var(--warning-color);">
                         -₹<?= number_format($total_deducted, 2) ?>
                     </div>
-                    <span class="metric-desc">10% commission on completed trips</span>
+                    <span class="metric-desc"><?= number_format($commission_rate, 0) ?>% commission on completed trips</span>
                 </div>
 
                 <div class="metric-card">
@@ -405,14 +405,14 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px;">
                         <div>
                             <span class="status-badge badge-unpaid" style="margin-bottom:12px;"><i class="fa-solid fa-triangle-exclamation"></i> Payment Required</span>
-                            <h2 style="font-size:1.4rem; margin-bottom:8px;">Complete ₹10,000 API Setup Payment</h2>
+                            <h2 style="font-size:1.4rem; margin-bottom:8px;">Complete ₹<?= number_format($activation_deposit_required) ?> API Setup Payment</h2>
                             <p style="color:var(--text-secondary); max-width:650px; font-size:0.95rem; line-height:1.5;">
-                                Your B2B Partner Account profile is approved! Complete the <strong>₹10,000.00</strong> setup payment via Razorpay (UPI, Credit Cards, NetBanking) to instantly unlock your <strong>Live Production API Access Keys</strong>.
+                                Your B2B Partner Account profile is approved! Complete the <strong>₹<?= number_format($activation_deposit_required, 2) ?></strong> setup payment via Razorpay (UPI, Credit Cards, NetBanking) to instantly unlock your <strong>Live Production API Access Keys</strong>.
                             </p>
                         </div>
                         <div>
                             <button class="btn-pay" onclick="payWithRazorpay()">
-                                <i class="fa-solid fa-credit-card"></i> Pay ₹10,000 via Razorpay
+                                <i class="fa-solid fa-credit-card"></i> Pay ₹<?= number_format($activation_deposit_required) ?> via Razorpay
                             </button>
                         </div>
                     </div>
