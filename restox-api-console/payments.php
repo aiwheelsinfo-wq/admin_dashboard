@@ -63,6 +63,18 @@ if (!$p) {
     exit();
 }
 
+// Auto-sync any completed trips that haven't been deducted yet
+require_once __DIR__ . '/wallet_helper.php';
+sync_unprocessed_partner_commissions($conn, $id);
+
+// Re-fetch latest partner details (to get updated wallet_balance)
+$stmt_ref = mysqli_prepare($conn, "SELECT * FROM partners WHERE id = ? LIMIT 1");
+mysqli_stmt_bind_param($stmt_ref, 'i', $id);
+mysqli_stmt_execute($stmt_ref);
+$res_ref = mysqli_stmt_get_result($stmt_ref);
+$p = mysqli_fetch_assoc($res_ref);
+mysqli_stmt_close($stmt_ref);
+
 // Fetch wallet transactions for this partner
 $wallet_txs = [];
 $total_deducted = 0.00;

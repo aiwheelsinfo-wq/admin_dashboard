@@ -111,3 +111,35 @@ function process_partner_trip_commission($conn, $booking_identifier) {
 
     return true;
 }
+
+/**
+ * Auto-syncs any completed partner bookings that have not yet had 
+ * their 10% commission fee deducted.
+ */
+function sync_unprocessed_partner_commissions($conn, $partner_id) {
+    if (empty($partner_id)) return;
+
+    $sql = "SELECT b.booking_id 
+            FROM bookings b
+            JOIN partner_bookings pb ON b.booking_id = pb.booking_id
+            LEFT JOIN partner_wallet_transactions pwt ON b.booking_id = pwt.booking_id
+            WHERE pb.partner_id = ? 
+              AND b.booking_status = 'Completed' 
+              AND pwt.id IS NULL";
+
+    $stmt = mysqli_prepare($conn, $sql);
+    if ($stmt) {
+        mysqli_stmt_bind_param($stmt, 'i', $partner_id);
+        mysqli_stmt_execute($stmt);
+        $res = mysqli_stmt_get_result($stmt);
+        $unprocessed = [];
+        while ($row = mysqli_fetch_assoc($res)) {
+            $unprocessed[] = $row['booking_id'];
+        }
+        mysqli_stmt_close($stmt);
+
+        foreach ($unprocessed as $b_id) {
+            process_partner_trip_commission($conn, $b_id);
+        }
+    }
+}
