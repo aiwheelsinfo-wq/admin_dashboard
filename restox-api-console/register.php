@@ -430,14 +430,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         /* Form Sections */
+        #regForm {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
         .form-section-divider {
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             font-weight: 800;
-            letter-spacing: 1.5px;
+            letter-spacing: 1.2px;
             color: #A5B4FC;
-            margin-top: 6px;
-            margin-bottom: -6px;
+            margin-top: 10px;
+            margin-bottom: 2px;
             text-transform: uppercase;
+            padding-bottom: 6px;
+            border-bottom: 1px dashed rgba(165, 180, 252, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-section-divider:first-of-type {
+            margin-top: 0;
         }
 
         .form-group {
