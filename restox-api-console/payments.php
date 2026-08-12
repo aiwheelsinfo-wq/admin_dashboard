@@ -734,7 +734,7 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
         function payWithRazorpay() {
             const options = {
                 "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
-                "amount": 1000000,
+                "amount": <?= (int)($activation_deposit_required * 100) ?>,
                 "currency": "INR",
                 "name": "Redox API Service",
                 "description": "B2B Partner API Integration & Activation Fee",

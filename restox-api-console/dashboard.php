@@ -125,6 +125,9 @@ if (!$p) {
     exit();
 }
 
+// Dynamic activation fee set by Super Admin
+$activation_fee = (float)($p['activation_deposit_required'] ?? 10000.00);
+
 // Query Partner Log Stats
 $total_requests = 0;
 $success_requests = 0;
@@ -1227,12 +1230,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 <i class="fa-solid fa-circle-check alert-banner-icon" style="color: var(--success-color); font-size: 1.8rem; margin-top:2px;"></i>
                                 <div class="alert-banner-content">
                                     <h4 class="alert-banner-title" style="font-size: 1.1rem; color:#FFF;">Partner Account Approved by Admin!</h4>
-                                    <p class="alert-banner-desc" style="color: #D1D5DB; font-size: 0.92rem;">Your registration has been approved by Rentox Admin! Complete the <strong>₹10,000 One-Time API Activation Fee</strong> via Razorpay to activate your Live Production Access Keys.</p>
+                                    <p class="alert-banner-desc" style="color: #D1D5DB; font-size: 0.92rem;">Your registration has been approved by Rentox Admin! Complete the <strong>₹<?= number_format($activation_fee, 2) ?> One-Time API Activation Fee</strong> via Razorpay to activate your Live Production Access Keys.</p>
                                 </div>
                             </div>
                             <div>
                                 <button class="btn-primary-action" onclick="payWithRazorpay()" style="background:linear-gradient(135deg, #10B981, #059669); font-weight:700; font-size:0.95rem; padding:12px 24px; box-shadow:0 4px 15px rgba(16,185,129,0.35);">
-                                    <i class="fa-solid fa-credit-card"></i> Pay ₹10,000 via Razorpay
+                                    <i class="fa-solid fa-credit-card"></i> Pay ₹<?= number_format($activation_fee) ?> via Razorpay
                                 </button>
                             </div>
                         </div>
@@ -2200,7 +2203,7 @@ $data = json_decode($result, true);</code></pre>
         function payWithRazorpay() {
             const options = {
                 "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
-                "amount": 1000000,
+                "amount": <?= (int)($activation_fee * 100) ?>,
                 "currency": "INR",
                 "name": "Redox API Service",
                 "description": "B2B Partner API Integration & Activation Fee",

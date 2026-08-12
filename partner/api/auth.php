@@ -86,10 +86,10 @@ if (!$is_sandbox_key) {
     if (!$is_paid) {
         http_response_code(403);
         require_once __DIR__ . '/logger.php';
-        log_api_request($partner['id'], $_API_NAME ?? 'unknown', [], ['status' => false, 'message' => 'Payment Required for Live Production API Access'], 'payment_required');
+        $req_fee_fmt = number_format((float)($partner['activation_deposit_required'] ?? 10000));
         echo json_encode([
             'status' => false,
-            'message' => 'Payment Required: Live Production API access requires a completed setup payment of ₹10,000. Please complete payment in your partner console dashboard.',
+            'message' => "Payment Required: Live Production API access requires a completed setup payment of ₹{$req_fee_fmt}. Please complete payment in your partner console dashboard.",
             'payment_url' => 'https://agnicarrental.com/admin2025/restox-api-console/dashboard.php'
         ]);
         exit();
