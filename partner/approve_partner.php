@@ -50,9 +50,9 @@ do {
 
 $secret_key = bin2hex(random_bytes(24));
 
-// Update partner in database
+// Update partner in database to approved (pending payment)
 try {
-    $upd_stmt = mysqli_prepare($conn, "UPDATE partners SET api_key = ?, secret_key = ?, status = 'active' WHERE id = ?");
+    $upd_stmt = mysqli_prepare($conn, "UPDATE partners SET api_key = ?, secret_key = ?, status = 'approved', payment_status = 'pending', wallet_balance = 0.00 WHERE id = ?");
     mysqli_stmt_bind_param($upd_stmt, 'ssi', $api_key, $secret_key, $partner_id);
     
     if (mysqli_stmt_execute($upd_stmt)) {

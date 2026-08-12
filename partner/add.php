@@ -36,8 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             $stmt = mysqli_prepare($conn,
-                "INSERT INTO partners (partner_name, company_name, contact_person, mobile_number, email, api_key, secret_key, rate_limit_per_minute, rate_limit_per_day, notes, status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')"
+                "INSERT INTO partners (partner_name, company_name, contact_person, mobile_number, email, api_key, secret_key, rate_limit_per_minute, rate_limit_per_day, notes, status, payment_status, wallet_balance)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', 'pending', 0.00)"
             );
             mysqli_stmt_bind_param($stmt, 'sssssssiis',
                 $partner_name, $company_name, $contact_person, $mobile, $email,
