@@ -50,8 +50,8 @@ if (!isset($_SESSION['admin_id'])) {
                     </div>
                 </div>
             </div>
-            <form action="logout.php" method="POST" class="logout-form">
-                <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            <form action="logout.php" method="POST" class="logout-form" id="adminLogoutForm">
+                <button type="button" class="logout-btn" onclick="confirmAdminLogout(event)"><i class="fas fa-sign-out-alt"></i> Logout</button>
             </form>
         </div>
         <button class="hamburger" id="hamburger" aria-label="Toggle menu"><i class="fas fa-bars"></i></button>
@@ -447,5 +447,26 @@ function viewDriverOnMap(lat, lng) {
     </div>
   </div>
 </div>
+<!-- SweetAlert2 Library & Admin Logout Handler -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function confirmAdminLogout(e) {
+    if (e) e.preventDefault();
+    Swal.fire({
+        title: 'Sign Out Admin?',
+        text: 'Are you sure you want to log out of Super Admin Dashboard?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#64748B',
+        confirmButtonText: '<i class="fas fa-sign-out-alt"></i> Yes, Log Out',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('adminLogoutForm').submit();
+        }
+    });
+}
+</script>
 </body>
 </html>

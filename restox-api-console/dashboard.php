@@ -1300,7 +1300,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         <span class="user-role">B2B Integration</span>
                     </div>
                 </div>
-                <a href="?action=logout" class="btn-logout-sidebar">
+                <a href="?action=logout" class="btn-logout-sidebar" onclick="confirmPartnerLogout(event)">
                     <i class="fa-solid fa-sign-out-alt"></i> Log Out
                 </a>
             </div>
@@ -2494,9 +2494,34 @@ $data = json_decode($result, true);</code></pre>
         });
     </script>
 
+    <!-- SweetAlert2 Library & Logout Handler -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- Razorpay Checkout SDK & Payment Handler -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
+        function confirmPartnerLogout(e) {
+            if (e) e.preventDefault();
+            Swal.fire({
+                title: 'Sign Out?',
+                text: 'Are you sure you want to log out of your Rentox Partner Console?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#EF4444',
+                cancelButtonColor: '#475569',
+                confirmButtonText: '<i class="fa-solid fa-right-from-bracket"></i> Yes, Log Out',
+                cancelButtonText: 'Cancel',
+                background: '#0F172A',
+                color: '#F8FAFC',
+                customClass: {
+                    popup: 'swal2-dark-popup'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = '?action=logout';
+                }
+            });
+        }
+
         function payWithRazorpay() {
             const options = {
                 "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
