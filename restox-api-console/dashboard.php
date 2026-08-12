@@ -1371,7 +1371,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                     </div>
 
                     <div class="panel-card">
-                        <?php if ($p['status'] !== 'active'): ?>
+                        <?php if ($p['status'] === 'pending'): ?>
                             <div style="text-align: center; padding: 40px 10px;">
                                 <i class="fa-solid fa-lock" style="font-size: 3.5rem; margin-bottom: 20px; color: var(--text-secondary); opacity: 0.35;"></i>
                                 <h3 style="font-size: 1.25rem; margin-bottom: 8px;">API Access Under Review</h3>
@@ -1425,37 +1425,55 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                 Use these Live production keys on your live website. All bookings created with these keys dispatch real drivers and trigger live driver alerts.
                             </p>
 
-                            <div style="margin-bottom: 28px;">
-                                <span class="info-label" style="margin-bottom: 8px; display:block;">Production X-API-Key</span>
-                                <div class="key-input-wrapper">
-                                    <code class="key-content" id="apiKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
-                                    <div class="key-actions">
-                                        <button class="btn-key-icon" onclick="toggleKeyVisibility('apiKeyPlain', '<?= htmlspecialchars($p['api_key']) ?>', this)" title="Show/Hide">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </button>
-                                        <button class="btn-key-icon" onclick="copyToClipboard('<?= htmlspecialchars($p['api_key']) ?>')" title="Copy to Clipboard">
-                                            <i class="fa-solid fa-copy"></i>
-                                        </button>
+                            <?php 
+                            $is_partner_paid = (($p['payment_status'] ?? '') === 'paid' || $p['status'] === 'active');
+                            if (!$is_partner_paid): 
+                            ?>
+                                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 14px; padding: 20px 24px; margin-top: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+                                    <div style="display:flex; align-items:flex-start; gap:14px;">
+                                        <i class="fa-solid fa-lock" style="color: var(--warning-color); font-size: 1.6rem; margin-top: 2px;"></i>
+                                        <div>
+                                            <h4 style="color:#FFF; font-weight:700; font-size:0.98rem; margin-bottom:4px;">Live Production Keys Locked</h4>
+                                            <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom:0;">Complete your <strong>₹<?= number_format($activation_fee, 2) ?> Setup Payment</strong> to activate Live Production Access Keys.</p>
+                                        </div>
+                                    </div>
+                                    <a href="payments.php" class="btn-primary-action" style="background: linear-gradient(135deg, #10B981, #059669); font-size:0.88rem; padding:9px 18px;">
+                                        <i class="fa-solid fa-credit-card"></i> Complete Setup Payment
+                                    </a>
+                                </div>
+                            <?php else: ?>
+                                <div style="margin-bottom: 28px;">
+                                    <span class="info-label" style="margin-bottom: 8px; display:block;">Production X-API-Key</span>
+                                    <div class="key-input-wrapper">
+                                        <code class="key-content" id="apiKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
+                                        <div class="key-actions">
+                                            <button class="btn-key-icon" onclick="toggleKeyVisibility('apiKeyPlain', '<?= htmlspecialchars($p['api_key']) ?>', this)" title="Show/Hide">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                            <button class="btn-key-icon" onclick="copyToClipboard('<?= htmlspecialchars($p['api_key']) ?>')" title="Copy to Clipboard">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div style="margin-bottom: 28px;">
-                                <span class="info-label" style="margin-bottom: 8px; display:block;">Production X-Secret-Key</span>
-                                <div class="key-input-wrapper">
-                                    <code class="key-content" id="secretKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
-                                    <div class="key-actions">
-                                        <button class="btn-key-icon" onclick="toggleKeyVisibility('secretKeyPlain', '<?= htmlspecialchars($p['secret_key']) ?>', this)" title="Show/Hide">
-                                            <i class="fa-solid fa-eye"></i>
-                                        </button>
-                                        <button class="btn-key-icon" onclick="copyToClipboard('<?= htmlspecialchars($p['secret_key']) ?>')" title="Copy to Clipboard">
-                                            <i class="fa-solid fa-copy"></i>
-                                        </button>
+                                <div style="margin-bottom: 28px;">
+                                    <span class="info-label" style="margin-bottom: 8px; display:block;">Production X-Secret-Key</span>
+                                    <div class="key-input-wrapper">
+                                        <code class="key-content" id="secretKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
+                                        <div class="key-actions">
+                                            <button class="btn-key-icon" onclick="toggleKeyVisibility('secretKeyPlain', '<?= htmlspecialchars($p['secret_key']) ?>', this)" title="Show/Hide">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                            <button class="btn-key-icon" onclick="copyToClipboard('<?= htmlspecialchars($p['secret_key']) ?>')" title="Copy to Clipboard">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            <?php endif; ?>
 
-                            <div style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 12px; padding: 18px; display:flex; gap:14px; align-items:flex-start;">
+                            <div style="background: rgba(99, 102, 241, 0.04); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 12px; padding: 18px; display:flex; gap:14px; align-items:flex-start; margin-top:24px;">
                                 <i class="fa-solid fa-circle-info" style="color:var(--primary-accent); font-size:1.2rem; margin-top:2px;"></i>
                                 <div style="font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary);">
                                     <p style="color:#FFF; font-weight:600; margin-bottom:4px;">Rate Limits Authorized:</p>
