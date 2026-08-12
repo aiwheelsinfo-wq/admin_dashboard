@@ -33,8 +33,8 @@ function process_partner_trip_commission($conn, $booking_id) {
         return true; // Already processed
     }
 
-    // 3. Fetch booking amount from bookings table
-    $stmt_b = mysqli_prepare($conn, "SELECT total_amount FROM bookings WHERE booking_id = ? LIMIT 1");
+    // 3. Fetch booking amount & sandbox flags from bookings table
+    $stmt_b = mysqli_prepare($conn, "SELECT total_amount, is_sandbox, is_test FROM bookings WHERE booking_id = ? LIMIT 1");
     mysqli_stmt_bind_param($stmt_b, 's', $booking_id);
     mysqli_stmt_execute($stmt_b);
     $res_b = mysqli_stmt_get_result($stmt_b);
@@ -42,6 +42,11 @@ function process_partner_trip_commission($conn, $booking_id) {
     mysqli_stmt_close($stmt_b);
 
     if (!$b_row) return false;
+
+    // Do NOT deduct real wallet funds for Sandbox / Test Mode trips!
+    if (!empty($b_row['is_sandbox']) || !empty($b_row['is_test']) || strpos($booking_id, 'TEST-') === 0) {
+        return false;
+    }
 
     $trip_amount = (float)($b_row['total_amount'] ?? 0.00);
     if ($trip_amount <= 0) return false;
