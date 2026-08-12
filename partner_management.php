@@ -33,6 +33,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    if ($action === 'update_all_partners_pricing') {
+        $commission_rate = (float)($_POST['commission_rate'] ?? 10.00);
+        $deposit_required = (float)($_POST['deposit_required'] ?? 10000.00);
+
+        $stmt = mysqli_prepare($conn, "UPDATE partners SET commission_rate = ?, activation_deposit_required = ?");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'dd', $commission_rate, $deposit_required);
+            if (mysqli_stmt_execute($stmt)) {
+                echo json_encode(['success' => true, 'message' => "Successfully updated ALL partners! Global Deposit set to ₹" . number_format($deposit_required, 2) . ", Commission Rate set to {$commission_rate}%."]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to update all partners.']);
+            }
+            mysqli_stmt_close($stmt);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Database query preparation failed.']);
+        }
+        exit;
+    }
+
     echo json_encode(['success' => false, 'message' => 'Invalid action.']);
     exit;
 }
@@ -229,10 +248,37 @@ foreach ($partners as $pt) {
             </div>
         </div>
 
+        <!-- Global Bulk Configurator Bar -->
+        <div class="panel-card" style="margin-bottom:28px; background:linear-gradient(135deg, #FFFFFF, #F8FAFC); border-color:#CBD5E1;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                <div>
+                    <h3 style="font-size:1.15rem; font-weight:800; color:#0F172A; margin:0; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-bolt" style="color:var(--warning-color);"></i> Global Bulk Rule Configurator
+                    </h3>
+                    <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:4px; margin-bottom:0;">
+                        Update the required activation fee and commission rate for <strong>ALL B2B Partners</strong> simultaneously with one click.
+                    </p>
+                </div>
+                <form onsubmit="saveGlobalPartnerSettings(event)" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="font-size:0.82rem; font-weight:700; color:#475569;">Global Deposit (₹):</label>
+                        <input type="number" step="100" id="global_deposit_required" class="form-input" style="width:130px; padding:9px 12px; font-size:0.9rem;" value="10000.00" required>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="font-size:0.82rem; font-weight:700; color:#475569;">Global Commission (%):</label>
+                        <input type="number" step="0.1" min="0" max="100" id="global_commission_rate" class="form-input" style="width:100px; padding:9px 12px; font-size:0.9rem;" value="10.00" required>
+                    </div>
+                    <button type="submit" class="btn-save" style="width:auto; margin:0; padding:10px 22px; font-size:0.88rem; background:linear-gradient(135deg, #2563EB, #1D4ED8); box-shadow:0 4px 14px rgba(37,99,235,0.3);">
+                        <i class="fa-solid fa-layer-group"></i> Apply to ALL Partners
+                    </button>
+                </form>
+            </div>
+        </div>
+
         <!-- Partner Settings Table -->
         <div class="panel-card">
             <div class="card-title">
-                <i class="fa-solid fa-sliders" style="color:var(--primary-accent);"></i> B2B Partner Pricing & Commission Rules
+                <i class="fa-solid fa-sliders" style="color:var(--primary-accent);"></i> Individual B2B Partner Pricing Rules
             </div>
 
             <div style="overflow-x:auto;">
@@ -299,7 +345,7 @@ foreach ($partners as $pt) {
         <div class="modal-card">
             <div class="modal-title-bar">
                 <h3 style="font-size:1.15rem; font-weight:800; color:#111827; margin:0;">
-                    <i class="fa-solid fa-sliders" style="color:var(--primary-accent);"></i> Edit Partner Rules
+                    <i class="fa-solid fa-sliders" style="color:var(--primary-accent);"></i> Edit Individual Partner Rules
                 </h3>
                 <button type="button" onclick="closeEditModal()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem;">
                     <i class="fa-solid fa-xmark"></i>
@@ -333,7 +379,7 @@ foreach ($partners as $pt) {
                 </div>
 
                 <button type="submit" class="btn-save">
-                    <i class="fa-solid fa-floppy-disk"></i> Save Dynamic Settings
+                    <i class="fa-solid fa-floppy-disk"></i> Save Partner Settings
                 </button>
             </form>
         </div>
@@ -390,6 +436,38 @@ foreach ($partners as $pt) {
                 if (res.success) {
                     showToast(res.message);
                     closeEditModal();
+                    setTimeout(() => { location.reload(); }, 1200);
+                } else {
+                    showToast(res.message, true);
+                }
+            } catch (err) {
+                showToast('Failed to connect to server.', true);
+            }
+        }
+
+        async function saveGlobalPartnerSettings(e) {
+            e.preventDefault();
+            const deposit_required = document.getElementById('global_deposit_required').value;
+            const commission_rate = document.getElementById('global_commission_rate').value;
+
+            if (!confirm(`Are you sure you want to set Deposit Fee to ₹${deposit_required} and Commission Rate to ${commission_rate}% for ALL partners?`)) {
+                return;
+            }
+
+            const formData = new URLSearchParams();
+            formData.append('action', 'update_all_partners_pricing');
+            formData.append('deposit_required', deposit_required);
+            formData.append('commission_rate', commission_rate);
+
+            try {
+                const response = await fetch('partner_management.php', {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+                });
+                const res = await response.json();
+                if (res.success) {
+                    showToast(res.message);
                     setTimeout(() => { location.reload(); }, 1200);
                 } else {
                     showToast(res.message, true);
