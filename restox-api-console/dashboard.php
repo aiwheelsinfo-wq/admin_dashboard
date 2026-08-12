@@ -277,93 +277,298 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         /* Navigation Sidebar */
         .sidebar {
             width: var(--sidebar-width);
-            background-color: rgba(17, 24, 39, 0.85);
+            background-color: rgba(15, 23, 42, 0.95);
             border-right: 1px solid var(--card-border);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             display: flex;
             flex-direction: column;
             position: fixed;
             height: 100vh;
             z-index: 1000;
-            transition: transform 0.3s ease;
+            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
         }
 
         .sidebar-brand {
-            padding: 32px 28px;
+            height: 80px;
+            padding: 0 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
+        }
+
+        .brand-block {
             display: flex;
             align-items: center;
             gap: 12px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            overflow: hidden;
+            white-space: nowrap;
         }
 
         .brand-logo-icon {
-            font-size: 1.7rem;
-            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.4));
+            font-size: 1.3rem;
+            color: var(--primary-accent);
+            background: rgba(99, 102, 241, 0.12);
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            flex-shrink: 0;
         }
 
-        .brand-name {
-            font-size: 1.25rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            background: linear-gradient(135deg, #FFF, #D1D5DB);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .sidebar-nav {
-            padding: 24px 16px;
+        .brand-title-group {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            line-height: 1.15;
+            transition: opacity 0.2s ease;
+        }
+
+        .sidebar.collapsed .brand-title-group {
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .brand-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #FFF;
+            letter-spacing: -0.3px;
+        }
+
+        .brand-sub-badge {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: #A5B4FC;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .btn-sidebar-toggle {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-sidebar-toggle:hover {
+            background: rgba(99, 102, 241, 0.15);
+            color: #FFF;
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        /* Sidebar Nav Container & Group Headers */
+        .sidebar-nav {
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
             flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .nav-section-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            color: #64748B;
+            padding: 14px 10px 4px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            transition: opacity 0.2s ease;
+        }
+
+        .sidebar.collapsed .nav-section-label {
+            display: none;
         }
 
         .nav-item {
             display: flex;
             align-items: center;
-            gap: 14px;
+            justify-content: space-between;
+            gap: 12px;
             color: var(--text-secondary);
             text-decoration: none;
-            padding: 12px 18px;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            font-weight: 500;
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
             transition: all 0.2s ease;
+            position: relative;
+            white-space: nowrap;
+            height: 44px;
+        }
+
+        .nav-item-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            overflow: hidden;
         }
 
         .nav-item i {
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             width: 20px;
             text-align: center;
+            flex-shrink: 0;
+            color: #94A3B8;
+            transition: color 0.2s ease;
         }
 
         .nav-item:hover {
             color: #FFF;
-            background-color: rgba(255, 255, 255, 0.03);
+            background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav-item:hover i {
+            color: #FFF;
         }
 
         .nav-item.active {
             color: #FFF;
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
+            background: rgba(99, 102, 241, 0.12);
             border: 1px solid rgba(99, 102, 241, 0.25);
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.08);
         }
 
+        .nav-item.active i {
+            color: var(--primary-accent);
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 15%;
+            bottom: 15%;
+            width: 3.5px;
+            background: var(--primary-accent);
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px var(--primary-accent);
+        }
+
+        /* Status Badges in Sidebar */
+        .nav-badge {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: opacity 0.2s ease;
+        }
+
+        .sidebar.collapsed .nav-badge {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-item span.nav-text {
+            display: none;
+        }
+
+        .badge-green {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34D399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-orange {
+            background: rgba(245, 158, 11, 0.15);
+            color: #FBBF24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-neutral {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-secondary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* System Operational Status Panel (Above User Profile) */
+        .sidebar-system-status {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin: 0 12px 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed .sidebar-system-status {
+            display: none;
+        }
+
+        .status-dot-pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--success-color);
+            box-shadow: 0 0 10px var(--success-color);
+            flex-shrink: 0;
+        }
+
+        .system-status-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #FFF;
+        }
+
+        .system-status-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* Sidebar Footer User Profile */
         .sidebar-footer {
-            padding: 20px 24px;
-            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 14px 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 10px;
+            flex-shrink: 0;
+            background: rgba(7, 11, 20, 0.4);
         }
 
-        .sidebar-user {
+        .sidebar.collapsed .sidebar-footer {
+            padding: 12px 8px;
+            align-items: center;
+        }
+
+        .sidebar-user-card {
             display: flex;
             align-items: center;
             gap: 12px;
+            overflow: hidden;
         }
 
         .user-avatar {
@@ -378,17 +583,23 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             font-size: 0.95rem;
             color: #FFF;
             border: 1px solid rgba(255, 255, 255, 0.15);
+            flex-shrink: 0;
         }
 
         .user-info {
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            line-height: 1.3;
+        }
+
+        .sidebar.collapsed .user-info {
+            display: none;
         }
 
         .user-company {
-            font-size: 0.88rem;
-            font-weight: 600;
+            font-size: 0.86rem;
+            font-weight: 700;
             color: #FFF;
             white-space: nowrap;
             overflow: hidden;
@@ -396,9 +607,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         }
 
         .user-role {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
             color: var(--text-secondary);
         }
+
+        .user-status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        .user-status-pill.status-green { color: #34D399; }
+        .user-status-pill.status-orange { color: #FBBF24; }
 
         .btn-logout-sidebar {
             display: flex;
@@ -408,12 +631,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             background-color: rgba(239, 68, 68, 0.06);
             border: 1px solid rgba(239, 68, 68, 0.15);
             color: #FCA5A5;
-            padding: 10px;
+            padding: 9px;
             border-radius: 10px;
             text-decoration: none;
             font-size: 0.85rem;
             font-weight: 600;
             transition: all 0.25s ease;
+            cursor: pointer;
+            width: 100%;
         }
 
         .btn-logout-sidebar:hover {
@@ -422,13 +647,22 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             border-color: var(--danger-color);
         }
 
-        /* Main Workspace Area */
+        .sidebar.collapsed .btn-logout-sidebar span {
+            display: none;
+        }
+
+        /* Workspace margin adaptation */
         .main-workspace {
             margin-left: var(--sidebar-width);
             flex-grow: 1;
             display: flex;
             flex-direction: column;
             min-width: 0;
+            transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.sidebar-collapsed .main-workspace {
+            margin-left: 70px;
         }
 
         /* Mobile Header */
@@ -1258,52 +1492,132 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
     <div class="ambient-glow glow-2"></div>
 
     <div class="app-container">
-
         <!-- Left Navigation Sidebar -->
         <aside class="sidebar" id="appSidebar">
+
+            <!-- Brand / Logo Header -->
             <div class="sidebar-brand">
-                <i class="fa-solid fa-terminal brand-logo-icon"></i>
-                <span class="brand-name">Rentox API</span>
+                <div class="brand-block">
+                    <i class="fa-solid fa-terminal brand-logo-icon"></i>
+                    <div class="brand-title-group">
+                        <span class="brand-title">Rentox API</span>
+                        <span class="brand-sub-badge">Developer Console</span>
+                    </div>
+                </div>
+                <button class="btn-sidebar-toggle" id="sidebarToggleBtn" onclick="toggleSidebarCollapse()" title="Toggle Sidebar">
+                    <i class="fa-solid fa-angles-left" id="toggleIcon"></i>
+                </button>
             </div>
 
+            <!-- Navigation Groups -->
             <nav class="sidebar-nav">
-                <a href="#overview" class="nav-item active" onclick="switchTab('#overview')">
-                    <i class="fa-solid fa-chart-line"></i> Dashboard
+
+                <!-- MAIN -->
+                <span class="nav-section-label">Main</span>
+
+                <a href="#overview" class="nav-item active" id="nav-overview" onclick="switchTab('#overview')">
+                    <div class="nav-item-content">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <span class="nav-text">Dashboard</span>
+                    </div>
                 </a>
-                <a href="#keys" class="nav-item" onclick="switchTab('#keys')">
-                    <i class="fa-solid fa-key"></i> API Credentials
+
+                <!-- API & DEVELOPMENT -->
+                <span class="nav-section-label">API &amp; Development</span>
+
+                <a href="#keys" class="nav-item" id="nav-keys" onclick="switchTab('#keys')">
+                    <div class="nav-item-content">
+                        <i class="fa-solid fa-key"></i>
+                        <span class="nav-text">API Credentials</span>
+                    </div>
+                    <?php if ($is_active): ?>
+                        <span class="nav-badge badge-green"><i class="fa-solid fa-circle" style="font-size:0.55rem;"></i> Live</span>
+                    <?php else: ?>
+                        <span class="nav-badge badge-neutral">Sandbox</span>
+                    <?php endif; ?>
                 </a>
-                <a href="payments.php" class="nav-item">
-                    <i class="fa-solid fa-credit-card"></i> Payments & Billing
+
+                <a href="test-trips.php" class="nav-item" id="nav-test">
+                    <div class="nav-item-content">
+                        <i class="fa-solid fa-flask-vial"></i>
+                        <span class="nav-text">Test Trips Simulator</span>
+                    </div>
                 </a>
-                <a href="test-trips.php" class="nav-item">
-                    <i class="fa-solid fa-flask-vial"></i> Test Trips Simulator
+
+                <a href="#docs" class="nav-item" id="nav-docs" onclick="switchTab('#docs')">
+                    <div class="nav-item-content">
+                        <i class="fa-solid fa-book"></i>
+                        <span class="nav-text">API Documentation</span>
+                    </div>
                 </a>
-                <a href="#logs" class="nav-item" onclick="switchTab('#logs')">
-                    <i class="fa-solid fa-terminal"></i> Activity Logs
+
+                <!-- BILLING & ACTIVITY -->
+                <span class="nav-section-label">Billing &amp; Activity</span>
+
+                <a href="payments.php" class="nav-item" id="nav-payments">
+                    <div class="nav-item-content">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span class="nav-text">Payments &amp; Wallet</span>
+                    </div>
+                    <?php if (!$is_active): ?>
+                        <span class="nav-badge badge-orange"><i class="fa-solid fa-circle" style="font-size:0.55rem;"></i> Required</span>
+                    <?php endif; ?>
                 </a>
-                <a href="#docs" class="nav-item" onclick="switchTab('#docs')">
-                    <i class="fa-solid fa-book"></i> API Documentation
+
+                <a href="#logs" class="nav-item" id="nav-logs" onclick="switchTab('#logs')">
+                    <div class="nav-item-content">
+                        <i class="fa-solid fa-list-check"></i>
+                        <span class="nav-text">Activity Logs</span>
+                    </div>
                 </a>
-                <a href="#settings" class="nav-item" onclick="switchTab('#settings')">
-                    <i class="fa-solid fa-sliders"></i> Account Settings
+
+                <!-- ACCOUNT -->
+                <span class="nav-section-label">Account</span>
+
+                <a href="#settings" class="nav-item" id="nav-settings" onclick="switchTab('#settings')">
+                    <div class="nav-item-content">
+                        <i class="fa-solid fa-sliders"></i>
+                        <span class="nav-text">Account Settings</span>
+                    </div>
                 </a>
+
             </nav>
 
+            <!-- System Status Panel -->
+            <div class="sidebar-system-status">
+                <div class="status-dot-pulse"></div>
+                <div>
+                    <div class="system-status-title">All Systems Operational</div>
+                    <div class="system-status-sub">Production API · Sandbox · Billing</div>
+                </div>
+            </div>
+
+            <!-- User Profile & Logout Footer -->
             <div class="sidebar-footer">
-                <div class="sidebar-user">
+                <div class="sidebar-user-card">
                     <div class="user-avatar">
                         <?= strtoupper(substr($p['company_name'], 0, 2)) ?>
                     </div>
                     <div class="user-info">
                         <span class="user-company"><?= htmlspecialchars($p['company_name']) ?></span>
                         <span class="user-role">B2B Integration</span>
+                        <?php if ($is_active): ?>
+                            <span class="user-status-pill status-green">
+                                <i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> API Active
+                            </span>
+                        <?php else: ?>
+                            <span class="user-status-pill status-orange">
+                                <i class="fa-solid fa-circle" style="font-size:0.5rem;"></i> Activation Required
+                            </span>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <a href="?action=logout" class="btn-logout-sidebar" onclick="confirmPartnerLogout(event)">
-                    <i class="fa-solid fa-sign-out-alt"></i> Log Out
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Log Out</span>
                 </a>
             </div>
+
         </aside>
 
         <!-- Main Workspace -->
@@ -2310,21 +2624,39 @@ $data = json_decode($result, true);</code></pre>
             }
         }
 
-        // Tab Switching logic
-        function switchTab(hashId) {
-            // Remove active class from all sidebars
-            const navItems = document.querySelectorAll('.nav-item');
-            navItems.forEach(item => {
-                if (item.getAttribute('href') === hashId) {
-                    item.classList.add('active');
-                } else {
-                    item.classList.remove('active');
-                }
-            });
+        // Desktop Sidebar Collapse/Expand
+        function toggleSidebarCollapse() {
+            const sidebar = document.getElementById('appSidebar');
+            const icon = document.getElementById('toggleIcon');
+            sidebar.classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed');
+            if (sidebar.classList.contains('collapsed')) {
+                icon.className = 'fa-solid fa-angles-right';
+            } else {
+                icon.className = 'fa-solid fa-angles-left';
+            }
+        }
 
-            // Hide all tab sections
-            const sections = document.querySelectorAll('.tab-section');
-            sections.forEach(sec => {
+        // Tab Switching logic — updates nav active state using IDs
+        const NAV_HASH_MAP = {
+            '#overview': 'nav-overview',
+            '#keys':     'nav-keys',
+            '#logs':     'nav-logs',
+            '#docs':     'nav-docs',
+            '#settings': 'nav-settings',
+        };
+
+        function switchTab(hashId) {
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            const navId = NAV_HASH_MAP[hashId];
+            if (navId) {
+                const activeEl = document.getElementById(navId);
+                if (activeEl) activeEl.classList.add('active');
+            }
+
+            // Show/hide tab content sections
+            document.querySelectorAll('.tab-section').forEach(sec => {
                 const targetId = 'tab-' + hashId.substring(1);
                 if (sec.id === targetId) {
                     sec.classList.remove('d-none');
@@ -2333,13 +2665,13 @@ $data = json_decode($result, true);</code></pre>
                 }
             });
 
-            // Close mobile menu if active
+            // Close mobile drawer if open
             const sidebar = document.getElementById('appSidebar');
             if (sidebar.classList.contains('open')) {
                 toggleSidebar();
             }
 
-            // Sync hash in URL
+            // Sync URL hash
             if (window.location.hash !== hashId) {
                 window.location.hash = hashId;
             }
@@ -2350,7 +2682,7 @@ $data = json_decode($result, true);</code></pre>
             const activeHash = window.location.hash || '#overview';
             switchTab(activeHash);
             
-            // Trigger background mail runner asynchronously to process any spooled emails (like admin notifications)
+            // Trigger background mail runner asynchronously
             fetch('mail_runner.php').catch(err => console.error('Mail runner trigger failed:', err));
         });
 
