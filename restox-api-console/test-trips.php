@@ -210,6 +210,42 @@ foreach ($test_bookings as $tb) {
             border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 600;
         }
 
+        .sidebar-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            display: flex; flex-direction: column; gap: 14px;
+        }
+
+        .sidebar-user { display: flex; align-items: center; gap: 12px; }
+
+        .user-avatar {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.95rem; color: #FFF;
+            border: 1px solid rgba(255, 255, 255, 0.15); flex-shrink: 0;
+        }
+
+        .user-info { display: flex; flex-direction: column; overflow: hidden; }
+
+        .user-company {
+            font-size: 0.88rem; font-weight: 600; color: #FFF;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        .user-role { font-size: 0.75rem; color: var(--text-secondary); }
+
+        .btn-logout-sidebar {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background-color: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.15);
+            color: #FCA5A5; padding: 10px; border-radius: 10px; text-decoration: none;
+            font-size: 0.85rem; font-weight: 600; transition: all 0.25s ease; cursor: pointer;
+        }
+
+        .btn-logout-sidebar:hover {
+            background-color: var(--danger-color); color: #FFF; border-color: var(--danger-color);
+        }
+
         .main-workspace { margin-left: var(--sidebar-width); flex: 1; padding: 40px; }
 
         .page-header {
@@ -322,6 +358,21 @@ foreach ($test_bookings as $tb) {
                     <i class="fa-solid fa-sliders"></i> Account Settings
                 </a>
             </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="user-avatar">
+                        <?= strtoupper(substr($p['company_name'], 0, 2)) ?>
+                    </div>
+                    <div class="user-info">
+                        <span class="user-company"><?= htmlspecialchars($p['company_name']) ?></span>
+                        <span class="user-role">B2B Integration</span>
+                    </div>
+                </div>
+                <a href="dashboard.php?action=logout" class="btn-logout-sidebar" onclick="confirmPartnerLogout(event)">
+                    <i class="fa-solid fa-sign-out-alt"></i> Log Out
+                </a>
+            </div>
         </aside>
 
         <!-- Main Workspace -->
@@ -481,6 +532,32 @@ foreach ($test_bookings as $tb) {
             t.style.borderColor = isSuccess ? 'var(--success-color)' : 'var(--danger-color)';
             t.style.display = 'block';
             setTimeout(() => { t.style.display = 'none'; }, 4000);
+        }
+
+    <!-- SweetAlert2 Library & Logout Handler -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        function confirmPartnerLogout(e) {
+            if (e) e.preventDefault();
+            Swal.fire({
+                title: 'Sign Out?',
+                text: 'Are you sure you want to log out of your Rentox Partner Console?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#EF4444',
+                cancelButtonColor: '#475569',
+                confirmButtonText: '<i class="fa-solid fa-right-from-bracket"></i> Yes, Log Out',
+                cancelButtonText: 'Cancel',
+                background: '#0F172A',
+                color: '#F8FAFC',
+                customClass: {
+                    popup: 'swal2-dark-popup'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'dashboard.php?action=logout';
+                }
+            });
         }
 
         async function triggerAction(action, bookingId) {
