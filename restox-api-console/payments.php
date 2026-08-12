@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         );
         mysqli_stmt_bind_param($stmt_pay, 'sddi', $payment_id, $dep_amount, $dep_amount, $id);
         if (mysqli_stmt_execute($stmt_pay)) {
-            echo json_encode(['success' => true, 'message' => 'Payment of ₹' . number_format($dep_amount, 2) . ' verified successfully! Your API Production keys are now unlocked.']);
+            echo json_encode(['success' => true, 'message' => 'Payment of ₹' . number_format($dep_amount, 2) . ' verified successfully! Your API Production keys are now unlocked and ₹' . number_format($dep_amount, 2) . ' credited to your wallet.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to record payment in database.']);
         }
@@ -88,6 +88,8 @@ mysqli_stmt_close($stmt_ref);
 // Fetch wallet transactions for this partner with full trip details
 $wallet_txs = [];
 $total_deducted = 0.00;
+$total_trip_fare = 0.00;
+
 $stmt_tx_list = mysqli_prepare($conn, 
     "SELECT pwt.*, 
             b.from_address, b.to_address, b.car_type, b.trip_type, b.date AS trip_date, b.time AS trip_time,
@@ -108,6 +110,7 @@ if ($stmt_tx_list) {
     while ($row_tx = mysqli_fetch_assoc($res_tx)) {
         $wallet_txs[] = $row_tx;
         $total_deducted += (float)($row_tx['deduction_amount'] ?? 0);
+        $total_trip_fare += (float)($row_tx['total_fare'] ?? 0);
     }
     mysqli_stmt_close($stmt_tx_list);
 }
@@ -128,15 +131,17 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payments & Invoices | Rentox B2B Console</title>
+    <title>Payments & Wallet | Rentox B2B Console</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
         :root {
@@ -201,59 +206,141 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
             border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 600;
         }
 
-        .main-workspace { margin-left: var(--sidebar-width); flex: 1; padding: 40px; }
+        .main-workspace { margin-left: var(--sidebar-width); flex: 1; padding: 36px 40px; }
+
+        /* Header & Breadcrumb */
+        .breadcrumb-nav {
+            font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;
+            margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+        }
+        .breadcrumb-nav .active { color: var(--primary-accent); font-weight: 600; }
 
         .page-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);
+            gap: 20px; flex-wrap: wrap;
         }
-        .page-header h1 { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+        .page-header h1 { font-size: 1.8rem; font-weight: 800; color: #FFF; margin-bottom: 4px; }
         .page-header p { color: var(--text-secondary); font-size: 0.92rem; }
 
+        /* Large Wallet Overview 2-Column Grid */
+        .wallet-hero-grid {
+            display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 24px; margin-bottom: 28px;
+        }
+        @media (max-width: 992px) { .wallet-hero-grid { grid-template-columns: 1fr; } }
+
+        .wallet-card-primary {
+            background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.85));
+            border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 20px;
+            padding: 32px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+        .wallet-card-primary::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #10B981, #6366F1);
+        }
+
+        .wallet-card-secondary {
+            background: linear-gradient(135deg, rgba(17, 24, 39, 0.95), rgba(15, 23, 42, 0.85));
+            border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 20px;
+            padding: 32px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+        .wallet-card-secondary::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #F59E0B, #10B981);
+        }
+
+        .balance-amount-display {
+            font-size: 2.8rem; font-weight: 800; font-family: var(--font-mono); color: #FFF;
+            margin: 10px 0; letter-spacing: -0.5px;
+        }
+
+        /* 4-Step Wallet Flow Component */
+        .wallet-flow-card {
+            background: rgba(17, 24, 39, 0.6); border: 1px solid var(--border-color);
+            border-radius: 18px; padding: 24px 28px; margin-bottom: 28px;
+        }
+        .flow-steps-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 18px;
+        }
+        @media (max-width: 992px) { .flow-steps-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 576px) { .flow-steps-grid { grid-template-columns: 1fr; } }
+
+        .flow-step-item {
+            background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 14px; padding: 18px; position: relative;
+        }
+        .flow-step-num {
+            font-size: 0.75rem; font-weight: 800; color: var(--primary-accent); font-family: var(--font-mono);
+            margin-bottom: 6px; letter-spacing: 1px;
+        }
+        .flow-step-title { font-size: 0.95rem; font-weight: 700; color: #FFF; margin-bottom: 4px; }
+        .flow-step-desc { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.45; }
+
         /* Metrics Grid */
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 28px; }
         .metric-card {
             background: var(--bg-card); border: 1px solid var(--border-color);
             border-radius: 16px; padding: 20px; position: relative; overflow: hidden;
         }
         .metric-label { color: var(--text-secondary); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-value { font-size: 1.6rem; font-weight: 800; margin: 10px 0 4px; }
+        .metric-value { font-size: 1.6rem; font-weight: 800; margin: 8px 0 4px; }
         .metric-desc { font-size: 0.82rem; color: var(--text-secondary); }
 
         /* Panel Card */
         .panel-card {
             background: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: 16px; padding: 28px; margin-bottom: 30px;
+            border-radius: 18px; padding: 28px; margin-bottom: 28px;
         }
         .card-header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .card-title { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .card-title { font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 10px; color: #FFF; }
 
         .status-badge {
-            display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
-            border-radius: 20px; font-size: 0.85rem; font-weight: 700;
+            display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+            border-radius: 20px; font-size: 0.82rem; font-weight: 700;
         }
         .badge-paid { background: rgba(16, 185, 129, 0.15); color: var(--success-color); border: 1px solid rgba(16, 185, 129, 0.3); }
         .badge-unpaid { background: rgba(245, 158, 11, 0.15); color: var(--warning-color); border: 1px solid rgba(245, 158, 11, 0.3); }
 
-        /* Invoice Grid */
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
-        .info-cell { display: flex; flex-direction: column; gap: 4px; }
-        .info-label { font-size: 0.82rem; color: var(--text-secondary); font-weight: 500; }
-        .info-value { font-size: 0.95rem; font-weight: 600; color: #FFF; }
+        /* Timeline Stepper */
+        .progress-stepper {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+            background: rgba(255,255,255,0.02); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 16px 20px; margin-top: 16px; flex-wrap: wrap;
+        }
+        .p-step { display: flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 600; color: var(--text-secondary); }
+        .p-step.done { color: #34D399; }
+        .p-step.active { color: #FFF; }
+        .p-divider { height: 1px; flex: 1; background: rgba(255,255,255,0.08); min-width: 20px; }
+        @media (max-width: 768px) { .p-divider { display: none; } }
 
+        /* Tables */
         table.custom-table { width: 100%; border-collapse: collapse; text-align: left; }
         table.custom-table th { padding: 14px 16px; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border-color); }
         table.custom-table td { padding: 16px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; vertical-align: middle; }
         table.custom-table tr:hover { background: rgba(255, 255, 255, 0.02); }
 
-        /* Buttons */
-        .btn-pay {
-            background: linear-gradient(135deg, #10B981, #059669); color: #FFF;
-            border: none; border-radius: 12px; padding: 14px 28px; font-size: 1rem; font-weight: 700;
-            cursor: pointer; display: inline-flex; align-items: center; gap: 10px;
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35); transition: all 0.2s ease;
+        /* Documents Grid */
+        .docs-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px;
         }
-        .btn-pay:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5); }
+        .doc-card {
+            background: rgba(255,255,255,0.02); border: 1px solid var(--border-color);
+            border-radius: 14px; padding: 18px; display: flex; align-items: center; justify-content: space-between;
+        }
+
+        /* Buttons */
+        .btn-pay-hero {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: #FFF; border: none; border-radius: 12px; padding: 14px 28px;
+            font-size: 1rem; font-weight: 800; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.35); transition: all 0.25s ease;
+        }
+        .btn-pay-hero:hover {
+            transform: translateY(-2px); box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5); filter: brightness(1.08);
+        }
 
         .btn-print {
             background: rgba(99, 102, 241, 0.15); color: var(--primary-accent);
@@ -274,7 +361,7 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
             transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
         }
 
-        /* Modal Popup Window Styles */
+        /* Modal Window Styles */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(11, 15, 23, 0.85); backdrop-filter: blur(12px);
@@ -298,27 +385,25 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
             width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
             cursor: pointer; font-size: 1rem; transition: all 0.2s ease;
         }
-        .modal-close:hover { background: rgba(239, 68, 68, 0.2); color: var(--danger-color); }
+        .modal-close:hover { background: rgba(239, 68, 68, 0.2); color: #FFF; }
 
-        .modal-body { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
-        .modal-sec-title { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        .detail-row-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .modal-body { padding: 28px; display: flex; flex-direction: column; gap: 24px; }
+        .m-section-title { font-size: 0.8rem; font-weight: 800; letter-spacing: 1px; color: var(--primary-accent); text-transform: uppercase; margin-bottom: 12px; }
+        .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .m-box { background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px; }
+        .m-lbl { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+        .m-val { font-size: 0.95rem; font-weight: 700; color: #FFF; }
 
-        /* Toast Popup Notification */
-        #toast {
-            position: fixed; bottom: 30px; right: 30px; background: var(--bg-card);
-            border: 1px solid var(--primary-accent); padding: 16px 20px; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; z-index: 2000; font-size: 0.9rem;
+        /* Toast notification */
+        .toast-notification {
+            position: fixed; bottom: 30px; right: 30px; background: #1E293B; color: #FFF;
+            border: 1px solid var(--primary-accent); padding: 16px 24px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; z-index: 4000; font-weight: 600;
         }
 
-        /* Printable Invoice Styles */
-        @media print {
-            .sidebar, .page-header, .ambient-glow, .btn-print, .metrics-grid { display: none !important; }
-            .main-workspace { margin-left: 0 !important; padding: 0 !important; }
-            .panel-card { border: 1px solid #CCC !important; color: #000 !important; background: #FFF !important; box-shadow: none !important; }
-            .info-label { color: #555 !important; }
-            .info-value { color: #000 !important; }
-            .card-title { color: #000 !important; }
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-workspace { margin-left: 0; padding: 20px 16px; }
         }
     </style>
 </head>
@@ -335,22 +420,21 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 <i class="fa-solid fa-terminal brand-logo-icon"></i>
                 <span class="brand-name">Rentox API</span>
             </div>
-
             <nav class="sidebar-nav">
                 <a href="dashboard.php#overview" class="nav-item">
-                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                    <i class="fa-solid fa-chart-pie"></i> Overview
                 </a>
                 <a href="dashboard.php#keys" class="nav-item">
                     <i class="fa-solid fa-key"></i> API Credentials
                 </a>
                 <a href="payments.php" class="nav-item active">
-                    <i class="fa-solid fa-credit-card"></i> Payments & Billing
+                    <i class="fa-solid fa-wallet"></i> Payments & Wallet
                 </a>
                 <a href="test-trips.php" class="nav-item">
-                    <i class="fa-solid fa-flask-vial"></i> Test Trips Simulator
+                    <i class="fa-solid fa-vial"></i> Test Trips Simulator
                 </a>
                 <a href="dashboard.php#logs" class="nav-item">
-                    <i class="fa-solid fa-terminal"></i> Activity Logs
+                    <i class="fa-solid fa-list-check"></i> Activity Logs
                 </a>
                 <a href="dashboard.php#docs" class="nav-item">
                     <i class="fa-solid fa-book"></i> API Documentation
@@ -364,359 +448,503 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
         <!-- Main Workspace -->
         <main class="main-workspace">
 
+            <!-- Breadcrumb & Page Header -->
+            <div class="breadcrumb-nav">
+                <span>Dashboard</span> <i class="fa-solid fa-chevron-right" style="font-size:0.7rem;"></i> <span class="active">Payments & Wallet</span>
+            </div>
+
             <div class="page-header">
                 <div>
-                    <h1>💳 Payments & Prepaid Wallet Billing</h1>
-                    <p>Track your API wallet balance, <?= number_format($commission_rate, 0) ?>% trip commission deductions, transactions, and tax invoices.</p>
+                    <h1>Payments & Wallet</h1>
+                    <p>Manage your prepaid API balance, trip commissions, payments, and billing history.</p>
                 </div>
-                <?php if ($is_paid): ?>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <?php if ($is_paid): ?>
+                        <span class="status-badge badge-paid"><i class="fa-solid fa-circle-check"></i> Wallet Active</span>
+                    <?php else: ?>
+                        <span class="status-badge badge-unpaid"><i class="fa-solid fa-clock"></i> Payment Pending</span>
+                    <?php endif; ?>
+
                     <button class="btn-print" onclick="window.print()">
-                        <i class="fa-solid fa-print"></i> Print Tax Invoice
+                        <i class="fa-solid fa-download"></i> Download Invoice
                     </button>
-                <?php endif; ?>
-            </div>
-
-            <!-- Summary Metrics Grid -->
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <span class="metric-label">Current Wallet Balance</span>
-                    <div class="metric-value" style="color:var(--success-color);">
-                        ₹<?= number_format($wallet_balance, 2) ?>
-                    </div>
-                    <span class="metric-desc"><i class="fa-solid fa-wallet" style="color:var(--success-color)"></i> Available for <?= number_format($commission_rate, 0) ?>% fee deductions</span>
-                </div>
-
-                <div class="metric-card">
-                    <span class="metric-label">Initial Activation Deposit</span>
-                    <div class="metric-value">₹<?= number_format($activation_deposit_required, 2) ?></div>
-                    <span class="metric-desc">Required API onboarding balance</span>
-                </div>
-
-                <div class="metric-card">
-                    <span class="metric-label">Total <?= number_format($commission_rate, 0) ?>% Fees Deducted</span>
-                    <div class="metric-value" style="color:var(--warning-color);">
-                        -₹<?= number_format($total_deducted, 2) ?>
-                    </div>
-                    <span class="metric-desc"><?= number_format($commission_rate, 0) ?>% commission on completed trips</span>
-                </div>
-
-                <div class="metric-card">
-                    <span class="metric-label">Completed Trips Billed</span>
-                    <div class="metric-value" style="color:var(--primary-accent);">
-                        <?= count($wallet_txs) ?>
-                    </div>
-                    <span class="metric-desc">Total completed API trips</span>
                 </div>
             </div>
 
-            <!-- Payment Action / Invoice Card -->
-            <?php if (!$is_paid): ?>
-                <div class="panel-card" style="border-color: rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(17, 24, 39, 0.9));">
-                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:20px;">
-                        <div>
-                            <span class="status-badge badge-unpaid" style="margin-bottom:12px;"><i class="fa-solid fa-triangle-exclamation"></i> Payment Required</span>
-                            <h2 style="font-size:1.4rem; margin-bottom:8px;">Complete ₹<?= number_format($activation_deposit_required) ?> API Setup Payment</h2>
-                            <p style="color:var(--text-secondary); max-width:650px; font-size:0.95rem; line-height:1.5;">
-                                Your B2B Partner Account profile is approved! Complete the <strong>₹<?= number_format($activation_deposit_required, 2) ?></strong> setup payment via Razorpay (UPI, Credit Cards, NetBanking) to instantly unlock your <strong>Live Production API Access Keys</strong>.
-                            </p>
+            <!-- 1. Wallet Overview — 2-Column Hero Grid -->
+            <div class="wallet-hero-grid">
+                
+                <!-- Left Card: Available Wallet Balance -->
+                <div class="wallet-card-primary">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <span style="font-size:0.82rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">
+                                <i class="fa-solid fa-wallet" style="color:var(--success-color);"></i> Available Wallet Balance
+                            </span>
+                            <?php if ($wallet_balance > 0): ?>
+                                <span class="status-badge badge-paid"><i class="fa-solid fa-check"></i> Wallet Active</span>
+                            <?php else: ?>
+                                <span class="status-badge badge-unpaid" style="background:rgba(239,68,68,0.15); color:#FCA5A5; border-color:rgba(239,68,68,0.3);"><i class="fa-solid fa-circle-exclamation"></i> Wallet Empty</span>
+                            <?php endif; ?>
                         </div>
-                        <div>
-                            <button class="btn-pay" onclick="payWithRazorpay()">
-                                <i class="fa-solid fa-credit-card"></i> Pay ₹<?= number_format($activation_deposit_required) ?> via Razorpay
-                            </button>
+
+                        <div class="balance-amount-display">
+                            ₹<?= number_format($wallet_balance, 2) ?>
                         </div>
-                    </div>
-                </div>
-            <?php else: ?>
-                <!-- Official Tax Invoice Breakdown -->
-                <div class="panel-card">
-                    <div class="card-header-flex">
-                        <h3 class="card-title"><i class="fa-solid fa-file-invoice-dollar" style="color:var(--success-color);"></i> Official Tax Invoice & Payment Receipt</h3>
-                        <span class="status-badge badge-paid"><i class="fa-solid fa-circle-check"></i> Paid & Verified</span>
+
+                        <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:4px;">
+                            Add funds to your prepaid wallet to process live API trips and automated deductions.
+                        </p>
                     </div>
 
-                    <div class="info-grid" style="margin-bottom:30px; padding-bottom:24px; border-bottom:1px solid var(--border-color);">
-                        <div class="info-cell">
-                            <span class="info-label">Invoice Number</span>
-                            <span class="info-value" style="font-family:var(--font-mono); color:var(--primary-accent);"><?= htmlspecialchars($invoice_no) ?></span>
-                        </div>
-                        <div class="info-cell">
-                            <span class="info-label">Razorpay Payment ID</span>
-                            <span class="info-value" style="font-family:var(--font-mono); color:var(--success-color);"><?= htmlspecialchars($p['payment_id'] ?? 'N/A') ?></span>
-                        </div>
-                        <div class="info-cell">
-                            <span class="info-label">Company Legal Name</span>
-                            <span class="info-value"><?= htmlspecialchars($p['company_name']) ?></span>
-                        </div>
-                        <div class="info-cell">
-                            <span class="info-label">GST / Tax ID</span>
-                            <span class="info-value" style="font-family:var(--font-mono);"><?= htmlspecialchars($p['gst_number'] ?? 'N/A') ?></span>
-                        </div>
-                        <div class="info-cell">
-                            <span class="info-label">Authorized Email</span>
-                            <span class="info-value"><?= htmlspecialchars($p['email']) ?></span>
-                        </div>
-                        <div class="info-cell">
-                            <span class="info-label">Contact Number</span>
-                            <span class="info-value"><?= htmlspecialchars($p['mobile_number'] ?? 'N/A') ?></span>
-                        </div>
-                    </div>
-
-                    <!-- Payment Summary Breakdown Table -->
-                    <h4 style="font-size:1rem; margin-bottom:16px; color:#FFF;">Line Item Breakdown</h4>
-                    <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; overflow:hidden; margin-bottom:24px;">
-                        <table style="width:100%; border-collapse:collapse; text-align:left;">
-                            <thead>
-                                <tr style="border-bottom:1px solid var(--border-color); background:rgba(255,255,255,0.03);">
-                                    <th style="padding:14px 18px; font-size:0.82rem; color:var(--text-secondary);">Description</th>
-                                    <th style="padding:14px 18px; font-size:0.82rem; color:var(--text-secondary); text-align:right;">Amount (INR)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style="border-bottom:1px solid var(--border-color);">
-                                    <td style="padding:16px 18px; font-weight:600;">Rentox B2B Partner API Platform Integration & Onboarding Fee</td>
-                                    <td style="padding:16px 18px; text-align:right; font-family:var(--font-mono);">₹8,474.58</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid var(--border-color);">
-                                    <td style="padding:14px 18px; color:var(--text-secondary);">GST @ 18% (CGST 9% + SGST 9%)</td>
-                                    <td style="padding:14px 18px; text-align:right; font-family:var(--font-mono); color:var(--text-secondary);">₹1,525.42</td>
-                                </tr>
-                                <tr style="background:rgba(16,185,129,0.08);">
-                                    <td style="padding:16px 18px; font-weight:800; font-size:1.05rem; color:#FFF;">Total Amount Paid</td>
-                                    <td style="padding:16px 18px; text-align:right; font-weight:800; font-size:1.15rem; color:var(--success-color); font-family:var(--font-mono);">₹10,000.00</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:0.85rem; color:var(--text-secondary);">Issued by: <strong>AGNI CAR RENTAL / RENTOX API SERVICES</strong></span>
-                        <button class="btn-print" onclick="window.print()">
-                            <i class="fa-solid fa-print"></i> Download & Print Invoice
+                    <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
+                        <button class="btn-pay-hero" onclick="payWithRazorpay()" style="flex:1; padding:12px 20px; font-size:0.92rem;">
+                            <i class="fa-solid fa-plus"></i> Add ₹<?= number_format($activation_deposit_required) ?>
+                        </button>
+                        <button class="btn-print" onclick="document.getElementById('txHistorySec').scrollIntoView({behavior:'smooth'})" style="padding:12px 20px;">
+                            <i class="fa-solid fa-list"></i> View Transactions
                         </button>
                     </div>
                 </div>
 
-                <!-- 10% Trip Commission Ledger & Transactions Panel -->
-                <div class="panel-card" style="margin-top:30px;">
-                    <div class="card-header-flex">
-                        <h3 class="card-title"><i class="fa-solid fa-wallet" style="color:var(--primary-accent);"></i> 10% Trip Commission Wallet Ledger</h3>
-                        <span class="status-badge badge-paid"><i class="fa-solid fa-clock-rotate-left"></i> Real-time Deductions</span>
+                <!-- Right Card: Initial Activation Deposit -->
+                <div class="wallet-card-secondary">
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <span style="font-size:0.82rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">
+                                <i class="fa-solid fa-shield-halved" style="color:var(--warning-color);"></i> Initial Activation Deposit
+                            </span>
+                            <span class="status-badge" style="background:rgba(99,102,241,0.15); color:#A5B4FC; border:1px solid rgba(99,102,241,0.3);">
+                                One-Time Initial Deposit
+                            </span>
+                        </div>
+
+                        <div class="balance-amount-display" style="color:#FBBF24;">
+                            ₹<?= number_format($activation_deposit_required, 2) ?>
+                        </div>
+
+                        <p style="color:var(--text-secondary); font-size:0.88rem; margin-top:4px;">
+                            Required to activate production API access and fund your initial prepaid wallet.
+                        </p>
                     </div>
-                    
-                    <?php if (empty($wallet_txs)): ?>
-                        <div style="text-align:center; padding:36px 10px; color:var(--text-secondary);">
-                            <i class="fa-solid fa-receipt" style="font-size:2.8rem; opacity:0.3; margin-bottom:12px; color:var(--primary-accent);"></i>
-                            <h4 style="font-size:1.05rem; color:#FFF; margin-bottom:6px;">No Trip Fee Deductions Yet</h4>
-                            <p style="font-size:0.9rem; max-width:500px; margin:0 auto; line-height:1.5;">When a trip booked via your B2B API is finished, a 10% trip fee deduction will be automatically recorded here in real-time.</p>
+
+                    <div style="margin-top:20px;">
+                        <?php if (!$is_paid): ?>
+                            <button class="btn-pay-hero" onclick="payWithRazorpay()" id="btnPayMain" style="width:100%;">
+                                <i class="fa-solid fa-credit-card"></i> Pay ₹<?= number_format($activation_deposit_required) ?> via Razorpay
+                            </button>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; font-size:0.78rem; color:var(--text-secondary);">
+                                <span>UPI • Credit Card • Debit Card • NetBanking</span>
+                                <span><i class="fa-solid fa-lock"></i> Razorpay Secure</span>
+                            </div>
+                        <?php else: ?>
+                            <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:14px; text-align:center;">
+                                <span style="color:var(--success-color); font-weight:700; font-size:0.95rem;">
+                                    <i class="fa-solid fa-circle-check"></i> Initial Deposit Completed & Credited
+                                </span>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 2. How Your API Wallet Works Section -->
+            <div class="wallet-flow-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="font-size:1.15rem; font-weight:800; color:#FFF; display:flex; align-items:center; gap:10px;">
+                        <i class="fa-solid fa-diagram-project" style="color:var(--primary-accent);"></i> How Your API Wallet Works
+                    </h3>
+                    <span style="font-size:0.82rem; color:var(--text-secondary);">Prepaid API Billing Model</span>
+                </div>
+
+                <div class="flow-steps-grid">
+                    <div class="flow-step-item">
+                        <div class="flow-step-num">STEP 01</div>
+                        <div class="flow-step-title">Add Funds</div>
+                        <div class="flow-step-desc">Pay the initial ₹<?= number_format($activation_deposit_required) ?> deposit to fund your prepaid API wallet.</div>
+                    </div>
+
+                    <div class="flow-step-item">
+                        <div class="flow-step-num">STEP 02</div>
+                        <div class="flow-step-title">API Trip</div>
+                        <div class="flow-step-desc">A customer completed trip is processed and booked via your API key.</div>
+                    </div>
+
+                    <div class="flow-step-item">
+                        <div class="flow-step-num">STEP 03</div>
+                        <div class="flow-step-title">10% Commission</div>
+                        <div class="flow-step-desc">A <?= $commission_rate ?>% API commission is calculated based on the completed trip fare.</div>
+                    </div>
+
+                    <div class="flow-step-item">
+                        <div class="flow-step-num">STEP 04</div>
+                        <div class="flow-step-title">Wallet Deduction</div>
+                        <div class="flow-step-desc">The 10% commission is automatically deducted from your prepaid balance.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Wallet Statistics Row -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Wallet Balance</span>
+                    <div class="metric-value" style="color:var(--success-color);">₹<?= number_format($wallet_balance, 2) ?></div>
+                    <span class="metric-desc"><i class="fa-solid fa-wallet"></i> Available for commission deductions</span>
+                </div>
+
+                <div class="metric-card">
+                    <span class="metric-label">Total Deposited</span>
+                    <div class="metric-value" style="color:#FFF;">₹<?= number_format($is_paid ? $activation_deposit_required : 0, 2) ?></div>
+                    <span class="metric-desc"><i class="fa-solid fa-arrow-down-to-line"></i> Lifetime wallet deposits</span>
+                </div>
+
+                <div class="metric-card">
+                    <span class="metric-label">Total Commission Deducted</span>
+                    <div class="metric-value" style="color:var(--warning-color);">₹<?= number_format($total_deducted, 2) ?></div>
+                    <span class="metric-desc"><i class="fa-solid fa-percent"></i> <?= $commission_rate ?>% per-trip fee</span>
+                </div>
+
+                <div class="metric-card">
+                    <span class="metric-label">Completed Trips</span>
+                    <div class="metric-value" style="color:#818CF8;"><?= count($wallet_txs) ?></div>
+                    <span class="metric-desc"><i class="fa-solid fa-taxi"></i> Total billed API trips</span>
+                </div>
+            </div>
+
+            <!-- 4. Current Payment Required Alert / Activation Progress Timeline -->
+            <?php if (!$is_paid): ?>
+                <div class="panel-card" style="border-color:rgba(245,158,11,0.3); background:rgba(245,158,11,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:20px;">
+                        <div>
+                            <span class="status-badge badge-unpaid" style="margin-bottom:12px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Activation Payment Required
+                            </span>
+                            <h3 style="font-size:1.3rem; font-weight:800; color:#FFF; margin-bottom:8px;">
+                                Add ₹<?= number_format($activation_deposit_required) ?> to Activate Your API Wallet
+                            </h3>
+                            <p style="color:var(--text-secondary); font-size:0.92rem; max-width:640px; line-height:1.5;">
+                                Your B2B Partner Account has been approved by Admin! Complete the initial ₹<?= number_format($activation_deposit_required) ?> prepaid wallet deposit to activate your Live Production API Access.
+                            </p>
+
+                            <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:16px; font-size:0.88rem; color:#D1D5DB;">
+                                <span><i class="fa-solid fa-check" style="color:var(--success-color);"></i> Production API access</span>
+                                <span><i class="fa-solid fa-check" style="color:var(--success-color);"></i> Live API credentials</span>
+                                <span><i class="fa-solid fa-check" style="color:var(--success-color);"></i> Prepaid wallet activated</span>
+                                <span><i class="fa-solid fa-check" style="color:var(--success-color);"></i> API trip billing enabled</span>
+                            </div>
                         </div>
-                    <?php else: ?>
-                        <div style="overflow-x:auto;">
-                            <table class="custom-table" style="width:100%; border-collapse:collapse;">
-                                <thead>
-                                    <tr style="background:rgba(255,255,255,0.03); text-align:left;">
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Date & Time</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Booking Ref & Route</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Category</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Trip Fare</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Commission</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Amount Deducted</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Wallet Balance</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Status</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary); text-align:right;">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($wallet_txs as $tx): 
-                                        $from_short = !empty($tx['from_address']) ? explode(',', $tx['from_address'])[0] : '';
-                                        $to_short = !empty($tx['to_address']) ? explode(',', $tx['to_address'])[0] : '';
-                                        $route_text = (!empty($from_short) && !empty($to_short)) ? htmlspecialchars($from_short . ' ➔ ' . $to_short) : 'City Trip';
-                                    ?>
-                                        <tr style="border-bottom:1px solid var(--border-color);">
-                                            <td style="padding:14px 16px; font-size:0.85rem; color:var(--text-secondary); white-space:nowrap;">
-                                                <?= date('d M Y, h:i A', strtotime($tx['created_at'])) ?>
-                                            </td>
-                                            <td style="padding:14px 16px;">
-                                                <div style="font-family:var(--font-mono); font-weight:700; color:var(--primary-accent); font-size:0.92rem;">
-                                                    #<?= htmlspecialchars($tx['booking_id']) ?>
-                                                    <?php if (!empty($tx['partner_booking_ref'])): ?>
-                                                        <span style="font-size:0.75rem; color:var(--text-secondary); margin-left:6px; font-family:var(--font-main); font-weight:400;">(<?= htmlspecialchars($tx['partner_booking_ref']) ?>)</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                                <div style="font-size:0.84rem; color:#FFF; margin-top:3px; font-weight:600;">
-                                                    <i class="fa-solid fa-location-dot" style="color:var(--danger-color); font-size:0.78rem; margin-right:4px;"></i>
-                                                    <?= $route_text ?>
-                                                </div>
-                                            </td>
-                                            <td style="padding:14px 16px; font-size:0.85rem; color:var(--text-secondary); white-space:nowrap;">
-                                                <span style="background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-size:0.8rem; color:#FFF; font-weight:600;">
-                                                    <i class="fa-solid fa-car" style="color:var(--secondary-accent); margin-right:4px;"></i>
-                                                    <?= htmlspecialchars($tx['car_type'] ?? 'Standard') ?>
-                                                </span>
-                                                <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
-                                                    <?= htmlspecialchars($tx['trip_type'] ?? 'One-way') ?>
-                                                </div>
-                                            </td>
-                                            <td style="padding:14px 16px; font-weight:700; color:#FFF; white-space:nowrap;">
-                                                ₹<?= number_format($tx['trip_amount'], 2) ?>
-                                            </td>
-                                            <td style="padding:14px 16px; color:var(--warning-color); font-weight:700; white-space:nowrap;">
-                                                10.00%
-                                            </td>
-                                            <td style="padding:14px 16px; font-weight:800; color:var(--danger-color); font-family:var(--font-mono); white-space:nowrap;">
-                                                -₹<?= number_format($tx['deduction_amount'], 2) ?>
-                                            </td>
-                                            <td style="padding:14px 16px; font-weight:800; color:var(--success-color); font-family:var(--font-mono); white-space:nowrap;">
-                                                ₹<?= number_format($tx['balance_after'], 2) ?>
-                                            </td>
-                                            <td style="padding:14px 16px; white-space:nowrap;">
-                                                <span class="status-badge badge-paid" style="font-size:0.75rem;"><i class="fa-solid fa-check"></i> Deducted</span>
-                                            </td>
-                                            <td style="padding:14px 16px; text-align:right; white-space:nowrap;">
-                                                <button type="button" class="btn-view-details" onclick='openTripModal(<?= json_encode($tx, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
-                                                    <i class="fa-solid fa-circle-info"></i> View Details
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+
+                        <div style="text-align:right;">
+                            <div style="font-size:1.8rem; font-weight:800; color:#FFF; font-family:var(--font-mono);">
+                                ₹<?= number_format($activation_deposit_required) ?>
+                            </div>
+                            <span style="font-size:0.8rem; color:var(--text-secondary); display:block; margin-bottom:12px;">One-time initial deposit</span>
+                            <button class="btn-pay-hero" onclick="payWithRazorpay()">
+                                <i class="fa-solid fa-credit-card"></i> Pay ₹<?= number_format($activation_deposit_required) ?> via Razorpay
+                            </button>
                         </div>
-                    <?php endif; ?>
+                    </div>
+
+                    <!-- Timeline Stepper -->
+                    <div class="progress-stepper">
+                        <div class="p-step done"><i class="fa-solid fa-circle-check"></i> Account Approved</div>
+                        <div class="p-divider"></div>
+                        <div class="p-step active" style="color:#FBBF24;"><i class="fa-solid fa-circle-dot"></i> Initial Deposit (Pending)</div>
+                        <div class="p-divider"></div>
+                        <div class="p-step"><i class="fa-solid fa-circle"></i> Wallet Activated</div>
+                        <div class="p-divider"></div>
+                        <div class="p-step"><i class="fa-solid fa-circle"></i> Production API</div>
+                    </div>
+                </div>
+            <?php else: ?>
+                <!-- Successful Payment Active State Panel -->
+                <div class="panel-card" style="border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.04);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+                        <div>
+                            <span class="status-badge badge-paid" style="margin-bottom:10px;">
+                                <i class="fa-solid fa-circle-check"></i> Wallet Activated Successfully
+                            </span>
+                            <h3 style="font-size:1.3rem; font-weight:800; color:#FFF; margin-bottom:6px;">
+                                Production API Access & Wallet Active
+                            </h3>
+                            <p style="color:var(--text-secondary); font-size:0.92rem;">
+                                Your ₹<?= number_format($activation_deposit_required) ?> payment has been received and added to your prepaid API wallet balance.
+                            </p>
+                        </div>
+
+                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <a href="dashboard.php#keys" class="btn-pay-hero" style="background:linear-gradient(135deg, var(--primary-accent), #4F46E5); font-size:0.88rem; padding:10px 18px; text-decoration:none;">
+                                <i class="fa-solid fa-key"></i> View API Credentials
+                            </a>
+                            <a href="dashboard.php#docs" class="btn-print" style="text-decoration:none;">
+                                <i class="fa-solid fa-book"></i> View Documentation
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Timeline Stepper -->
+                    <div class="progress-stepper">
+                        <div class="p-step done"><i class="fa-solid fa-circle-check"></i> Account Approved</div>
+                        <div class="p-divider"></div>
+                        <div class="p-step done"><i class="fa-solid fa-circle-check"></i> Initial Deposit Completed</div>
+                        <div class="p-divider"></div>
+                        <div class="p-step done"><i class="fa-solid fa-circle-check"></i> Wallet Activated</div>
+                        <div class="p-divider"></div>
+                        <div class="p-step done"><i class="fa-solid fa-circle-check"></i> Production API Active</div>
+                    </div>
                 </div>
             <?php endif; ?>
+
+            <!-- 5. Recent Transactions Table Section -->
+            <div class="panel-card" id="txHistorySec">
+                <div class="card-header-flex">
+                    <h3 class="card-title">
+                        <i class="fa-solid fa-clock-rotate-left" style="color:var(--primary-accent);"></i> Recent Wallet Transactions
+                    </h3>
+                    <span style="font-size:0.85rem; color:var(--text-secondary);">Last 100 Transactions</span>
+                </div>
+
+                <div style="overflow-x:auto;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Transaction / Booking Ref</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Wallet Balance</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($is_paid): ?>
+                                <!-- Credit Initial Deposit Row -->
+                                <tr>
+                                    <td><?= $paid_at_val ?></td>
+                                    <td>
+                                        <div style="font-weight:700; color:#FFF;">Initial Wallet Deposit</div>
+                                        <div style="font-size:0.78rem; color:var(--text-secondary); font-family:var(--font-mono);">Payment ID: <?= htmlspecialchars($payment_id_val) ?></div>
+                                    </td>
+                                    <td><span style="color:#34D399; font-weight:700; font-size:0.82rem; background:rgba(16,185,129,0.12); padding:3px 8px; border-radius:6px;">Credit</span></td>
+                                    <td style="font-family:var(--font-mono); font-weight:700; color:#34D399;">+₹<?= number_format($activation_deposit_required, 2) ?></td>
+                                    <td style="font-family:var(--font-mono); font-weight:600;">₹<?= number_format($activation_deposit_required, 2) ?></td>
+                                    <td><span class="status-badge badge-paid"><i class="fa-solid fa-check"></i> Completed</span></td>
+                                    <td><button class="btn-view-details" onclick="window.print()"><i class="fa-solid fa-receipt"></i> Invoice</button></td>
+                                </tr>
+                            <?php endif; ?>
+
+                            <?php if (!empty($wallet_txs)): ?>
+                                <?php foreach ($wallet_txs as $tx): ?>
+                                    <tr>
+                                        <td><?= date('d M Y, h:i A', strtotime($tx['created_at'])) ?></td>
+                                        <td>
+                                            <div style="font-weight:700; color:#FFF; font-family:var(--font-mono);"><?= htmlspecialchars($tx['partner_booking_ref'] ?? ('BOOK-' . $tx['booking_id'])) ?></div>
+                                            <div style="font-size:0.78rem; color:var(--text-secondary);"><?= htmlspecialchars($tx['car_type'] ?? 'Cab Booking') ?> • Trip #<?= $tx['booking_id'] ?></div>
+                                        </td>
+                                        <td><span style="color:#FBBF24; font-weight:700; font-size:0.82rem; background:rgba(245,158,11,0.12); padding:3px 8px; border-radius:6px;">Debit</span></td>
+                                        <td style="font-family:var(--font-mono); font-weight:700; color:#FBBF24;">-₹<?= number_format($tx['deduction_amount'], 2) ?></td>
+                                        <td style="font-family:var(--font-mono); font-weight:600;">₹<?= number_format($tx['balance_after'], 2) ?></td>
+                                        <td><span class="status-badge badge-paid"><i class="fa-solid fa-check"></i> Deducted</span></td>
+                                        <td>
+                                            <button class="btn-view-details" onclick='openTripModal(<?= json_encode($tx, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) ?>)'>
+                                                <i class="fa-solid fa-eye"></i> View Details
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="7" style="text-align:center; padding:32px 10px; color:var(--text-secondary);">
+                                        <i class="fa-solid fa-receipt" style="font-size:2rem; opacity:0.3; margin-bottom:8px; display:block;"></i>
+                                        No trip commission deductions recorded yet.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 6. API Commission Summary & Billing Documents Grid -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:28px;">
+                
+                <!-- API Commission Summary Card -->
+                <div class="panel-card" style="margin-bottom:0;">
+                    <h3 class="card-title" style="margin-bottom:18px;">
+                        <i class="fa-solid fa-calculator" style="color:var(--primary-accent);"></i> API Commission Summary
+                    </h3>
+                    <div style="display:flex; flex-direction:column; gap:12px; font-size:0.9rem;">
+                        <div style="display:flex; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <span style="color:var(--text-secondary);">Total Completed Trips</span>
+                            <span style="font-weight:700; color:#FFF;"><?= count($wallet_txs) ?></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <span style="color:var(--text-secondary);">Total Trip Value</span>
+                            <span style="font-weight:700; color:#FFF; font-family:var(--font-mono);">₹<?= number_format($total_trip_fare, 2) ?></span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.04);">
+                            <span style="color:var(--text-secondary);">Commission Rate</span>
+                            <span style="font-weight:700; color:#34D399;"><?= $commission_rate ?>% per trip</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding-top:4px; font-weight:800; font-size:1rem;">
+                            <span style="color:var(--text-secondary);">Total Commission Deducted</span>
+                            <span style="color:var(--warning-color); font-family:var(--font-mono);">₹<?= number_format($total_deducted, 2) ?></span>
+                        </div>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-secondary); margin-top:16px; line-height:1.4;">
+                        <i class="fa-solid fa-circle-info" style="color:var(--primary-accent);"></i> <?= $commission_rate ?>% commission is calculated from completed API trips and automatically deducted from your prepaid wallet balance.
+                    </p>
+                </div>
+
+                <!-- Billing Documents Card -->
+                <div class="panel-card" style="margin-bottom:0;">
+                    <h3 class="card-title" style="margin-bottom:18px;">
+                        <i class="fa-solid fa-folder-open" style="color:var(--success-color);"></i> Billing Documents
+                    </h3>
+
+                    <div class="docs-grid">
+                        <div class="doc-card">
+                            <div>
+                                <strong style="display:block; font-size:0.9rem; color:#FFF;">Initial Deposit Invoice</strong>
+                                <span style="font-size:0.78rem; color:var(--text-secondary);"><?= $invoice_no ?></span>
+                            </div>
+                            <button class="btn-print" onclick="window.print()"><i class="fa-solid fa-print"></i> View</button>
+                        </div>
+
+                        <div class="doc-card">
+                            <div>
+                                <strong style="display:block; font-size:0.9rem; color:#FFF;">Payment Receipt</strong>
+                                <span style="font-size:0.78rem; color:var(--text-secondary);"><?= $payment_id_val ?></span>
+                            </div>
+                            <button class="btn-print" onclick="window.print()"><i class="fa-solid fa-receipt"></i> View</button>
+                        </div>
+
+                        <div class="doc-card">
+                            <div>
+                                <strong style="display:block; font-size:0.9rem; color:#FFF;">Monthly Statement</strong>
+                                <span style="font-size:0.78rem; color:var(--text-secondary);"><?= date('F Y') ?></span>
+                            </div>
+                            <button class="btn-print" onclick="window.print()"><i class="fa-solid fa-file-pdf"></i> View</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
 
         </main>
     </div>
 
-    <!-- Trip Details Modal Dialog -->
-    <div id="tripModal" class="modal-overlay">
+    <!-- Interactive Trip Details Modal Popup -->
+    <div class="modal-overlay" id="tripModal">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title">
                     <i class="fa-solid fa-receipt" style="color:var(--primary-accent);"></i>
-                    <span id="m_booking_id">Trip Details</span>
+                    <span id="m_ref_title">Trip Commission Details</span>
                 </div>
-                <button type="button" class="modal-close" onclick="closeTripModal()">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
+                <button class="modal-close" onclick="closeTripModal()">&times;</button>
             </div>
+            
             <div class="modal-body">
-                <!-- Section 1: Trip & Route Details -->
-                <div class="modal-section">
-                    <div class="modal-sec-title">
-                        <i class="fa-solid fa-route" style="color:var(--primary-accent);"></i> Route & Schedule Details
+                <div>
+                    <div class="m-section-title"><i class="fa-solid fa-route"></i> Route & Trip Schedule</div>
+                    <div class="m-box" style="margin-bottom:12px;">
+                        <span class="m-lbl">Pickup & Dropoff Route</span>
+                        <div style="font-weight:700; font-size:1rem; color:#FFF;" id="m_route">--</div>
                     </div>
-                    <div class="detail-row-grid">
-                        <div class="info-cell">
-                            <span class="info-label">Partner Booking Ref</span>
-                            <span class="info-value" id="m_partner_ref" style="font-family:var(--font-mono); color:var(--primary-accent);">N/A</span>
+                    
+                    <div class="m-grid">
+                        <div class="m-box">
+                            <span class="m-lbl">Date & Pickup Time</span>
+                            <div class="m-val" id="m_date_time">--</div>
                         </div>
-                        <div class="info-cell">
-                            <span class="info-label">Category / Trip Type</span>
-                            <span class="info-value" id="m_category">Standard • One-way</span>
-                        </div>
-                        <div class="info-cell">
-                            <span class="info-label">Schedule Date & Time</span>
-                            <span class="info-value" id="m_datetime">N/A</span>
-                        </div>
-                        <div class="info-cell">
-                            <span class="info-label">Odometer Reading</span>
-                            <span class="info-value" id="m_odometer">N/A</span>
-                        </div>
-                    </div>
-                    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:8px;">
-                        <div>
-                            <span class="info-label">Pickup Location</span>
-                            <div class="info-value" id="m_from_addr" style="font-size:0.9rem; color:#FFF; font-weight:500; margin-top:2px;">N/A</div>
-                        </div>
-                        <div style="margin-top:6px;">
-                            <span class="info-label">Dropoff Location</span>
-                            <div class="info-value" id="m_to_addr" style="font-size:0.9rem; color:#FFF; font-weight:500; margin-top:2px;">N/A</div>
+                        <div class="m-box">
+                            <span class="m-lbl">Vehicle & Trip Type</span>
+                            <div class="m-val" id="m_car_trip_type">--</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Section 2: Passenger & Driver Info -->
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
-                    <div class="modal-section">
-                        <div class="modal-sec-title">
-                            <i class="fa-solid fa-user" style="color:var(--secondary-accent);"></i> Passenger Info
+                <div>
+                    <div class="m-section-title"><i class="fa-solid fa-gauge-high"></i> Odometer Readings</div>
+                    <div class="m-grid">
+                        <div class="m-box">
+                            <span class="m-lbl">Starting Odometer KM</span>
+                            <div class="m-val" id="m_starting_km">--</div>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <div>
-                                <span class="info-label">Passenger Contact Mobile</span>
-                                <div class="info-value" id="m_passenger_phone" style="font-family:var(--font-mono);">N/A</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="modal-section">
-                        <div class="modal-sec-title">
-                            <i class="fa-solid fa-id-card" style="color:var(--success-color);"></i> Driver & Vehicle Info
-                        </div>
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                            <div>
-                                <span class="info-label">Driver Name</span>
-                                <div class="info-value" id="m_driver_name">Assigned Driver</div>
-                            </div>
-                            <div>
-                                <span class="info-label">Driver Contact Phone</span>
-                                <div class="info-value" id="m_driver_phone" style="font-family:var(--font-mono);">N/A</div>
-                            </div>
-                            <div>
-                                <span class="info-label">Vehicle Plate Number (RC)</span>
-                                <div class="info-value" id="m_vehicle_id" style="font-family:var(--font-mono); color:var(--warning-color); font-weight:700;">N/A</div>
-                            </div>
+                        <div class="m-box">
+                            <span class="m-lbl">Closing Odometer KM</span>
+                            <div class="m-val" id="m_closing_km">--</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Section 3: Financial & Wallet Deduction Ledger -->
-                <div class="modal-section" style="background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.08)); border-color:rgba(99,102,241,0.3);">
-                    <div class="modal-sec-title" style="color:#FFF;">
-                        <i class="fa-solid fa-calculator" style="color:var(--success-color);"></i> Wallet Ledger Breakdown
+                <div>
+                    <div class="m-section-title"><i class="fa-solid fa-user-gear"></i> Passenger & Driver Info</div>
+                    <div class="m-grid">
+                        <div class="m-box">
+                            <span class="m-lbl">Passenger Contact</span>
+                            <div class="m-val" id="m_passenger_phone">--</div>
+                        </div>
+                        <div class="m-box">
+                            <span class="m-lbl">Assigned Driver & Vehicle RC</span>
+                            <div class="m-val" id="m_driver_info">--</div>
+                        </div>
                     </div>
-                    <div class="detail-row-grid">
-                        <div class="info-cell">
-                            <span class="info-label">Total Trip Fare</span>
-                            <span class="info-value" id="m_trip_fare" style="font-size:1.1rem; font-weight:800; color:#FFF;">₹0.00</span>
+                </div>
+
+                <div>
+                    <div class="m-section-title"><i class="fa-solid fa-file-invoice-dollar"></i> Financial & Wallet Breakdown</div>
+                    <div class="m-grid">
+                        <div class="m-box">
+                            <span class="m-lbl">Total Trip Fare</span>
+                            <div class="m-val" style="color:#FFF;" id="m_total_fare">₹0.00</div>
                         </div>
-                        <div class="info-cell">
-                            <span class="info-label">10% Fee Deducted</span>
-                            <span class="info-value" id="m_fee_deducted" style="font-size:1.1rem; font-weight:800; color:var(--danger-color); font-family:var(--font-mono);">-₹0.00</span>
+                        <div class="m-box" style="background:rgba(245,158,11,0.08); border-color:rgba(245,158,11,0.25);">
+                            <span class="m-lbl" style="color:#FBBF24;">10% Commission Deducted</span>
+                            <div class="m-val" style="color:#FBBF24;" id="m_deduction">₹0.00</div>
                         </div>
-                        <div class="info-cell">
-                            <span class="info-label">Remaining Wallet Balance</span>
-                            <span class="info-value" id="m_balance_after" style="font-size:1.1rem; font-weight:800; color:var(--success-color); font-family:var(--font-mono);">₹0.00</span>
-                        </div>
+                    </div>
+                    <div class="m-box" style="margin-top:12px; background:rgba(16,185,129,0.08); border-color:rgba(16,185,129,0.25);">
+                        <span class="m-lbl" style="color:#34D399;">Wallet Balance After Trip</span>
+                        <div class="m-val" style="color:#34D399; font-size:1.1rem;" id="m_balance_after">₹0.00</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Toast Popup Notification -->
-    <div id="toast"></div>
+    <!-- Toast Notification -->
+    <div class="toast-notification" id="toast"></div>
 
     <!-- Razorpay Checkout SDK & Payment Handler -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
         function openTripModal(data) {
-            if (!data) return;
-            document.getElementById('m_booking_id').innerText = 'Trip Details #' + (data.booking_id || '');
-            document.getElementById('m_partner_ref').innerText = data.partner_booking_ref || 'N/A';
-            document.getElementById('m_category').innerText = (data.car_type || 'Standard') + ' • ' + (data.trip_type || 'One-way');
-            document.getElementById('m_datetime').innerText = (data.trip_date || 'N/A') + ' ' + (data.trip_time || '');
-            document.getElementById('m_odometer').innerText = (data.starting_km ? data.starting_km + ' KM ➔ ' : '') + (data.closing_km ? data.closing_km + ' KM' : 'N/A');
-            document.getElementById('m_from_addr').innerText = data.from_address || 'N/A';
-            document.getElementById('m_to_addr').innerText = data.to_address || 'N/A';
+            document.getElementById('m_ref_title').innerText = 'Trip Details: ' + (data.partner_booking_ref || ('BOOK-' + data.booking_id));
+            document.getElementById('m_route').innerText = (data.from_address || 'N/A') + '  ➔  ' + (data.to_address || 'N/A');
+            document.getElementById('m_date_time').innerText = (data.trip_date || 'N/A') + ' at ' + (data.trip_time || 'N/A');
+            document.getElementById('m_car_trip_type').innerText = (data.car_type || 'Cab') + ' • ' + (data.trip_type || 'One-way');
+            document.getElementById('m_starting_km').innerText = (data.starting_km ? data.starting_km + ' KM' : 'N/A');
+            document.getElementById('m_closing_km').innerText = (data.closing_km ? data.closing_km + ' KM' : 'N/A');
+            
             document.getElementById('m_passenger_phone').innerText = data.passenger_phone || data.customer_number || 'N/A';
-            document.getElementById('m_driver_name').innerText = data.driver_name || 'Assigned Driver';
-            document.getElementById('m_driver_phone').innerText = data.driver_phone || data.driver_id || 'N/A';
-            document.getElementById('m_vehicle_id').innerText = data.booking_vehicle_id || 'N/A';
-            document.getElementById('m_trip_fare').innerText = '₹' + parseFloat(data.trip_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('m_fee_deducted').innerText = '-₹' + parseFloat(data.deduction_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            let driverText = 'Not Assigned';
+            if (data.driver_name) {
+                driverText = data.driver_name + ' (' + (data.driver_phone || '') + ')';
+            } else if (data.driver_id) {
+                driverText = 'Driver ID: ' + data.driver_id;
+            }
+            if (data.booking_vehicle_id) {
+                driverText += ' | RC: ' + data.booking_vehicle_id;
+            }
+            document.getElementById('m_driver_info').innerText = driverText;
+
+            document.getElementById('m_total_fare').innerText = '₹' + parseFloat(data.total_fare || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('m_deduction').innerText = '-₹' + parseFloat(data.deduction_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('m_balance_after').innerText = '₹' + parseFloat(data.balance_after || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
             document.getElementById('tripModal').classList.add('active');
@@ -742,6 +970,12 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
         }
 
         function payWithRazorpay() {
+            const btn = document.getElementById('btnPayMain');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Opening Secure Checkout...';
+            }
+
             const options = {
                 "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
                 "amount": <?= (int)($activation_deposit_required * 100) ?>,
@@ -753,13 +987,21 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                         verifyPartnerPayment(response.razorpay_payment_id);
                     }
                 },
+                "modal": {
+                    "ondismiss": function() {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa-solid fa-credit-card"></i> Pay ₹<?= number_format($activation_deposit_required) ?> via Razorpay';
+                        }
+                    }
+                },
                 "prefill": {
                     "name": "<?= htmlspecialchars($p['contact_person'] ?? $p['partner_name']) ?>",
                     "email": "<?= htmlspecialchars($p['email']) ?>",
                     "contact": "<?= htmlspecialchars($p['mobile_number']) ?>"
                 },
                 "theme": {
-                    "color": "#6c63ff"
+                    "color": "#10B981"
                 }
             };
             const rzp = new Razorpay(options);
@@ -767,7 +1009,7 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
         }
 
         function verifyPartnerPayment(paymentId) {
-            showToast("Verifying ₹10,000 payment...", false);
+            showToast("Verifying payment with server...", false);
             const formData = new FormData();
             formData.append('action', 'verify_payment');
             formData.append('razorpay_payment_id', paymentId);
