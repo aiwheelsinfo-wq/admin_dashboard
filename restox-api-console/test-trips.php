@@ -170,81 +170,106 @@ foreach ($test_bookings as $tb) {
 
         .app-container { display: flex; min-height: 100vh; }
 
-        /* Sidebar */
+        /* === SIDEBAR === */
         .sidebar {
             width: var(--sidebar-width);
-            background-color: rgba(17, 24, 39, 0.95);
+            background-color: rgba(15, 23, 42, 0.97);
             border-right: 1px solid var(--border-color);
-            backdrop-filter: blur(20px);
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100vh;
-            z-index: 1000;
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 1000;
+            overflow-x: hidden; transition: width 0.25s cubic-bezier(0.4,0,0.2,1);
         }
-        .sidebar-brand {
-            padding: 28px 24px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .brand-logo-icon {
-            font-size: 1.5rem;
-            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .brand-name { font-size: 1.2rem; font-weight: 800; }
 
-        .sidebar-nav { padding: 20px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+        .sidebar-brand {
+            height: 80px; padding: 0 18px;
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0;
+        }
+        .brand-block { display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap; }
+        .brand-logo-icon {
+            font-size: 1.2rem; color: var(--primary-accent);
+            background: rgba(99,102,241,0.12); padding: 8px; border-radius: 10px;
+            border: 1px solid rgba(99,102,241,0.25); flex-shrink: 0;
+        }
+        .brand-title-group { display: flex; flex-direction: column; line-height: 1.15; }
+        .brand-title { font-size: 1.02rem; font-weight: 800; color: #FFF; letter-spacing: -0.3px; }
+        .brand-sub-badge { font-size: 0.6rem; font-weight: 800; color: #A5B4FC; letter-spacing: 1.5px; text-transform: uppercase; }
+
+        .sidebar-nav {
+            padding: 14px 12px; display: flex; flex-direction: column; gap: 3px;
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+        }
+        .sidebar-nav::-webkit-scrollbar { width: 4px; }
+        .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+        .nav-section-label {
+            font-size: 0.64rem; font-weight: 800; letter-spacing: 1.5px;
+            color: #64748B; padding: 12px 10px 4px; text-transform: uppercase; white-space: nowrap;
+        }
         .nav-item {
-            display: flex; align-items: center; gap: 12px;
-            color: var(--text-secondary); text-decoration: none;
-            padding: 12px 16px; border-radius: 10px; font-size: 0.92rem; font-weight: 500;
-            transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 12px; color: var(--text-secondary); text-decoration: none;
+            padding: 10px 12px; border-radius: 10px; font-size: 0.87rem; font-weight: 600;
+            transition: all 0.18s ease; position: relative; white-space: nowrap; height: 44px;
         }
-        .nav-item:hover { color: #FFF; background: rgba(255, 255, 255, 0.04); }
-        .nav-item.active {
-            color: #FFF; background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(59, 130, 246, 0.2));
-            border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 600;
+        .nav-item-content { display: flex; align-items: center; gap: 12px; overflow: hidden; }
+        .nav-item i { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; color: #94A3B8; transition: color 0.18s; }
+        .nav-item:hover { color: #FFF; background: rgba(255,255,255,0.04); }
+        .nav-item:hover i { color: #FFF; }
+        .nav-item.active { color: #FFF; background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); }
+        .nav-item.active i { color: var(--primary-accent); }
+        .nav-item.active::before {
+            content: ''; position: absolute; left: 0; top: 14%; bottom: 14%;
+            width: 3.5px; background: var(--primary-accent); border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 8px var(--primary-accent);
         }
+        .nav-badge {
+            font-size: 0.7rem; font-weight: 700; padding: 3px 7px; border-radius: 12px;
+            white-space: nowrap; line-height: 1; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .badge-green  { background: rgba(16,185,129,0.15); color: #34D399; border: 1px solid rgba(16,185,129,0.3); }
+        .badge-orange { background: rgba(245,158,11,0.15); color: #FBBF24; border: 1px solid rgba(245,158,11,0.3); }
+        .badge-neutral{ background: rgba(255,255,255,0.06); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.1); }
+
+        .sidebar-system-status {
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px; padding: 10px 12px; margin: 0 12px 10px;
+            display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+        }
+        .status-dot-pulse {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--success-color); box-shadow: 0 0 8px var(--success-color); flex-shrink: 0;
+        }
+        .system-status-title { font-size: 0.78rem; font-weight: 700; color: #FFF; }
+        .system-status-sub  { font-size: 0.7rem; color: var(--text-secondary); }
 
         .sidebar-footer {
-            padding: 20px 24px;
-            border-top: 1px solid var(--border-color);
-            display: flex; flex-direction: column; gap: 14px;
+            padding: 14px 12px; border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex; flex-direction: column; gap: 10px;
+            flex-shrink: 0; background: rgba(7,11,20,0.4);
         }
-
-        .sidebar-user { display: flex; align-items: center; gap: 12px; }
-
+        .sidebar-user-card { display: flex; align-items: center; gap: 12px; overflow: hidden; }
         .user-avatar {
             width: 38px; height: 38px; border-radius: 50%;
             background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
             display: flex; align-items: center; justify-content: center;
             font-weight: 700; font-size: 0.95rem; color: #FFF;
-            border: 1px solid rgba(255, 255, 255, 0.15); flex-shrink: 0;
+            border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0;
         }
-
-        .user-info { display: flex; flex-direction: column; overflow: hidden; }
-
-        .user-company {
-            font-size: 0.88rem; font-weight: 600; color: #FFF;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-
-        .user-role { font-size: 0.75rem; color: var(--text-secondary); }
-
+        .user-info { display: flex; flex-direction: column; overflow: hidden; line-height: 1.3; }
+        .user-company { font-size: 0.86rem; font-weight: 700; color: #FFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .user-role { font-size: 0.72rem; color: var(--text-secondary); }
+        .user-status-pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; font-weight: 700; margin-top: 2px; }
+        .user-status-pill.status-green  { color: #34D399; }
+        .user-status-pill.status-orange { color: #FBBF24; }
         .btn-logout-sidebar {
             display: flex; align-items: center; justify-content: center; gap: 8px;
-            background-color: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.15);
-            color: #FCA5A5; padding: 10px; border-radius: 10px; text-decoration: none;
-            font-size: 0.85rem; font-weight: 600; transition: all 0.25s ease; cursor: pointer;
+            background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15);
+            color: #FCA5A5; padding: 9px; border-radius: 10px; text-decoration: none;
+            font-size: 0.85rem; font-weight: 600; transition: all 0.25s ease;
+            cursor: pointer; width: 100%;
         }
-
-        .btn-logout-sidebar:hover {
-            background-color: var(--danger-color); color: #FFF; border-color: var(--danger-color);
-        }
+        .btn-logout-sidebar:hover { background: var(--danger-color); color: #FFF; border-color: var(--danger-color); }
 
         .main-workspace { margin-left: var(--sidebar-width); flex: 1; padding: 40px; }
 
@@ -328,51 +353,75 @@ foreach ($test_bookings as $tb) {
 
     <div class="app-container">
 
-        <!-- Sidebar -->
-        <aside class="sidebar">
+        <!-- Left Navigation Sidebar -->
+        <aside class="sidebar" id="appSidebar">
+
             <div class="sidebar-brand">
-                <i class="fa-solid fa-terminal brand-logo-icon"></i>
-                <span class="brand-name">Rentox API</span>
+                <div class="brand-block">
+                    <i class="fa-solid fa-terminal brand-logo-icon"></i>
+                    <div class="brand-title-group">
+                        <span class="brand-title">Rentox API</span>
+                        <span class="brand-sub-badge">Developer Console</span>
+                    </div>
+                </div>
             </div>
 
             <nav class="sidebar-nav">
+
+                <span class="nav-section-label">Main</span>
                 <a href="dashboard.php#overview" class="nav-item">
-                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                    <div class="nav-item-content"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></div>
                 </a>
+
+                <span class="nav-section-label">API &amp; Development</span>
                 <a href="dashboard.php#keys" class="nav-item">
-                    <i class="fa-solid fa-key"></i> API Credentials
-                </a>
-                <a href="payments.php" class="nav-item">
-                    <i class="fa-solid fa-credit-card"></i> Payments & Billing
+                    <div class="nav-item-content"><i class="fa-solid fa-key"></i><span>API Credentials</span></div>
                 </a>
                 <a href="test-trips.php" class="nav-item active">
-                    <i class="fa-solid fa-flask-vial"></i> Test Trips Simulator
-                </a>
-                <a href="dashboard.php#logs" class="nav-item">
-                    <i class="fa-solid fa-terminal"></i> Activity Logs
+                    <div class="nav-item-content"><i class="fa-solid fa-flask-vial"></i><span>Test Trips Simulator</span></div>
                 </a>
                 <a href="dashboard.php#docs" class="nav-item">
-                    <i class="fa-solid fa-book"></i> API Documentation
+                    <div class="nav-item-content"><i class="fa-solid fa-book"></i><span>API Documentation</span></div>
                 </a>
+
+                <span class="nav-section-label">Billing &amp; Activity</span>
+                <a href="payments.php" class="nav-item">
+                    <div class="nav-item-content"><i class="fa-solid fa-wallet"></i><span>Payments &amp; Wallet</span></div>
+                </a>
+                <a href="dashboard.php#logs" class="nav-item">
+                    <div class="nav-item-content"><i class="fa-solid fa-list-check"></i><span>Activity Logs</span></div>
+                </a>
+
+                <span class="nav-section-label">Account</span>
                 <a href="dashboard.php#settings" class="nav-item">
-                    <i class="fa-solid fa-sliders"></i> Account Settings
+                    <div class="nav-item-content"><i class="fa-solid fa-sliders"></i><span>Account Settings</span></div>
                 </a>
+
             </nav>
 
+            <div class="sidebar-system-status">
+                <div class="status-dot-pulse"></div>
+                <div>
+                    <div class="system-status-title">All Systems Operational</div>
+                    <div class="system-status-sub">Production API · Sandbox · Billing</div>
+                </div>
+            </div>
+
             <div class="sidebar-footer">
-                <div class="sidebar-user">
-                    <div class="user-avatar">
-                        <?= strtoupper(substr($p['company_name'], 0, 2)) ?>
-                    </div>
+                <div class="sidebar-user-card">
+                    <div class="user-avatar"><?= strtoupper(substr($p['company_name'], 0, 2)) ?></div>
                     <div class="user-info">
                         <span class="user-company"><?= htmlspecialchars($p['company_name']) ?></span>
                         <span class="user-role">B2B Integration</span>
+                        <span class="user-status-pill status-green"><i class="fa-solid fa-circle" style="font-size:.45rem;"></i> Sandbox Mode</span>
                     </div>
                 </div>
                 <a href="dashboard.php?action=logout" class="btn-logout-sidebar" onclick="confirmPartnerLogout(event)">
-                    <i class="fa-solid fa-sign-out-alt"></i> Log Out
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Log Out</span>
                 </a>
             </div>
+
         </aside>
 
         <!-- Main Workspace -->
