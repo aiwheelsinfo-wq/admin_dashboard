@@ -88,6 +88,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-desktop me-2"></i> Partner Monitor
   </a>
 </li>
+                <li><a href="partner_management.php" id="partner_management_menu">
+    <i class="fas fa-sliders me-2"></i> Partner Pricing & Commission
+  </a>
+</li>
                 <li><a href="car_categories.php" id="car_categories_menu">
     <i class="fas fa-tags me-2"></i> Car Categories
   </a>

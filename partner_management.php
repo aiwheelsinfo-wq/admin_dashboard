@@ -73,21 +73,22 @@ foreach ($partners as $pt) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <!-- FontAwesome Icons -->
+    <!-- FontAwesome Icons & Bootstrap -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <style>
         :root {
-            --bg-base: #0B0F17;
-            --bg-card: #111827;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary-accent: #6366F1;
+            --bg-base: #F4F6F9;
+            --bg-card: #FFFFFF;
+            --border-color: #E5E7EB;
+            --primary-accent: #2563EB;
             --secondary-accent: #3B82F6;
-            --success-color: #10B981;
-            --warning-color: #F59E0B;
-            --danger-color: #EF4444;
-            --text-main: #F9FAFB;
-            --text-secondary: #9CA3AF;
+            --success-color: #059669;
+            --warning-color: #D97706;
+            --danger-color: #DC2626;
+            --text-main: #1F2937;
+            --text-secondary: #6B7280;
             --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }
@@ -98,88 +99,111 @@ foreach ($partners as $pt) {
             color: var(--text-main);
             font-family: var(--font-main);
             min-height: 100vh;
-            padding: 40px;
+            padding: 30px;
         }
 
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container-custom { max-width: 1240px; margin: 0 auto; }
 
-        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; }
-        .header-flex h1 { font-size: 1.8rem; font-weight: 800; }
-        .header-flex p { color: var(--text-secondary); font-size: 0.95rem; margin-top: 4px; }
+        /* Top Navigation Header Bar */
+        .top-admin-header {
+            background: #FFFFFF; border-radius: 16px; padding: 20px 28px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); margin-bottom: 28px;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color);
+        }
+        .header-title-sec h1 { font-size: 1.6rem; font-weight: 800; color: #111827; margin: 0; }
+        .header-title-sec p { color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px; margin-bottom: 0; }
 
-        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .metric-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 22px; }
-        .metric-label { color: var(--text-secondary); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-val { font-size: 1.8rem; font-weight: 800; margin: 10px 0 4px; }
-        .metric-desc { font-size: 0.82rem; color: var(--text-secondary); }
+        .btn-back-home {
+            background: #F3F4F6; color: #374151; border: 1px solid #D1D5DB;
+            border-radius: 10px; padding: 10px 18px; font-size: 0.9rem; font-weight: 600;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease;
+        }
+        .btn-back-home:hover { background: #E5E7EB; color: #111827; }
 
-        .panel-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; }
-        .card-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        /* Metrics Cards Grid */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 28px; }
+        .metric-card {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 24px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03); transition: transform 0.2s ease;
+        }
+        .metric-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06); }
+        .metric-label { color: var(--text-secondary); font-size: 0.82rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-val { font-size: 1.85rem; font-weight: 800; margin: 10px 0 4px; color: #111827; }
+        .metric-desc { font-size: 0.82rem; color: var(--text-secondary); font-weight: 500; }
+
+        /* Table Card Panel */
+        .panel-card {
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 28px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        }
+        .card-title { font-size: 1.2rem; font-weight: 800; color: #111827; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
 
         table.custom-table { width: 100%; border-collapse: collapse; text-align: left; }
-        table.custom-table th { padding: 14px 16px; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; border-bottom: 1px solid var(--border-color); }
-        table.custom-table td { padding: 16px; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; vertical-align: middle; }
-        table.custom-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+        table.custom-table th { padding: 14px 16px; font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; border-bottom: 2px solid var(--border-color); background: #F9FAFB; }
+        table.custom-table td { padding: 16px; border-bottom: 1px solid var(--border-color); font-size: 0.92rem; vertical-align: middle; }
+        table.custom-table tr:hover { background: #F9FAFB; }
 
-        .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
-        .badge-active { background: rgba(16, 185, 129, 0.15); color: var(--success-color); border: 1px solid rgba(16, 185, 129, 0.3); }
-        .badge-pending { background: rgba(245, 158, 11, 0.15); color: var(--warning-color); border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+        .badge-active { background: #DEF7EC; color: #03543F; border: 1px solid #BCF0DA; }
+        .badge-pending { background: #FEF08A; color: #713F12; border: 1px solid #FDE047; }
 
         .btn-edit {
-            background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent)); color: #FFF;
-            border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; font-weight: 700;
-            cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;
+            background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #FFF;
+            border: none; border-radius: 8px; padding: 9px 18px; font-size: 0.86rem; font-weight: 700;
+            cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
         }
-        .btn-edit:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4); }
+        .btn-edit:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); background: #1D4ED8; }
 
-        /* Edit Settings Modal */
+        /* Edit Settings Modal Dialog */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(11, 15, 23, 0.85); backdrop-filter: blur(12px);
+            background: rgba(17, 24, 39, 0.6); backdrop-filter: blur(8px);
             display: none; justify-content: center; align-items: center; z-index: 3000; padding: 20px;
         }
         .modal-overlay.active { display: flex; }
         .modal-card {
-            background: var(--bg-card); border: 1px solid var(--border-color);
-            border-radius: 20px; width: 100%; max-width: 540px; padding: 28px;
-            box-shadow: 0 25px 60px rgba(0,0,0,0.7); position: relative;
+            background: #FFFFFF; border: 1px solid var(--border-color);
+            border-radius: 20px; width: 100%; max-width: 520px; padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15); position: relative;
         }
-        .modal-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+        .modal-title-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
         
         .form-group { margin-bottom: 20px; }
-        .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+        .form-label { display: block; font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 8px; }
         .form-input {
-            width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);
-            border-radius: 10px; padding: 12px 16px; color: #FFF; font-size: 0.95rem; font-family: var(--font-mono);
+            width: 100%; background: #F9FAFB; border: 1px solid #D1D5DB;
+            border-radius: 10px; padding: 12px 16px; color: #111827; font-size: 0.95rem; font-family: var(--font-mono); font-weight: 600;
         }
-        .form-input:focus { outline: none; border-color: var(--primary-accent); background: rgba(255,255,255,0.08); }
+        .form-input:focus { outline: none; border-color: var(--primary-accent); background: #FFFFFF; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
 
         .btn-save {
-            width: 100%; background: linear-gradient(135deg, #10B981, #059669); color: #FFF;
+            width: 100%; background: linear-gradient(135deg, #059669, #047857); color: #FFF;
             border: none; border-radius: 12px; padding: 14px; font-size: 1rem; font-weight: 700;
             cursor: pointer; display: inline-flex; justify-content: center; align-items: center; gap: 8px;
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35); transition: all 0.2s ease; margin-top: 10px;
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.3); transition: all 0.2s ease; margin-top: 10px;
         }
-        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5); }
+        .btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(5, 150, 105, 0.45); }
 
-        /* Toast Popup */
+        /* Toast Notification */
         #toast {
-            position: fixed; bottom: 30px; right: 30px; background: var(--bg-card);
-            border: 1px solid var(--primary-accent); padding: 16px 20px; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; z-index: 4000; font-size: 0.9rem;
+            position: fixed; bottom: 30px; right: 30px; background: #111827; color: #FFF;
+            border: 1px solid var(--primary-accent); padding: 16px 22px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25); display: none; z-index: 4000; font-size: 0.9rem; font-weight: 600;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="container-custom">
 
-        <div class="header-flex">
-            <div>
+        <!-- Header Bar -->
+        <div class="top-admin-header">
+            <div class="header-title-sec">
                 <h1>🎛️ B2B Partner Commission & Deposit Manager</h1>
-                <p>Super Admin Console • Set dynamic activation fees, custom commission rates, and manage wallet credits per partner.</p>
+                <p>Super Admin Console • Configure dynamic activation fees, custom commission rates, and partner wallet balances.</p>
             </div>
-            <a href="dashboard.php" style="color:var(--text-secondary); text-decoration:none; font-size:0.9rem; font-weight:600;">
+            <a href="dashboard.php" class="btn-back-home">
                 <i class="fa-solid fa-arrow-left"></i> Back to Main Dashboard
             </a>
         </div>
@@ -189,19 +213,19 @@ foreach ($partners as $pt) {
             <div class="metric-card">
                 <span class="metric-label">Total Registered Partners</span>
                 <div class="metric-val" style="color:var(--primary-accent);"><?= $total_partners ?></div>
-                <span class="metric-desc"><?= $active_partners ?> Live Paid Accounts</span>
+                <span class="metric-desc"><i class="fa-solid fa-check-circle" style="color:var(--success-color);"></i> <?= $active_partners ?> Live Active Accounts</span>
             </div>
 
             <div class="metric-card">
                 <span class="metric-label">Total Activation Deposits</span>
                 <div class="metric-val" style="color:var(--success-color);">₹<?= number_format($total_deposits_collected, 2) ?></div>
-                <span class="metric-desc">Onboarding fees collected</span>
+                <span class="metric-desc"><i class="fa-solid fa-wallet" style="color:var(--success-color);"></i> Onboarding setup fees collected</span>
             </div>
 
             <div class="metric-card">
                 <span class="metric-label">Total Partner Wallet Balance</span>
                 <div class="metric-val" style="color:var(--warning-color);">₹<?= number_format($total_wallet_balances, 2) ?></div>
-                <span class="metric-desc">Active prepaid funds in system</span>
+                <span class="metric-desc"><i class="fa-solid fa-coins" style="color:var(--warning-color);"></i> Active prepaid funds in system</span>
             </div>
         </div>
 
@@ -233,11 +257,11 @@ foreach ($partners as $pt) {
                         ?>
                             <tr>
                                 <td>
-                                    <div style="font-weight:800; color:#FFF; font-size:0.98rem;"><?= htmlspecialchars($partner['partner_name'] ?? 'Partner #' . $partner['id']) ?></div>
-                                    <div style="font-size:0.78rem; color:var(--primary-accent); font-family:var(--font-mono); margin-top:2px;">ID: #<?= $partner['id'] ?></div>
+                                    <div style="font-weight:800; color:#111827; font-size:0.98rem;"><?= htmlspecialchars($partner['partner_name'] ?? 'Partner #' . $partner['id']) ?></div>
+                                    <div style="font-size:0.78rem; color:var(--primary-accent); font-family:var(--font-mono); margin-top:2px; font-weight:700;">ID: #<?= $partner['id'] ?></div>
                                 </td>
                                 <td>
-                                    <div style="font-size:0.88rem; color:var(--text-main);"><?= htmlspecialchars($partner['email'] ?? 'N/A') ?></div>
+                                    <div style="font-size:0.88rem; color:#1F2937; font-weight:600;"><?= htmlspecialchars($partner['email'] ?? 'N/A') ?></div>
                                     <div style="font-size:0.8rem; color:var(--text-secondary); font-family:var(--font-mono); margin-top:2px;"><?= htmlspecialchars($partner['phone'] ?? 'N/A') ?></div>
                                 </td>
                                 <td>
@@ -248,13 +272,13 @@ foreach ($partners as $pt) {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <span style="font-weight:700; color:#FFF; font-family:var(--font-mono);">₹<?= number_format($dep_req, 2) ?></span>
+                                    <span style="font-weight:700; color:#111827; font-family:var(--font-mono);">₹<?= number_format($dep_req, 2) ?></span>
                                 </td>
                                 <td>
-                                    <span style="font-weight:800; color:var(--warning-color); font-family:var(--font-mono);"><?= number_format($comm_rate, 2) ?>%</span>
+                                    <span style="font-weight:800; color:var(--warning-color); font-family:var(--font-mono); background:#FEF3C7; padding:4px 10px; border-radius:6px;"><?= number_format($comm_rate, 2) ?>%</span>
                                 </td>
                                 <td>
-                                    <span style="font-weight:800; color:var(--success-color); font-family:var(--font-mono);">₹<?= number_format($w_bal, 2) ?></span>
+                                    <span style="font-weight:800; color:var(--success-color); font-family:var(--font-mono); background:#D1FAE5; padding:4px 10px; border-radius:6px;">₹<?= number_format($w_bal, 2) ?></span>
                                 </td>
                                 <td style="text-align:right;">
                                     <button class="btn-edit" onclick='openEditModal(<?= json_encode($partner) ?>)'>
@@ -274,7 +298,7 @@ foreach ($partners as $pt) {
     <div id="editModal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-title-bar">
-                <h3 style="font-size:1.15rem; font-weight:800; color:#FFF;">
+                <h3 style="font-size:1.15rem; font-weight:800; color:#111827; margin:0;">
                     <i class="fa-solid fa-sliders" style="color:var(--primary-accent);"></i> Edit Partner Rules
                 </h3>
                 <button type="button" onclick="closeEditModal()" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem;">
@@ -287,7 +311,7 @@ foreach ($partners as $pt) {
                 
                 <div class="form-group">
                     <label class="form-label">Partner Name</label>
-                    <input type="text" id="modal_partner_name" class="form-input" readonly style="opacity:0.7; cursor:not-allowed;">
+                    <input type="text" id="modal_partner_name" class="form-input" readonly style="background:#F3F4F6; cursor:not-allowed;">
                 </div>
 
                 <div class="form-group">
