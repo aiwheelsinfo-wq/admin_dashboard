@@ -75,10 +75,17 @@ $res_ref = mysqli_stmt_get_result($stmt_ref);
 $p = mysqli_fetch_assoc($res_ref);
 mysqli_stmt_close($stmt_ref);
 
-// Fetch wallet transactions for this partner
+// Fetch wallet transactions for this partner with full trip details
 $wallet_txs = [];
 $total_deducted = 0.00;
-$stmt_tx_list = mysqli_prepare($conn, "SELECT * FROM partner_wallet_transactions WHERE partner_id = ? ORDER BY id DESC LIMIT 100");
+$stmt_tx_list = mysqli_prepare($conn, 
+    "SELECT pwt.*, b.from_address, b.to_address, b.car_type, b.trip_type, pb.partner_booking_ref
+     FROM partner_wallet_transactions pwt
+     LEFT JOIN bookings b ON pwt.booking_id = b.booking_id
+     LEFT JOIN partner_bookings pb ON (pwt.booking_id = pb.booking_id AND pwt.partner_id = pb.partner_id)
+     WHERE pwt.partner_id = ? 
+     ORDER BY pwt.id DESC LIMIT 100"
+);
 if ($stmt_tx_list) {
     mysqli_stmt_bind_param($stmt_tx_list, 'i', $id);
     mysqli_stmt_execute($stmt_tx_list);
@@ -451,36 +458,59 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                                 <thead>
                                     <tr style="background:rgba(255,255,255,0.03); text-align:left;">
                                         <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Date & Time</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Booking Ref</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Total Trip Fare</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Booking Ref & Route</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Category</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Trip Fare</th>
                                         <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Commission</th>
                                         <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Amount Deducted</th>
-                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Remaining Wallet Balance</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Wallet Balance</th>
                                         <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ($wallet_txs as $tx): ?>
+                                    <?php foreach ($wallet_txs as $tx): 
+                                        $from_short = !empty($tx['from_address']) ? explode(',', $tx['from_address'])[0] : '';
+                                        $to_short = !empty($tx['to_address']) ? explode(',', $tx['to_address'])[0] : '';
+                                        $route_text = (!empty($from_short) && !empty($to_short)) ? htmlspecialchars($from_short . ' ➔ ' . $to_short) : 'City Trip';
+                                    ?>
                                         <tr style="border-bottom:1px solid var(--border-color);">
-                                            <td style="padding:14px 16px; font-size:0.88rem; color:var(--text-secondary);">
+                                            <td style="padding:14px 16px; font-size:0.85rem; color:var(--text-secondary); white-space:nowrap;">
                                                 <?= date('d M Y, h:i A', strtotime($tx['created_at'])) ?>
                                             </td>
-                                            <td style="padding:14px 16px; font-family:var(--font-mono); font-weight:700; color:var(--primary-accent);">
-                                                #<?= htmlspecialchars($tx['booking_id']) ?>
+                                            <td style="padding:14px 16px;">
+                                                <div style="font-family:var(--font-mono); font-weight:700; color:var(--primary-accent); font-size:0.92rem;">
+                                                    #<?= htmlspecialchars($tx['booking_id']) ?>
+                                                    <?php if (!empty($tx['partner_booking_ref'])): ?>
+                                                        <span style="font-size:0.75rem; color:var(--text-secondary); margin-left:6px; font-family:var(--font-main); font-weight:400;">(<?= htmlspecialchars($tx['partner_booking_ref']) ?>)</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div style="font-size:0.84rem; color:#FFF; margin-top:3px; font-weight:600;">
+                                                    <i class="fa-solid fa-location-dot" style="color:var(--danger-color); font-size:0.78rem; margin-right:4px;"></i>
+                                                    <?= $route_text ?>
+                                                </div>
                                             </td>
-                                            <td style="padding:14px 16px; font-weight:600;">
+                                            <td style="padding:14px 16px; font-size:0.85rem; color:var(--text-secondary); white-space:nowrap;">
+                                                <span style="background:rgba(255,255,255,0.06); padding:4px 8px; border-radius:6px; font-size:0.8rem; color:#FFF; font-weight:600;">
+                                                    <i class="fa-solid fa-car" style="color:var(--secondary-accent); margin-right:4px;"></i>
+                                                    <?= htmlspecialchars($tx['car_type'] ?? 'Standard') ?>
+                                                </span>
+                                                <div style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">
+                                                    <?= htmlspecialchars($tx['trip_type'] ?? 'One-way') ?>
+                                                </div>
+                                            </td>
+                                            <td style="padding:14px 16px; font-weight:700; color:#FFF; white-space:nowrap;">
                                                 ₹<?= number_format($tx['trip_amount'], 2) ?>
                                             </td>
-                                            <td style="padding:14px 16px; color:var(--warning-color); font-weight:700;">
+                                            <td style="padding:14px 16px; color:var(--warning-color); font-weight:700; white-space:nowrap;">
                                                 10.00%
                                             </td>
-                                            <td style="padding:14px 16px; font-weight:800; color:var(--danger-color); font-family:var(--font-mono);">
+                                            <td style="padding:14px 16px; font-weight:800; color:var(--danger-color); font-family:var(--font-mono); white-space:nowrap;">
                                                 -₹<?= number_format($tx['deduction_amount'], 2) ?>
                                             </td>
-                                            <td style="padding:14px 16px; font-weight:800; color:var(--success-color); font-family:var(--font-mono);">
+                                            <td style="padding:14px 16px; font-weight:800; color:var(--success-color); font-family:var(--font-mono); white-space:nowrap;">
                                                 ₹<?= number_format($tx['balance_after'], 2) ?>
                                             </td>
-                                            <td style="padding:14px 16px;">
+                                            <td style="padding:14px 16px; white-space:nowrap;">
                                                 <span class="status-badge badge-paid" style="font-size:0.75rem;"><i class="fa-solid fa-check"></i> Deducted</span>
                                             </td>
                                         </tr>
