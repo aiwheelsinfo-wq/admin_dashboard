@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Redox API Service</title>
+    <title>Login - Rentox API Service</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -272,7 +272,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <div class="console-container">
         <div class="logo-section">
             <i class="fa-solid fa-terminal logo-icon"></i>
-            <span class="logo-text">REDOX API SERVICE</span>
+            <span class="logo-text">RENTOX API SERVICE</span>
         </div>
 
         <div class="header-section">
@@ -311,7 +311,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="footer-note">
-            &copy; 2026 Redox. All rights reserved. Redox API Service.
+            &copy; 2026 Rentox. All rights reserved. Rentox API Service.
         </div>
     </div>
 

@@ -2502,7 +2502,7 @@ $data = json_decode($result, true);</code></pre>
                 "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
                 "amount": <?= (int)($activation_fee * 100) ?>,
                 "currency": "INR",
-                "name": "Redox API Service",
+                "name": "Rentox API Service",
                 "description": "B2B Partner API Integration & Activation Fee",
                 "handler": function (response) {
                     if (response.razorpay_payment_id) {

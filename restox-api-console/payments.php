@@ -121,7 +121,7 @@ $wallet_balance = $is_paid ? (float)($p['wallet_balance'] ?? $activation_deposit
 $payment_id_val = $p['payment_id'] ?? 'N/A';
 $paid_at_val = !empty($p['paid_at']) ? date('d M Y, h:i A', strtotime($p['paid_at'])) : 'N/A';
 $paid_amount_val = !empty($p['payment_amount']) ? number_format($p['payment_amount'], 2) : number_format($activation_deposit_required, 2);
-$invoice_no = 'INV-REDOX-100' . $p['id'];
+$invoice_no = 'INV-RENTOX-100' . $p['id'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -474,7 +474,7 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                             </thead>
                             <tbody>
                                 <tr style="border-bottom:1px solid var(--border-color);">
-                                    <td style="padding:16px 18px; font-weight:600;">Redox B2B Partner API Platform Integration & Onboarding Fee</td>
+                                    <td style="padding:16px 18px; font-weight:600;">Rentox B2B Partner API Platform Integration & Onboarding Fee</td>
                                     <td style="padding:16px 18px; text-align:right; font-family:var(--font-mono);">₹8,474.58</td>
                                 </tr>
                                 <tr style="border-bottom:1px solid var(--border-color);">
@@ -490,7 +490,7 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:0.85rem; color:var(--text-secondary);">Issued by: <strong>AGNI CAR RENTAL / REDOX API SERVICES</strong></span>
+                        <span style="font-size:0.85rem; color:var(--text-secondary);">Issued by: <strong>AGNI CAR RENTAL / RENTOX API SERVICES</strong></span>
                         <button class="btn-print" onclick="window.print()">
                             <i class="fa-solid fa-print"></i> Download & Print Invoice
                         </button>
@@ -746,7 +746,7 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                 "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
                 "amount": <?= (int)($activation_deposit_required * 100) ?>,
                 "currency": "INR",
-                "name": "Redox API Service",
+                "name": "Rentox API Service",
                 "description": "B2B Partner API Integration & Activation Fee",
                 "handler": function (response) {
                     if (response.razorpay_payment_id) {

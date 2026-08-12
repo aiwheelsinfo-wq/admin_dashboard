@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forgot Password - Redox API Service</title>
+    <title>Forgot Password - Rentox API Service</title>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -281,7 +281,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     <div class="console-container">
         <div class="logo-section">
             <i class="fa-solid fa-terminal logo-icon"></i>
-            <span class="logo-text">REDOX API SERVICE</span>
+            <span class="logo-text">RENTOX API SERVICE</span>
         </div>
 
         <?php if ($error): ?>

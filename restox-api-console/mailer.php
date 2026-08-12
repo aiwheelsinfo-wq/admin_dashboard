@@ -138,7 +138,7 @@ function send_email_via_api($to_email, $subject, $body, $to_name = 'Partner') {
 function get_email_body($otp, $to_name) {
     return '
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff; color: #1f2937;">
-        <h2 style="color: #6c63ff; margin-top: 0;">Redox API Service</h2>
+        <h2 style="color: #6c63ff; margin-top: 0;">Rentox API Service</h2>
         <p style="font-size: 15px; line-height: 1.5;">Hello ' . htmlspecialchars($to_name) . ',</p>
         <p style="font-size: 15px; line-height: 1.5;">Thank you for registering. Please use the following One-Time Password (OTP) to verify your email address:</p>
         <div style="font-size: 30px; font-weight: bold; color: #10b981; background-color: #f3f4f6; border: 1px solid #e5e7eb; padding: 12px; border-radius: 8px; text-align: center; letter-spacing: 5px; margin: 24px 0;">
@@ -146,7 +146,7 @@ function get_email_body($otp, $to_name) {
         </div>
         <p style="font-size: 14px; color: #6b7280;">This verification code is valid for 10 minutes.</p>
         <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-        <p style="font-size: 12px; color: #9ca3af; text-align: center;">&copy; 2026 Redox API Service. All rights reserved.</p>
+        <p style="font-size: 12px; color: #9ca3af; text-align: center;">&copy; 2026 Rentox API Service. All rights reserved.</p>
     </div>
     ';
 }
@@ -163,7 +163,7 @@ function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
     log_mail_debug("send_otp_email_sync: Started for $to_email with OTP $otp");
     
     // Tier 0: Send via Transactional Email API (instant, bypasses GoDaddy queue)
-    if (send_email_via_api($to_email, 'Email Verification OTP - Redox API Service', get_email_body($otp, $to_name), $to_name)) {
+    if (send_email_via_api($to_email, 'Email Verification OTP - Rentox API Service', get_email_body($otp, $to_name), $to_name)) {
         return true;
     }
     
@@ -190,12 +190,12 @@ function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
         $mail->Timeout    = 4; 
 
         // Recipients
-        $mail->setFrom('ai.wheels.info@gmail.com', 'Redox API Service');
+        $mail->setFrom('ai.wheels.info@gmail.com', 'Rentox API Service');
         $mail->addAddress($to_email, $to_name);
 
         // Content
         $mail->isHTML(true);
-        $mail->Subject = 'Email Verification OTP - Redox API Service';
+        $mail->Subject = 'Email Verification OTP - Rentox API Service';
         $mail->Body    = get_email_body($otp, $to_name);
 
         $mail->send();
@@ -209,11 +209,11 @@ function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
             log_mail_debug("send_otp_email_sync: Trying Tier 2 (PHP native mail())");
             $mailBackup = new PHPMailer(true);
             $mailBackup->isMail(); 
-            $mailBackup->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-            $mailBackup->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+            $mailBackup->setFrom('noreply@agnicarrental.com', 'Rentox API Service');
+            $mailBackup->addReplyTo('ai.wheels.info@gmail.com', 'Rentox API Service');
             $mailBackup->addAddress($to_email, $to_name);
             $mailBackup->isHTML(true);
-            $mailBackup->Subject = 'Email Verification OTP - Redox API Service';
+            $mailBackup->Subject = 'Email Verification OTP - Rentox API Service';
             $mailBackup->Body    = get_email_body($otp, $to_name);
             
             $mailBackup->send();
@@ -236,11 +236,11 @@ function send_otp_email_sync($to_email, $otp, $to_name = 'Partner') {
                 $mailLocal->Port       = 25;
                 $mailLocal->Timeout    = 4;
 
-                $mailLocal->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-                $mailLocal->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+                $mailLocal->setFrom('noreply@agnicarrental.com', 'Rentox API Service');
+                $mailLocal->addReplyTo('ai.wheels.info@gmail.com', 'Rentox API Service');
                 $mailLocal->addAddress($to_email, $to_name);
                 $mailLocal->isHTML(true);
-                $mailLocal->Subject = 'Email Verification OTP - Redox API Service';
+                $mailLocal->Subject = 'Email Verification OTP - Rentox API Service';
                 $mailLocal->Body    = get_email_body($otp, $to_name);
                 
                 $mailLocal->send();
@@ -486,7 +486,7 @@ function send_admin_notification_email($company_name, $partner_name, $company_ow
 function get_reset_password_email_body($otp, $to_name) {
     return '
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; padding: 25px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff; color: #1f2937;">
-        <h2 style="color: #6c63ff; margin-top: 0;">Redox API Service</h2>
+        <h2 style="color: #6c63ff; margin-top: 0;">Rentox API Service</h2>
         <p style="font-size: 15px; line-height: 1.5;">Hello ' . htmlspecialchars($to_name) . ',</p>
         <p style="font-size: 15px; line-height: 1.5;">We received a request to reset your B2B Partner Developer Console password. Please use the following One-Time Password (OTP) code to proceed:</p>
         <div style="font-size: 32px; font-weight: bold; color: #6c63ff; background-color: #f3f4f6; border: 1px solid #e5e7eb; padding: 14px; border-radius: 8px; text-align: center; letter-spacing: 6px; margin: 24px 0;">
@@ -494,7 +494,7 @@ function get_reset_password_email_body($otp, $to_name) {
         </div>
         <p style="font-size: 14px; color: #6b7280;">This OTP code is valid for 10 minutes. If you did not request a password reset, please ignore this email.</p>
         <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-        <p style="font-size: 12px; color: #9ca3af; text-align: center;">&copy; 2026 Redox API Service. All rights reserved.</p>
+        <p style="font-size: 12px; color: #9ca3af; text-align: center;">&copy; 2026 Rentox API Service. All rights reserved.</p>
     </div>
     ';
 }
@@ -505,18 +505,18 @@ function get_reset_password_email_body($otp, $to_name) {
 function send_reset_password_otp_email($to_email, $otp, $to_name = 'Partner') {
     log_mail_debug("send_reset_password_otp_email: Started for $to_email with OTP $otp");
     
-    if (send_email_via_api($to_email, 'Password Reset OTP - Redox API Service', get_reset_password_email_body($otp, $to_name), $to_name)) {
+    if (send_email_via_api($to_email, 'Password Reset OTP - Rentox API Service', get_reset_password_email_body($otp, $to_name), $to_name)) {
         return true;
     }
 
     try {
         $mail = new PHPMailer(true);
         $mail->isMail(); 
-        $mail->setFrom('noreply@agnicarrental.com', 'Redox API Service');
-        $mail->addReplyTo('ai.wheels.info@gmail.com', 'Redox API Service');
+        $mail->setFrom('noreply@agnicarrental.com', 'Rentox API Service');
+        $mail->addReplyTo('ai.wheels.info@gmail.com', 'Rentox API Service');
         $mail->addAddress($to_email, $to_name);
         $mail->isHTML(true);
-        $mail->Subject = 'Password Reset OTP - Redox API Service';
+        $mail->Subject = 'Password Reset OTP - Rentox API Service';
         $mail->Body    = get_reset_password_email_body($otp, $to_name);
         
         $mail->send();
