@@ -596,6 +596,123 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             display: none !important;
         }
 
+        /* Breadcrumb & Hero Header */
+        .activation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .breadcrumb-nav {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .breadcrumb-nav .active { color: var(--primary-accent); font-weight: 600; }
+        .hero-title { font-size: 1.8rem; font-weight: 800; color: #FFF; margin-bottom: 6px; }
+        .hero-subtitle { font-size: 0.95rem; color: var(--text-secondary); max-width: 680px; line-height: 1.5; }
+
+        /* Large Subscription / Payment Hero Card */
+        .activation-hero-card {
+            background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(15, 23, 42, 0.85) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 20px;
+            padding: 36px;
+            margin-bottom: 28px;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 40px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .activation-hero-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #6366F1, #8B5CF6, #10B981);
+        }
+
+        .access-type-tag {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 14px; border-radius: 20px; background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.25); font-size: 0.82rem; font-weight: 700;
+            color: #A5B4FC; margin-bottom: 16px;
+        }
+        .access-type-tag.tag-active {
+            background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.25); color: #34D399;
+        }
+
+        .hero-card-heading { font-size: 1.5rem; font-weight: 800; color: #FFF; margin-bottom: 10px; }
+        .hero-card-text { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.55; margin-bottom: 24px; }
+
+        .price-block { margin-bottom: 24px; }
+        .price-val { font-size: 2.6rem; font-weight: 800; color: #FFF; font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.5px; }
+        .price-sub { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); margin-top: 2px; }
+        .price-note { font-size: 0.8rem; color: #64748B; margin-top: 4px; font-weight: 500; }
+
+        .btn-pay-hero {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: #FFF; border: none; border-radius: 12px; padding: 16px 32px;
+            font-size: 1.05rem; font-weight: 800; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.35); transition: all 0.25s ease; width: 100%; max-width: 420px;
+        }
+        .btn-pay-hero:hover {
+            transform: translateY(-2px); box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5); filter: brightness(1.08);
+        }
+        .pay-trust-note { font-size: 0.82rem; color: var(--text-secondary); margin-top: 12px; display: flex; align-items: center; gap: 6px; }
+
+        /* Right side benefits list */
+        .benefits-title { font-size: 1rem; font-weight: 700; color: #FFF; margin-bottom: 16px; }
+        .benefits-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+        .benefits-list li { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #D1D5DB; }
+        .benefits-list li i { color: var(--success-color); font-size: 0.95rem; }
+
+        /* 3-Step Stepper Component */
+        .stepper-card {
+            background: rgba(17, 24, 39, 0.6); border: 1px solid var(--card-border);
+            border-radius: 18px; padding: 24px 30px; margin-bottom: 28px;
+            display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+        }
+        .step-item { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 200px; }
+        .step-num {
+            width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; font-weight: 800; font-family: monospace; border: 2px solid var(--card-border);
+            background: rgba(255,255,255,0.03); color: var(--text-secondary); flex-shrink: 0;
+        }
+        .step-completed .step-num { background: rgba(16, 185, 129, 0.15); border-color: var(--success-color); color: #34D399; }
+        .step-current .step-num { background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent)); border-color: transparent; color: #FFF; box-shadow: 0 0 15px rgba(99,102,241,0.5); }
+
+        .step-title { font-size: 0.95rem; font-weight: 700; color: #FFF; }
+        .step-desc { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+
+        .step-divider { width: 40px; height: 2px; background: var(--card-border); flex-shrink: 0; }
+        @media (max-width: 992px) { .step-divider { display: none; } }
+
+        /* Summary & Security Grid */
+        .summary-trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+        @media (max-width: 768px) { .summary-trust-grid { grid-template-columns: 1fr; } .activation-hero-card { grid-template-columns: 1fr; gap: 28px; padding: 24px; } }
+
+        .summary-table { display: flex; flex-direction: column; gap: 12px; }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.88rem; }
+        .summary-row.total-row { border-bottom: none; padding-top: 8px; font-weight: 800; font-size: 1rem; }
+        .s-label { color: var(--text-secondary); }
+        .s-val { color: #FFF; font-weight: 600; }
+        .s-val.badge-green { color: #34D399; background: rgba(16,185,129,0.12); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+        .s-val.badge-yellow { color: #FBBF24; background: rgba(245,158,11,0.12); padding: 2px 8px; border-radius: 6px; font-size: 0.8rem; }
+        .price-highlight { font-size: 1.3rem; color: #34D399; font-weight: 800; }
+
+        .trust-indicators-grid { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+        .trust-pill { background: rgba(255,255,255,0.04); border: 1px solid var(--card-border); padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #D1D5DB; display: flex; align-items: center; gap: 6px; }
+        .trust-pill i { color: var(--success-color); }
+
         /* Grid Metrics Rows */
         .metrics-grid {
             display: grid;
@@ -1210,70 +1327,222 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 
                 <!-- 1. OVERVIEW TAB PANEL -->
                 <section class="tab-section" id="tab-overview">
-                    <div class="page-header">
-                        <div class="page-title-desc">
-                            <h1>Dashboard Overview</h1>
-                            <p>Monitor your agency integration metrics and access profile details.</p>
+                    
+                    <!-- 1. Breadcrumb & Subscription Header -->
+                    <div class="activation-header">
+                        <div>
+                            <div class="breadcrumb-nav">
+                                <span>Dashboard</span> <i class="fa-solid fa-chevron-right" style="font-size:0.7rem;"></i> <span class="active">API Activation</span>
+                            </div>
+                            <h1 class="hero-title">Activate Your API Access</h1>
+                            <p class="hero-subtitle">Complete your one-time activation payment to unlock production API access and start integrating with our platform.</p>
                         </div>
                         <div>
                             <?php if ($p['status'] === 'pending'): ?>
                                 <span class="status-pill pill-pending"><i class="fa-solid fa-hourglass-half"></i> Pending Review</span>
                             <?php elseif ($p['status'] === 'blocked'): ?>
                                 <span class="status-pill pill-blocked"><i class="fa-solid fa-ban"></i> Access Blocked</span>
+                            <?php elseif (($p['payment_status'] ?? '') === 'paid' || $p['status'] === 'active'): ?>
+                                <span class="status-pill pill-active"><i class="fa-solid fa-circle-check"></i> API Access Activated</span>
                             <?php else: ?>
-                                <span class="status-pill pill-active"><i class="fa-solid fa-check-circle"></i> Active Connection</span>
+                                <span class="status-pill pill-active" style="background:rgba(16,185,129,0.15); color:#34D399; border:1px solid rgba(16,185,129,0.3);"><i class="fa-solid fa-circle-check"></i> Account Approved</span>
                             <?php endif; ?>
                         </div>
                     </div>
 
-                    <?php if ($p['status'] === 'pending'): ?>
-                        <div class="alert-banner" style="background-color: rgba(245, 158, 11, 0.08); border-color: rgba(245, 158, 11, 0.25);">
-                            <i class="fa-solid fa-hourglass-half alert-banner-icon" style="color: var(--warning-color); font-size: 1.6rem;"></i>
-                            <div class="alert-banner-content">
-                                <h4 class="alert-banner-title" style="font-size: 1.05rem;">Account Pending Administrator Approval</h4>
-                                <p class="alert-banner-desc" style="color: #D1D5DB; font-size: 0.92rem;">Your B2B partner registration has been submitted successfully! The Rentox Admin team is reviewing your business & GST profile. Your API keys, secret credentials, and developer test console will automatically unlock here as soon as your account is approved by Rentox Admin.</p>
-                            </div>
-                        </div>
-                    <?php elseif ($p['status'] === 'approved' || (($p['payment_status'] ?? '') !== 'paid' && $p['status'] !== 'blocked')): ?>
-                        <div class="alert-banner" style="background-color: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.3); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-                            <div style="display:flex; align-items:flex-start; gap:16px;">
-                                <i class="fa-solid fa-circle-check alert-banner-icon" style="color: var(--success-color); font-size: 1.8rem; margin-top:2px;"></i>
-                                <div class="alert-banner-content">
-                                    <h4 class="alert-banner-title" style="font-size: 1.1rem; color:#FFF;">Partner Account Approved by Admin!</h4>
-                                    <p class="alert-banner-desc" style="color: #D1D5DB; font-size: 0.92rem;">Your registration has been approved by Rentox Admin! Complete the <strong>₹<?= number_format($activation_fee, 2) ?> One-Time API Activation Fee</strong> via Razorpay to activate your Live Production Access Keys.</p>
+                    <?php 
+                    $is_partner_paid = (($p['payment_status'] ?? '') === 'paid' || $p['status'] === 'active');
+                    if (!$is_partner_paid): 
+                    ?>
+                        <!-- 2. Subscription / Payment Hero Card -->
+                        <div class="activation-hero-card">
+                            <div class="hero-card-left">
+                                <div class="access-type-tag">
+                                    <i class="fa-solid fa-bolt" style="color:var(--warning-color);"></i> Production API Access
+                                </div>
+                                <h2 class="hero-card-heading">Production API Access</h2>
+                                <p class="hero-card-text">
+                                    Your partner account has been approved. Activate your production API credentials with a one-time payment.
+                                </p>
+
+                                <div class="price-block">
+                                    <div class="price-val">₹<?= number_format($activation_fee) ?></div>
+                                    <div class="price-sub">One-time activation fee</div>
+                                    <div class="price-note">No monthly subscription • One-time payment</div>
+                                </div>
+
+                                <button class="btn-pay-hero" onclick="payWithRazorpay()" id="btnPayHero">
+                                    <i class="fa-solid fa-shield-halved"></i> Pay ₹<?= number_format($activation_fee) ?> & Activate API
+                                </button>
+                                <div class="pay-trust-note">
+                                    <i class="fa-solid fa-lock"></i> Secure payment powered by Razorpay
                                 </div>
                             </div>
-                            <div>
-                                <button class="btn-primary-action" onclick="payWithRazorpay()" style="background:linear-gradient(135deg, #10B981, #059669); font-weight:700; font-size:0.95rem; padding:12px 24px; box-shadow:0 4px 15px rgba(16,185,129,0.35);">
-                                    <i class="fa-solid fa-credit-card"></i> Pay ₹<?= number_format($activation_fee) ?> via Razorpay
+
+                            <div class="hero-card-right">
+                                <h4 class="benefits-title">What's included:</h4>
+                                <ul class="benefits-list">
+                                    <li><i class="fa-solid fa-circle-check"></i> Production API access</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Live API keys</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> API authentication</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Partner API documentation</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Request monitoring</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> API usage statistics</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Technical integration support</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- 3. Activation Progress (3-Step Stepper) -->
+                        <div class="stepper-card">
+                            <div class="step-item step-completed">
+                                <div class="step-num"><i class="fa-solid fa-check"></i></div>
+                                <div class="step-content">
+                                    <div class="step-title">01 • Account Approved</div>
+                                    <div class="step-desc">Your partner account has been approved.</div>
+                                </div>
+                            </div>
+                            <div class="step-divider"></div>
+                            <div class="step-item step-current">
+                                <div class="step-num">02</div>
+                                <div class="step-content">
+                                    <div class="step-title">Payment</div>
+                                    <div class="step-desc">Complete the ₹<?= number_format($activation_fee) ?> activation payment.</div>
+                                </div>
+                            </div>
+                            <div class="step-divider"></div>
+                            <div class="step-item step-pending">
+                                <div class="step-num">03</div>
+                                <div class="step-content">
+                                    <div class="step-title">API Activated</div>
+                                    <div class="step-desc">Production API keys become available.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Payment Summary & Trust / Security Row -->
+                        <div class="summary-trust-grid">
+                            <!-- Payment Summary Card -->
+                            <div class="panel-card summary-card" style="margin-bottom:0;">
+                                <h3 class="card-title" style="margin-bottom:20px;">
+                                    <i class="fa-solid fa-receipt" style="color:var(--primary-accent);"></i> Activation Summary
+                                </h3>
+                                <div class="summary-table">
+                                    <div class="summary-row">
+                                        <span class="s-label">Account Status</span>
+                                        <span class="s-val badge-green">Approved</span>
+                                    </div>
+                                    <div class="summary-row">
+                                        <span class="s-label">Activation Fee</span>
+                                        <span class="s-val">₹<?= number_format($activation_fee) ?></span>
+                                    </div>
+                                    <div class="summary-row">
+                                        <span class="s-label">Billing Type</span>
+                                        <span class="s-val">One-time payment</span>
+                                    </div>
+                                    <div class="summary-row">
+                                        <span class="s-label">Payment Status</span>
+                                        <span class="s-val badge-yellow">Pending</span>
+                                    </div>
+                                    <div class="summary-row">
+                                        <span class="s-label">API Environment</span>
+                                        <span class="s-val">Production</span>
+                                    </div>
+                                    <div class="summary-row total-row">
+                                        <span class="s-label">Total Payable</span>
+                                        <span class="s-val price-highlight">₹<?= number_format($activation_fee) ?></span>
+                                    </div>
+                                </div>
+                                <button class="btn-pay-hero" onclick="payWithRazorpay()" style="width:100%; margin-top:20px; font-size:0.95rem; padding:12px;">
+                                    <i class="fa-solid fa-bolt"></i> Pay & Activate
                                 </button>
+                            </div>
+
+                            <!-- Trust / Security Card -->
+                            <div class="panel-card trust-card" style="margin-bottom:0;">
+                                <h3 class="card-title" style="margin-bottom:14px; color:var(--success-color);">
+                                    <i class="fa-solid fa-shield-halved"></i> Your payment is secure
+                                </h3>
+                                <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.6; margin-bottom:24px;">
+                                    Payments are securely processed through Razorpay. Your payment information is handled by the payment provider and is not stored on our platform.
+                                </p>
+                                <div class="trust-indicators-grid">
+                                    <div class="trust-pill"><i class="fa-solid fa-lock"></i> Secure Payment</div>
+                                    <div class="trust-pill"><i class="fa-solid fa-circle-check"></i> Verified Account</div>
+                                    <div class="trust-pill"><i class="fa-solid fa-bolt"></i> Instant Activation</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    <?php else: ?>
+                        <!-- 7. Paid / Active State Hero Card -->
+                        <div class="activation-hero-card active-state-card">
+                            <div class="hero-card-left">
+                                <div class="access-type-tag tag-active">
+                                    <i class="fa-solid fa-circle-check" style="color:var(--success-color);"></i> Production API Active
+                                </div>
+                                <h2 class="hero-card-heading">API Access Activated</h2>
+                                <p class="hero-card-text">
+                                    Your production API access is now active.
+                                </p>
+
+                                <div style="margin:20px 0;">
+                                    <span class="info-label" style="display:block; margin-bottom:8px;">Production API Key</span>
+                                    <div class="key-input-wrapper" style="max-width:440px;">
+                                        <code class="key-content" id="overviewApiKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
+                                        <div class="key-actions">
+                                            <button class="btn-key-icon" onclick="toggleKeyVisibility('overviewApiKeyPlain', '<?= htmlspecialchars($p['api_key']) ?>', this)" title="Show/Hide">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </button>
+                                            <button class="btn-key-icon" onclick="copyToClipboard('<?= htmlspecialchars($p['api_key']) ?>')" title="Copy to Clipboard">
+                                                <i class="fa-solid fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:24px;">
+                                    <button class="btn-primary-action" onclick="switchTab('#keys')">
+                                        <i class="fa-solid fa-key"></i> View API Keys
+                                    </button>
+                                    <button class="btn-outline-action" onclick="switchTab('#docs')">
+                                        <i class="fa-solid fa-book"></i> View Documentation
+                                    </button>
+                                </div>
+
+                                <div class="price-note" style="margin-top:20px; font-size:0.85rem; color:var(--text-secondary);">
+                                    Activated on: <strong><?= !empty($p['paid_at']) ? date('d M Y', strtotime($p['paid_at'])) : date('d M Y') ?></strong>
+                                </div>
+                            </div>
+
+                            <div class="hero-card-right">
+                                <h4 class="benefits-title">What's included:</h4>
+                                <ul class="benefits-list">
+                                    <li><i class="fa-solid fa-circle-check"></i> Production API access (Active)</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Live API keys</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> API authentication</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Partner API documentation</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Request monitoring</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> API usage statistics</li>
+                                    <li><i class="fa-solid fa-circle-check"></i> Technical integration support</li>
+                                </ul>
                             </div>
                         </div>
                     <?php endif; ?>
 
-                    <!-- Incomplete Profile Warning -->
-                    <?php 
-                    $profile_incomplete = empty($p['partner_name']) || empty($p['company_owner_name']) || empty($p['mobile_number']) || empty($p['gst_number']);
-                    if ($profile_incomplete): 
-                    ?>
-                        <div class="alert-banner">
-                            <i class="fa-solid fa-triangle-exclamation alert-banner-icon"></i>
-                            <div class="alert-banner-content">
-                                <h4 class="alert-banner-title">Action Required: Complete Your Partner Profile</h4>
-                                <p class="alert-banner-desc">Before your API access request can be approved and live keys generated, you must complete your registration profile details.</p>
-                                <button class="btn-primary-action" onclick="switchTab('#settings')">
-                                    <i class="fa-solid fa-user-plus"></i> Complete Profile Details
-                                </button>
-                            </div>
-                        </div>
-                    <?php endif; ?>
+                    <!-- 6. Existing Dashboard Metrics (Moved & Renamed) -->
+                    <div style="margin: 36px 0 20px;">
+                        <h3 style="font-size:1.15rem; font-weight:800; color:#FFF; display:flex; align-items:center; gap:10px;">
+                            <i class="fa-solid fa-chart-line" style="color:var(--primary-accent);"></i> API Usage Overview
+                        </h3>
+                    </div>
 
                     <!-- Metrics Stats Grid -->
                     <div class="metrics-grid">
                         <div class="metric-card">
                             <div class="metric-card-glow"></div>
                             <span class="metric-label">Integration Status</span>
-                            <span class="metric-value" style="font-size:1.3rem; margin-top:6px; font-weight:700;">
+                            <span class="metric-value" style="font-size:1.2rem; margin-top:6px; font-weight:700;">
                                 <?php if ($p['status'] === 'pending'): ?>
                                     Under Review
                                 <?php elseif ($p['status'] === 'blocked'): ?>
@@ -1296,21 +1565,21 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         <div class="metric-card">
                             <div class="metric-card-glow"></div>
                             <span class="metric-label">Total Requests</span>
-                            <span class="metric-value"><?= number_format($total_requests) ?></span>
+                            <span class="metric-value" style="font-size:1.5rem;"><?= number_format($total_requests) ?></span>
                             <span class="metric-desc"><i class="fa-solid fa-chart-bar"></i> Total lifetime API calls</span>
                         </div>
 
                         <div class="metric-card">
                             <div class="metric-card-glow"></div>
                             <span class="metric-label">API Success Rate</span>
-                            <span class="metric-value"><?= $success_rate ?>%</span>
+                            <span class="metric-value" style="font-size:1.5rem;"><?= $success_rate ?>%</span>
                             <span class="metric-desc"><i class="fa-solid fa-circle-check" style="color:var(--success-color)"></i> Successful responses</span>
                         </div>
 
                         <div class="metric-card">
                             <div class="metric-card-glow"></div>
                             <span class="metric-label">Requests Today</span>
-                            <span class="metric-value"><?= number_format($today_requests) ?></span>
+                            <span class="metric-value" style="font-size:1.5rem;"><?= number_format($today_requests) ?></span>
                             <span class="metric-desc"><i class="fa-solid fa-bolt" style="color:var(--primary-accent)"></i> Since 12:00 AM local</span>
                         </div>
                     </div>
