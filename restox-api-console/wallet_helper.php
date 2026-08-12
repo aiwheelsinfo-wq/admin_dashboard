@@ -72,8 +72,8 @@ function process_partner_trip_commission($conn, $booking_identifier) {
     $commission_rate = 10.00;
     $deduction_amount = round($trip_amount * ($commission_rate / 100.0), 2);
 
-    // 5. Fetch current partner wallet balance
-    $stmt_p = mysqli_prepare($conn, "SELECT wallet_balance FROM partners WHERE id = ? LIMIT 1");
+    // 5. Fetch current partner wallet balance & dynamic commission rate
+    $stmt_p = mysqli_prepare($conn, "SELECT wallet_balance, commission_rate FROM partners WHERE id = ? LIMIT 1");
     mysqli_stmt_bind_param($stmt_p, 'i', $partner_id);
     mysqli_stmt_execute($stmt_p);
     $res_p = mysqli_stmt_get_result($stmt_p);
@@ -81,6 +81,11 @@ function process_partner_trip_commission($conn, $booking_identifier) {
     mysqli_stmt_close($stmt_p);
 
     if (!$p_row) return false;
+
+    // Dynamic partner commission rate calculation (defaults to 10.00% if unconfigured)
+    $commission_rate = (float)($p_row['commission_rate'] ?? 10.00);
+    if ($commission_rate <= 0) $commission_rate = 10.00;
+    $deduction_amount = round($trip_amount * ($commission_rate / 100.0), 2);
 
     $balance_before = (float)($p_row['wallet_balance'] ?? 10000.00);
     $balance_after = max(0.00, round($balance_before - $deduction_amount, 2));

@@ -103,12 +103,14 @@ if ($stmt_tx_list) {
 }
 
 $wallet_balance = (float)($p['wallet_balance'] ?? 10000.00);
+$activation_deposit_required = (float)($p['activation_deposit_required'] ?? 10000.00);
+$commission_rate = (float)($p['commission_rate'] ?? 10.00);
 $initial_deposit = (float)($p['initial_deposit'] ?? 10000.00);
 
 $is_paid = (($p['payment_status'] ?? '') === 'paid');
 $payment_id_val = $p['payment_id'] ?? 'N/A';
 $paid_at_val = !empty($p['paid_at']) ? date('d M Y, h:i A', strtotime($p['paid_at'])) : 'N/A';
-$paid_amount_val = !empty($p['payment_amount']) ? number_format($p['payment_amount'], 2) : '10,000.00';
+$paid_amount_val = !empty($p['payment_amount']) ? number_format($p['payment_amount'], 2) : number_format($activation_deposit_required, 2);
 $invoice_no = 'INV-REDOX-100' . $p['id'];
 ?>
 <!DOCTYPE html>
