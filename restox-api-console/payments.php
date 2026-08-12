@@ -79,10 +79,15 @@ mysqli_stmt_close($stmt_ref);
 $wallet_txs = [];
 $total_deducted = 0.00;
 $stmt_tx_list = mysqli_prepare($conn, 
-    "SELECT pwt.*, b.from_address, b.to_address, b.car_type, b.trip_type, pb.partner_booking_ref
+    "SELECT pwt.*, 
+            b.from_address, b.to_address, b.car_type, b.trip_type, b.date AS trip_date, b.time AS trip_time,
+            b.starting_km, b.closing_km, b.mobile AS passenger_phone, b.customer_number, b.driver_id, b.vehicle_id AS booking_vehicle_id,
+            pb.partner_booking_ref,
+            d.full_name AS driver_name, d.phone_number AS driver_phone
      FROM partner_wallet_transactions pwt
      LEFT JOIN bookings b ON pwt.booking_id = b.booking_id
      LEFT JOIN partner_bookings pb ON (pwt.booking_id = pb.booking_id AND pwt.partner_id = pb.partner_id)
+     LEFT JOIN drivers d ON (b.driver_id = d.phone_number OR b.driver_id = d.driver_id)
      WHERE pwt.partner_id = ? 
      ORDER BY pwt.id DESC LIMIT 100"
 );
@@ -245,6 +250,47 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
             transition: all 0.2s ease;
         }
         .btn-print:hover { background: var(--primary-accent); color: #FFF; }
+
+        .btn-view-details {
+            background: rgba(99, 102, 241, 0.15); color: #818CF8;
+            border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px;
+            padding: 7px 14px; font-size: 0.82rem; font-weight: 600; cursor: pointer;
+            display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s ease;
+        }
+        .btn-view-details:hover {
+            background: var(--primary-accent); color: #FFF; border-color: var(--primary-accent);
+            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Modal Popup Window Styles */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(11, 15, 23, 0.85); backdrop-filter: blur(12px);
+            display: none; justify-content: center; align-items: center; z-index: 3000; padding: 20px;
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.22s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+        .modal-content {
+            background: var(--bg-card); border: 1px solid var(--border-color);
+            border-radius: 20px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.7); position: relative;
+        }
+        .modal-header {
+            padding: 22px 28px; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02);
+        }
+        .modal-title { font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 10px; color: #FFF; }
+        .modal-close {
+            background: rgba(255,255,255,0.06); border: none; color: var(--text-secondary);
+            width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 1rem; transition: all 0.2s ease;
+        }
+        .modal-close:hover { background: rgba(239, 68, 68, 0.2); color: var(--danger-color); }
+
+        .modal-body { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
+        .modal-sec-title { font-size: 0.82rem; font-weight: 700; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .detail-row-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
 
         /* Toast Popup Notification */
         #toast {
@@ -465,6 +511,7 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                                         <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Amount Deducted</th>
                                         <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Wallet Balance</th>
                                         <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary);">Status</th>
+                                        <th style="padding:14px 16px; font-size:0.8rem; color:var(--text-secondary); text-align:right;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -513,6 +560,11 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
                                             <td style="padding:14px 16px; white-space:nowrap;">
                                                 <span class="status-badge badge-paid" style="font-size:0.75rem;"><i class="fa-solid fa-check"></i> Deducted</span>
                                             </td>
+                                            <td style="padding:14px 16px; text-align:right; white-space:nowrap;">
+                                                <button type="button" class="btn-view-details" onclick='openTripModal(<?= json_encode($tx, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'>
+                                                    <i class="fa-solid fa-circle-info"></i> View Details
+                                                </button>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -525,12 +577,150 @@ $invoice_no = 'INV-REDOX-100' . $p['id'];
         </main>
     </div>
 
+    <!-- Trip Details Modal Dialog -->
+    <div id="tripModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fa-solid fa-receipt" style="color:var(--primary-accent);"></i>
+                    <span id="m_booking_id">Trip Details</span>
+                </div>
+                <button type="button" class="modal-close" onclick="closeTripModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Section 1: Trip & Route Details -->
+                <div class="modal-section">
+                    <div class="modal-sec-title">
+                        <i class="fa-solid fa-route" style="color:var(--primary-accent);"></i> Route & Schedule Details
+                    </div>
+                    <div class="detail-row-grid">
+                        <div class="info-cell">
+                            <span class="info-label">Partner Booking Ref</span>
+                            <span class="info-value" id="m_partner_ref" style="font-family:var(--font-mono); color:var(--primary-accent);">N/A</span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Category / Trip Type</span>
+                            <span class="info-value" id="m_category">Standard • One-way</span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Schedule Date & Time</span>
+                            <span class="info-value" id="m_datetime">N/A</span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Odometer Reading</span>
+                            <span class="info-value" id="m_odometer">N/A</span>
+                        </div>
+                    </div>
+                    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:8px;">
+                        <div>
+                            <span class="info-label">Pickup Location</span>
+                            <div class="info-value" id="m_from_addr" style="font-size:0.9rem; color:#FFF; font-weight:500; margin-top:2px;">N/A</div>
+                        </div>
+                        <div style="margin-top:6px;">
+                            <span class="info-label">Dropoff Location</span>
+                            <div class="info-value" id="m_to_addr" style="font-size:0.9rem; color:#FFF; font-weight:500; margin-top:2px;">N/A</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Passenger & Driver Info -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
+                    <div class="modal-section">
+                        <div class="modal-sec-title">
+                            <i class="fa-solid fa-user" style="color:var(--secondary-accent);"></i> Passenger Info
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <div>
+                                <span class="info-label">Passenger Contact Mobile</span>
+                                <div class="info-value" id="m_passenger_phone" style="font-family:var(--font-mono);">N/A</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-section">
+                        <div class="modal-sec-title">
+                            <i class="fa-solid fa-id-card" style="color:var(--success-color);"></i> Driver & Vehicle Info
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <div>
+                                <span class="info-label">Driver Name</span>
+                                <div class="info-value" id="m_driver_name">Assigned Driver</div>
+                            </div>
+                            <div>
+                                <span class="info-label">Driver Contact Phone</span>
+                                <div class="info-value" id="m_driver_phone" style="font-family:var(--font-mono);">N/A</div>
+                            </div>
+                            <div>
+                                <span class="info-label">Vehicle Plate Number (RC)</span>
+                                <div class="info-value" id="m_vehicle_id" style="font-family:var(--font-mono); color:var(--warning-color); font-weight:700;">N/A</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Financial & Wallet Deduction Ledger -->
+                <div class="modal-section" style="background:linear-gradient(135deg, rgba(99,102,241,0.08), rgba(16,185,129,0.08)); border-color:rgba(99,102,241,0.3);">
+                    <div class="modal-sec-title" style="color:#FFF;">
+                        <i class="fa-solid fa-calculator" style="color:var(--success-color);"></i> Wallet Ledger Breakdown
+                    </div>
+                    <div class="detail-row-grid">
+                        <div class="info-cell">
+                            <span class="info-label">Total Trip Fare</span>
+                            <span class="info-value" id="m_trip_fare" style="font-size:1.1rem; font-weight:800; color:#FFF;">₹0.00</span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">10% Fee Deducted</span>
+                            <span class="info-value" id="m_fee_deducted" style="font-size:1.1rem; font-weight:800; color:var(--danger-color); font-family:var(--font-mono);">-₹0.00</span>
+                        </div>
+                        <div class="info-cell">
+                            <span class="info-label">Remaining Wallet Balance</span>
+                            <span class="info-value" id="m_balance_after" style="font-size:1.1rem; font-weight:800; color:var(--success-color); font-family:var(--font-mono);">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Popup Notification -->
     <div id="toast"></div>
 
     <!-- Razorpay Checkout SDK & Payment Handler -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
+        function openTripModal(data) {
+            if (!data) return;
+            document.getElementById('m_booking_id').innerText = 'Trip Details #' + (data.booking_id || '');
+            document.getElementById('m_partner_ref').innerText = data.partner_booking_ref || 'N/A';
+            document.getElementById('m_category').innerText = (data.car_type || 'Standard') + ' • ' + (data.trip_type || 'One-way');
+            document.getElementById('m_datetime').innerText = (data.trip_date || 'N/A') + ' ' + (data.trip_time || '');
+            document.getElementById('m_odometer').innerText = (data.starting_km ? data.starting_km + ' KM ➔ ' : '') + (data.closing_km ? data.closing_km + ' KM' : 'N/A');
+            document.getElementById('m_from_addr').innerText = data.from_address || 'N/A';
+            document.getElementById('m_to_addr').innerText = data.to_address || 'N/A';
+            document.getElementById('m_passenger_phone').innerText = data.passenger_phone || data.customer_number || 'N/A';
+            document.getElementById('m_driver_name').innerText = data.driver_name || 'Assigned Driver';
+            document.getElementById('m_driver_phone').innerText = data.driver_phone || data.driver_id || 'N/A';
+            document.getElementById('m_vehicle_id').innerText = data.booking_vehicle_id || 'N/A';
+            document.getElementById('m_trip_fare').innerText = '₹' + parseFloat(data.trip_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('m_fee_deducted').innerText = '-₹' + parseFloat(data.deduction_amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('m_balance_after').innerText = '₹' + parseFloat(data.balance_after || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            document.getElementById('tripModal').classList.add('active');
+        }
+
+        function closeTripModal() {
+            document.getElementById('tripModal').classList.remove('active');
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('tripModal');
+            if (event.target === modal) {
+                closeTripModal();
+            }
+        };
+
         function showToast(msg, isError = false) {
             const t = document.getElementById('toast');
             t.innerText = msg;
