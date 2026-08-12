@@ -31,14 +31,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     try {
+        // Fetch dynamic activation deposit required
+        $stmt_get = mysqli_prepare($conn, "SELECT activation_deposit_required FROM partners WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($stmt_get, 'i', $id);
+        mysqli_stmt_execute($stmt_get);
+        $res_get = mysqli_stmt_get_result($stmt_get);
+        $row_get = mysqli_fetch_assoc($res_get);
+        mysqli_stmt_close($stmt_get);
+
+        $dep_amount = (float)($row_get['activation_deposit_required'] ?? 10000.00);
+
         $stmt_pay = mysqli_prepare($conn, 
             "UPDATE partners 
-             SET status = 'active', payment_status = 'paid', payment_id = ?, payment_amount = 10000.00, paid_at = NOW() 
+             SET status = 'active', payment_status = 'paid', payment_id = ?, payment_amount = ?, wallet_balance = ?, paid_at = NOW() 
              WHERE id = ?"
         );
-        mysqli_stmt_bind_param($stmt_pay, 'si', $payment_id, $id);
+        mysqli_stmt_bind_param($stmt_pay, 'sddi', $payment_id, $dep_amount, $dep_amount, $id);
         if (mysqli_stmt_execute($stmt_pay)) {
-            echo json_encode(['success' => true, 'message' => 'Payment of ₹10,000 verified successfully! Your API Production keys are now unlocked.']);
+            echo json_encode(['success' => true, 'message' => 'Payment of ₹' . number_format($dep_amount, 2) . ' verified successfully! Your API Production keys are now unlocked.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to record payment in database.']);
         }
@@ -102,12 +112,12 @@ if ($stmt_tx_list) {
     mysqli_stmt_close($stmt_tx_list);
 }
 
-$wallet_balance = (float)($p['wallet_balance'] ?? 10000.00);
+$is_paid = (($p['payment_status'] ?? '') === 'paid' || ($p['status'] ?? '') === 'active');
 $activation_deposit_required = (float)($p['activation_deposit_required'] ?? 10000.00);
 $commission_rate = (float)($p['commission_rate'] ?? 10.00);
 $initial_deposit = (float)($p['initial_deposit'] ?? 10000.00);
 
-$is_paid = (($p['payment_status'] ?? '') === 'paid');
+$wallet_balance = $is_paid ? (float)($p['wallet_balance'] ?? $activation_deposit_required) : 0.00;
 $payment_id_val = $p['payment_id'] ?? 'N/A';
 $paid_at_val = !empty($p['paid_at']) ? date('d M Y, h:i A', strtotime($p['paid_at'])) : 'N/A';
 $paid_amount_val = !empty($p['payment_amount']) ? number_format($p['payment_amount'], 2) : number_format($activation_deposit_required, 2);

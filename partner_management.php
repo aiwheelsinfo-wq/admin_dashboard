@@ -73,11 +73,12 @@ $total_deposits_collected = 0.00;
 $total_wallet_balances = 0.00;
 
 foreach ($partners as $pt) {
-    if (($pt['payment_status'] ?? '') === 'paid' || ($pt['status'] ?? '') === 'active') {
+    $is_pt_active = (($pt['payment_status'] ?? '') === 'paid' || ($pt['status'] ?? '') === 'active');
+    if ($is_pt_active) {
         $active_partners++;
         $total_deposits_collected += (float)($pt['payment_amount'] ?? 10000.00);
+        $total_wallet_balances += (float)($pt['wallet_balance'] ?? 10000.00);
     }
-    $total_wallet_balances += (float)($pt['wallet_balance'] ?? 10000.00);
 }
 ?>
 <!DOCTYPE html>
@@ -299,7 +300,7 @@ foreach ($partners as $pt) {
                             $is_active = (($partner['payment_status'] ?? '') === 'paid' || ($partner['status'] ?? '') === 'active');
                             $dep_req = (float)($partner['activation_deposit_required'] ?? 10000.00);
                             $comm_rate = (float)($partner['commission_rate'] ?? 10.00);
-                            $w_bal = (float)($partner['wallet_balance'] ?? 10000.00);
+                            $w_bal = $is_active ? (float)($partner['wallet_balance'] ?? $dep_req) : 0.00;
                         ?>
                             <tr>
                                 <td>

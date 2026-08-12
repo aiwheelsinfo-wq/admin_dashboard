@@ -31,14 +31,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     try {
+        // Fetch dynamic activation deposit required
+        $stmt_get = mysqli_prepare($conn, "SELECT activation_deposit_required FROM partners WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($stmt_get, 'i', $id);
+        mysqli_stmt_execute($stmt_get);
+        $res_get = mysqli_stmt_get_result($stmt_get);
+        $row_get = mysqli_fetch_assoc($res_get);
+        mysqli_stmt_close($stmt_get);
+
+        $dep_amount = (float)($row_get['activation_deposit_required'] ?? 10000.00);
+
         $stmt_pay = mysqli_prepare($conn, 
             "UPDATE partners 
-             SET status = 'active', payment_status = 'paid', payment_id = ?, payment_amount = 10000.00, paid_at = NOW() 
+             SET status = 'active', payment_status = 'paid', payment_id = ?, payment_amount = ?, wallet_balance = ?, paid_at = NOW() 
              WHERE id = ?"
         );
-        mysqli_stmt_bind_param($stmt_pay, 'si', $payment_id, $id);
+        mysqli_stmt_bind_param($stmt_pay, 'sddi', $payment_id, $dep_amount, $dep_amount, $id);
         if (mysqli_stmt_execute($stmt_pay)) {
-            echo json_encode(['success' => true, 'message' => 'Payment of ₹10,000 verified successfully! Your API Production keys are now unlocked.']);
+            echo json_encode(['success' => true, 'message' => 'Payment of ₹' . number_format($dep_amount, 2) . ' verified successfully! Your API Production keys are now unlocked.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to record payment in database.']);
         }
