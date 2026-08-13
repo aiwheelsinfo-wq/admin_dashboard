@@ -1248,13 +1248,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         .settings-form-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 22px;
             margin-bottom: 28px;
         }
 
         @media (max-width: 768px) {
             .settings-form-grid {
                 grid-template-columns: 1fr;
+            }
+            .full-width-mobile {
+                grid-column: span 1 !important;
             }
         }
 
@@ -1265,31 +1268,75 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
         }
 
         .form-label {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-secondary);
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .form-label span {
+        .form-label span.req {
             color: var(--danger-color);
+            margin-left: 2px;
+        }
+
+        .input-icon-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .input-icon-group i.field-icon {
+            position: absolute;
+            left: 14px;
+            color: #94A3B8;
+            font-size: 0.92rem;
+            pointer-events: none;
+            transition: color 0.2s ease;
         }
 
         .form-control-glass {
-            background-color: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--card-border);
+            width: 100%;
+            background-color: rgba(7, 11, 20, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             color: #FFF;
-            padding: 12px 16px;
-            font-size: 0.95rem;
+            padding: 12px 16px 12px 40px;
+            font-size: 0.92rem;
+            font-weight: 500;
             font-family: inherit;
             outline: none;
             transition: all 0.25s ease;
+            box-sizing: border-box;
         }
 
         .form-control-glass:focus {
-            background-color: rgba(255, 255, 255, 0.04);
-            border-color: var(--primary-accent);
-            box-shadow: 0 0 0 3px var(--primary-glow);
+            background-color: rgba(15, 23, 42, 0.9);
+            border-color: #818CF8;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        }
+
+        .input-icon-group:focus-within i.field-icon {
+            color: #818CF8;
+        }
+
+        .btn-ghost-action {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-secondary);
+            border-radius: 10px;
+            padding: 11px 22px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-ghost-action:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #FFF;
+            border-color: rgba(255, 255, 255, 0.3);
         }
 
         /* API Reference Styling */
@@ -2540,16 +2587,35 @@ $data = json_decode($result, true);</code></pre>
 
                 <!-- 5. ACCOUNT SETTINGS TAB PANEL -->
                 <section class="tab-section d-none" id="tab-settings">
-                    <div class="page-header">
+
+                    <!-- Breadcrumbs -->
+                    <div class="breadcrumb-nav">
+                        <span>Dashboard</span> <i class="fa-solid fa-chevron-right" style="font-size:0.7rem;"></i> <span>Settings</span> <i class="fa-solid fa-chevron-right" style="font-size:0.7rem;"></i> <span class="active">Account &amp; Profile</span>
+                    </div>
+
+                    <div class="page-header" style="margin-bottom: 24px;">
                         <div class="page-title-desc">
-                            <h1>Account & Profile Settings</h1>
-                            <p>Update your legal company details and contact parameters.</p>
+                            <h1 style="font-size: 1.75rem; font-weight: 800; color: #FFF; margin-bottom: 4px;">Account &amp; Profile Settings</h1>
+                            <p style="color: var(--text-secondary); font-size: 0.92rem;">Manage your legal company details and primary contact information.</p>
                         </div>
                     </div>
 
-                    <div class="panel-card">
-                        <h3 class="card-title" style="margin-bottom: 24px;"><i class="fa-solid fa-sliders"></i> Edit Partner Information</h3>
+                    <!-- MAIN PROFILE CARD -->
+                    <div class="panel-card" style="margin-bottom: 0;">
                         
+                        <!-- Header & Required Indicator -->
+                        <div class="card-header-flex" style="margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+                            <div>
+                                <h3 class="card-title" style="margin-bottom: 4px; font-size: 1.15rem;">
+                                    <i class="fa-solid fa-building" style="color:var(--primary-accent);"></i> Company Profile
+                                </h3>
+                                <p style="color:var(--text-secondary); font-size:0.88rem; margin:0;">
+                                    Keep your business and contact information up to date.
+                                </p>
+                            </div>
+                            <span style="font-size:0.8rem; font-weight:600; color:#94A3B8;">* Required fields</span>
+                        </div>
+
                         <div id="settingsAlert" class="alert-banner d-none" style="margin-bottom:24px;">
                             <i class="fa-solid fa-circle-info alert-banner-icon" id="settingsAlertIcon"></i>
                             <div class="alert-banner-content">
@@ -2562,37 +2628,93 @@ $data = json_decode($result, true);</code></pre>
                             <input type="hidden" name="action" value="update_profile">
                             
                             <div class="settings-form-grid">
+                                
+                                <!-- ROW 1 -->
                                 <div class="form-group">
-                                    <label class="form-label" for="settings_partner_name">Partner Legal Name <span>*</span></label>
-                                    <input type="text" id="settings_partner_name" name="partner_name" class="form-control-glass" value="<?= htmlspecialchars($p['partner_name'] ?? '') ?>" placeholder="e.g. Akbar Travels" required>
+                                    <label class="form-label" for="settings_partner_name">
+                                        <span>Partner Legal Name <span class="req">*</span></span>
+                                    </label>
+                                    <div class="input-icon-group">
+                                        <i class="fa-solid fa-building field-icon"></i>
+                                        <input type="text" id="settings_partner_name" name="partner_name" class="form-control-glass" value="<?= htmlspecialchars($p['partner_name'] ?? '') ?>" placeholder="e.g. Rentox Mobility Services Ltd." required>
+                                    </div>
                                 </div>
+
                                 <div class="form-group">
-                                    <label class="form-label" for="settings_company_name">Company / Agency Name <span>*</span></label>
-                                    <input type="text" id="settings_company_name" name="company_name" class="form-control-glass" value="<?= htmlspecialchars($p['company_name']) ?>" placeholder="e.g. Akbar Rentals Inc." required>
+                                    <label class="form-label" for="settings_company_name">
+                                        <span>Company / Agency Name <span class="req">*</span></span>
+                                    </label>
+                                    <div class="input-icon-group">
+                                        <i class="fa-solid fa-briefcase field-icon"></i>
+                                        <input type="text" id="settings_company_name" name="company_name" class="form-control-glass" value="<?= htmlspecialchars($p['company_name']) ?>" placeholder="e.g. Rentox Fleet Operations" required>
+                                    </div>
                                 </div>
+
+                                <!-- ROW 2 -->
                                 <div class="form-group">
-                                    <label class="form-label" for="settings_owner_name">Company Owner Name <span>*</span></label>
-                                    <input type="text" id="settings_owner_name" name="company_owner_name" class="form-control-glass" value="<?= htmlspecialchars($p['company_owner_name'] ?? '') ?>" placeholder="Full name of agency owner" required>
+                                    <label class="form-label" for="settings_owner_name">
+                                        <span>Company Owner Name <span class="req">*</span></span>
+                                    </label>
+                                    <div class="input-icon-group">
+                                        <i class="fa-solid fa-user-tie field-icon"></i>
+                                        <input type="text" id="settings_owner_name" name="company_owner_name" class="form-control-glass" value="<?= htmlspecialchars($p['company_owner_name'] ?? '') ?>" placeholder="Full name of company owner" required>
+                                    </div>
                                 </div>
+
                                 <div class="form-group">
-                                    <label class="form-label" for="settings_gst">GST Number <span>*</span></label>
-                                    <input type="text" id="settings_gst" name="gst_number" class="form-control-glass" value="<?= htmlspecialchars($p['gst_number'] ?? '') ?>" placeholder="15-digit GSTIN ID" required>
+                                    <label class="form-label" for="settings_gst">
+                                        <span>GST Number <span class="req">*</span></span>
+                                    </label>
+                                    <div class="input-icon-group">
+                                        <i class="fa-solid fa-file-invoice field-icon"></i>
+                                        <input type="text" id="settings_gst" name="gst_number" class="form-control-glass" value="<?= htmlspecialchars($p['gst_number'] ?? '') ?>" placeholder="15-digit GSTIN" required>
+                                    </div>
                                 </div>
+
+                                <!-- ROW 3 -->
                                 <div class="form-group">
-                                    <label class="form-label" for="settings_contact_person">Primary Contact Person <span>*</span></label>
-                                    <input type="text" id="settings_contact_person" name="contact_person" class="form-control-glass" value="<?= htmlspecialchars($p['contact_person']) ?>" placeholder="Contact representative" required>
+                                    <label class="form-label" for="settings_contact_person">
+                                        <span>Primary Contact Person <span class="req">*</span></span>
+                                    </label>
+                                    <div class="input-icon-group">
+                                        <i class="fa-solid fa-user field-icon"></i>
+                                        <input type="text" id="settings_contact_person" name="contact_person" class="form-control-glass" value="<?= htmlspecialchars($p['contact_person']) ?>" placeholder="Contact representative name" required>
+                                    </div>
                                 </div>
+
                                 <div class="form-group">
-                                    <label class="form-label" for="settings_mobile">Contact Mobile Number <span>*</span></label>
-                                    <input type="tel" id="settings_mobile" name="contact_number" class="form-control-glass" value="<?= htmlspecialchars($p['mobile_number'] ?? '') ?>" placeholder="+91 XXXXXXXXXX" required>
+                                    <label class="form-label" for="settings_mobile">
+                                        <span>Contact Mobile Number <span class="req">*</span></span>
+                                    </label>
+                                    <div class="input-icon-group">
+                                        <i class="fa-solid fa-phone field-icon"></i>
+                                        <input type="tel" id="settings_mobile" name="contact_number" class="form-control-glass" value="<?= htmlspecialchars($p['mobile_number'] ?? '') ?>" placeholder="+91 XXXXX XXXXX" required>
+                                    </div>
                                 </div>
-                                <div class="form-group" style="grid-column: span 2;">
-                                    <label class="form-label" for="settings_email">Authorized Business Email <span>*</span></label>
-                                    <input type="email" id="settings_email" name="email" class="form-control-glass" value="<?= htmlspecialchars($p['email']) ?>" placeholder="api@company.com" required style="width:100%;">
+
+                                <!-- ROW 4 (Full Width) -->
+                                <div class="form-group full-width-mobile" style="grid-column: span 2;">
+                                    <label class="form-label" for="settings_email">
+                                        <span>
+                                            Authorized Business Email <span class="req">*</span>
+                                            <?php if (!empty($p['email'])): ?>
+                                                <span class="nav-badge badge-green" style="margin-left:8px; font-size:0.68rem; font-weight:700;"><i class="fa-solid fa-check-double"></i> Verified</span>
+                                            <?php endif; ?>
+                                        </span>
+                                    </label>
+                                    <div class="input-icon-group">
+                                        <i class="fa-solid fa-envelope field-icon"></i>
+                                        <input type="email" id="settings_email" name="email" class="form-control-glass" value="<?= htmlspecialchars($p['email']) ?>" placeholder="api@company.com" required style="width:100%;">
+                                    </div>
                                 </div>
+
                             </div>
 
-                            <div style="display:flex; justify-content:flex-end;">
+                            <!-- Action Buttons -->
+                            <div style="display:flex; justify-content:flex-end; align-items:center; gap:14px; padding-top:18px; border-top:1px solid rgba(255,255,255,0.06);">
+                                <button type="button" class="btn-ghost-action" onclick="switchTab('#overview')">
+                                    Cancel
+                                </button>
                                 <button type="submit" class="btn-primary-action">
                                     <i class="fa-solid fa-floppy-disk"></i> Save Changes
                                 </button>
@@ -2684,6 +2806,12 @@ $data = json_decode($result, true);</code></pre>
             
             // Trigger background mail runner asynchronously
             fetch('mail_runner.php').catch(err => console.error('Mail runner trigger failed:', err));
+        });
+
+        // Listen for URL hash changes (browser Back/Forward navigation)
+        window.addEventListener('hashchange', () => {
+            const activeHash = window.location.hash || '#overview';
+            switchTab(activeHash);
         });
 
         // Toggle visibility of credentials
@@ -2783,7 +2911,7 @@ $data = json_decode($result, true);</code></pre>
                     alertTitle.style.color = '#FFF';
                     alertDesc.innerText = data.message;
                     alertDesc.style.color = 'var(--text-secondary)';
-                    showToast("Profile details saved!");
+                    showToast("✓ Profile updated successfully");
                     
                     // Trigger the mail runner immediately to process the admin notification email
                     fetch('mail_runner.php').catch(() => {});
