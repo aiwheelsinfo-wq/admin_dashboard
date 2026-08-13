@@ -24,6 +24,7 @@ $success = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'verify_payment') {
     header('Content-Type: application/json');
     $payment_id = trim($_POST['razorpay_payment_id'] ?? '');
+    $topup_amount = (float)($_POST['amount'] ?? 0);
 
     if (empty($payment_id)) {
         echo json_encode(['success' => false, 'message' => 'Invalid payment ID.']);
@@ -31,24 +32,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 
     try {
-        // Fetch dynamic activation deposit required
-        $stmt_get = mysqli_prepare($conn, "SELECT activation_deposit_required FROM partners WHERE id = ? LIMIT 1");
+        // Fetch current partner wallet balance & activation deposit required
+        $stmt_get = mysqli_prepare($conn, "SELECT wallet_balance, activation_deposit_required, status FROM partners WHERE id = ? LIMIT 1");
         mysqli_stmt_bind_param($stmt_get, 'i', $id);
         mysqli_stmt_execute($stmt_get);
         $res_get = mysqli_stmt_get_result($stmt_get);
         $row_get = mysqli_fetch_assoc($res_get);
         mysqli_stmt_close($stmt_get);
 
-        $dep_amount = (float)($row_get['activation_deposit_required'] ?? 10000.00);
+        $curr_balance = (float)($row_get['wallet_balance'] ?? 0.00);
+        $act_req = (float)($row_get['activation_deposit_required'] ?? 10000.00);
+
+        if ($topup_amount <= 0) {
+            $topup_amount = $act_req;
+        }
+
+        $new_balance = $curr_balance + $topup_amount;
 
         $stmt_pay = mysqli_prepare($conn, 
             "UPDATE partners 
-             SET status = 'active', payment_status = 'paid', payment_id = ?, payment_amount = ?, wallet_balance = ?, paid_at = NOW() 
+             SET status = 'active', payment_status = 'paid', payment_id = ?, payment_amount = payment_amount + ?, wallet_balance = ?, paid_at = NOW() 
              WHERE id = ?"
         );
-        mysqli_stmt_bind_param($stmt_pay, 'sddi', $payment_id, $dep_amount, $dep_amount, $id);
+        mysqli_stmt_bind_param($stmt_pay, 'sddi', $payment_id, $topup_amount, $new_balance, $id);
         if (mysqli_stmt_execute($stmt_pay)) {
-            echo json_encode(['success' => true, 'message' => 'Payment of ₹' . number_format($dep_amount, 2) . ' verified successfully! Your API Production keys are now unlocked and ₹' . number_format($dep_amount, 2) . ' credited to your wallet.']);
+            // Record top-up credit transaction log
+            $desc = "Prepaid Wallet Top-Up via Razorpay (Txn ID: {$payment_id})";
+            $stmt_tx = mysqli_prepare($conn, 
+                "INSERT INTO partner_wallet_transactions 
+                 (partner_id, booking_id, trip_amount, commission_rate, deduction_amount, balance_before, balance_after, description)
+                 VALUES (?, 'TOPUP', ?, 0.00, 0.00, ?, ?, ?)"
+            );
+            if ($stmt_tx) {
+                mysqli_stmt_bind_param($stmt_tx, 'iddds', $id, $topup_amount, $curr_balance, $new_balance, $desc);
+                mysqli_stmt_execute($stmt_tx);
+                mysqli_stmt_close($stmt_tx);
+            }
+
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Payment of ₹' . number_format($topup_amount, 2) . ' verified successfully! ₹' . number_format($topup_amount, 2) . ' credited to your wallet. New Balance: ₹' . number_format($new_balance, 2)
+            ]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to record payment in database.']);
         }
@@ -446,6 +470,32 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
             transform: translateY(-1px); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
         }
 
+        /* Preset Amount Chips & Custom Input */
+        .chip-container {
+            display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; margin-bottom: 20px;
+        }
+        .preset-chip {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border-color);
+            color: #FFF; padding: 9px 16px; border-radius: 10px; font-weight: 700;
+            font-size: 0.88rem; cursor: pointer; transition: all 0.2s ease;
+        }
+        .preset-chip:hover {
+            background: rgba(16, 185, 129, 0.15); border-color: #10B981; color: #34D399;
+        }
+        .preset-chip.active {
+            background: linear-gradient(135deg, #10B981, #059669);
+            border-color: #10B981; color: #FFF; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+        }
+
+        .custom-amount-input {
+            width: 100%; background: rgba(7, 11, 20, 0.6); border: 1px solid var(--border-color);
+            border-radius: 12px; padding: 14px 18px; color: #FFF; font-size: 1.3rem; font-weight: 800;
+            font-family: var(--font-mono); outline: none; transition: border 0.2s ease; box-sizing: border-box;
+        }
+        .custom-amount-input:focus {
+            border-color: #10B981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
         /* Modal Window Styles */
         .modal-overlay {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -635,8 +685,8 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                     </div>
 
                     <div style="display:flex; gap:12px; margin-top:24px; flex-wrap:wrap;">
-                        <button class="btn-pay-hero" onclick="payWithRazorpay()" style="flex:1; padding:12px 20px; font-size:0.92rem;">
-                            <i class="fa-solid fa-plus"></i> Add ₹<?= number_format($activation_deposit_required) ?>
+                        <button class="btn-pay-hero" onclick="openTopUpModal()" style="flex:1; padding:12px 20px; font-size:0.92rem;">
+                            <i class="fa-solid fa-plus-circle"></i> Add Funds to Wallet
                         </button>
                         <button class="btn-print" onclick="document.getElementById('txHistorySec').scrollIntoView({behavior:'smooth'})" style="padding:12px 20px;">
                             <i class="fa-solid fa-list"></i> View Transactions
@@ -874,22 +924,37 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
 
                             <?php if (!empty($wallet_txs)): ?>
                                 <?php foreach ($wallet_txs as $tx): ?>
-                                    <tr>
-                                        <td><?= date('d M Y, h:i A', strtotime($tx['created_at'])) ?></td>
-                                        <td>
-                                            <div style="font-weight:700; color:#FFF; font-family:var(--font-mono);"><?= htmlspecialchars($tx['partner_booking_ref'] ?? ('BOOK-' . $tx['booking_id'])) ?></div>
-                                            <div style="font-size:0.78rem; color:var(--text-secondary);"><?= htmlspecialchars($tx['car_type'] ?? 'Cab Booking') ?> • Trip #<?= $tx['booking_id'] ?></div>
-                                        </td>
-                                        <td><span style="color:#FBBF24; font-weight:700; font-size:0.82rem; background:rgba(245,158,11,0.12); padding:3px 8px; border-radius:6px;">Debit</span></td>
-                                        <td style="font-family:var(--font-mono); font-weight:700; color:#FBBF24;">-₹<?= number_format($tx['deduction_amount'], 2) ?></td>
-                                        <td style="font-family:var(--font-mono); font-weight:600;">₹<?= number_format($tx['balance_after'], 2) ?></td>
-                                        <td><span class="status-badge badge-paid"><i class="fa-solid fa-check"></i> Deducted</span></td>
-                                        <td>
-                                            <button class="btn-view-details" onclick='openTripModal(<?= json_encode($tx, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) ?>)'>
-                                                <i class="fa-solid fa-eye"></i> View Details
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <?php if ($tx['booking_id'] === 'TOPUP' || (float)($tx['deduction_amount'] ?? 0) <= 0): ?>
+                                        <tr>
+                                            <td><?= date('d M Y, h:i A', strtotime($tx['created_at'])) ?></td>
+                                            <td>
+                                                <div style="font-weight:700; color:#FFF;">Prepaid Wallet Top-Up</div>
+                                                <div style="font-size:0.78rem; color:var(--text-secondary); font-family:var(--font-mono);"><?= htmlspecialchars($tx['description'] ?? 'Wallet Credit') ?></div>
+                                            </td>
+                                            <td><span style="color:#34D399; font-weight:700; font-size:0.82rem; background:rgba(16,185,129,0.12); padding:3px 8px; border-radius:6px;">Credit</span></td>
+                                            <td style="font-family:var(--font-mono); font-weight:700; color:#34D399;">+₹<?= number_format($tx['trip_amount'], 2) ?></td>
+                                            <td style="font-family:var(--font-mono); font-weight:600;">₹<?= number_format($tx['balance_after'], 2) ?></td>
+                                            <td><span class="status-badge badge-paid"><i class="fa-solid fa-check"></i> Completed</span></td>
+                                            <td><button class="btn-view-details" onclick="window.print()"><i class="fa-solid fa-receipt"></i> Receipt</button></td>
+                                        </tr>
+                                    <?php else: ?>
+                                        <tr>
+                                            <td><?= date('d M Y, h:i A', strtotime($tx['created_at'])) ?></td>
+                                            <td>
+                                                <div style="font-weight:700; color:#FFF; font-family:var(--font-mono);"><?= htmlspecialchars($tx['partner_booking_ref'] ?? ('BOOK-' . $tx['booking_id'])) ?></div>
+                                                <div style="font-size:0.78rem; color:var(--text-secondary);"><?= htmlspecialchars($tx['car_type'] ?? 'Cab Booking') ?> • Trip #<?= $tx['booking_id'] ?></div>
+                                            </td>
+                                            <td><span style="color:#FBBF24; font-weight:700; font-size:0.82rem; background:rgba(245,158,11,0.12); padding:3px 8px; border-radius:6px;">Debit</span></td>
+                                            <td style="font-family:var(--font-mono); font-weight:700; color:#FBBF24;">-₹<?= number_format($tx['deduction_amount'], 2) ?></td>
+                                            <td style="font-family:var(--font-mono); font-weight:600;">₹<?= number_format($tx['balance_after'], 2) ?></td>
+                                            <td><span class="status-badge badge-paid"><i class="fa-solid fa-check"></i> Deducted</span></td>
+                                            <td>
+                                                <button class="btn-view-details" onclick='openTripModal(<?= json_encode($tx, JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_AMP) ?>)'>
+                                                    <i class="fa-solid fa-eye"></i> View Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             <?php else: ?>
                                 <tr>
@@ -1053,6 +1118,70 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
         </div>
     </div>
 
+    <!-- Add Funds / Top Up Wallet Modal -->
+    <div class="modal-overlay" id="topUpModal">
+        <div class="modal-content" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <i class="fa-solid fa-wallet" style="color:var(--success-color);"></i> Top Up Prepaid API Wallet
+                </h3>
+                <button class="modal-close" onclick="closeTopUpModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:18px; line-height:1.5;">
+                    Select or enter an amount to top up your prepaid API wallet balance via Razorpay online payment.
+                </p>
+
+                <!-- Quick Amount Chips -->
+                <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.8px;">
+                    Quick Top-Up Amounts
+                </label>
+                <div class="chip-container">
+                    <button type="button" class="preset-chip" onclick="selectChip(2000, this)">+ ₹2,000</button>
+                    <button type="button" class="preset-chip active" onclick="selectChip(5000, this)">+ ₹5,000</button>
+                    <button type="button" class="preset-chip" onclick="selectChip(10000, this)">+ ₹10,000</button>
+                    <button type="button" class="preset-chip" onclick="selectChip(25000, this)">+ ₹25,000</button>
+                    <button type="button" class="preset-chip" onclick="selectChip(50000, this)">+ ₹50,000</button>
+                </div>
+
+                <!-- Custom Amount Input -->
+                <label style="display:block; font-size:0.78rem; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:8px;">
+                    Or Enter Custom Amount (₹)
+                </label>
+                <div style="position:relative; margin-bottom:22px;">
+                    <span style="position:absolute; left:18px; top:50%; transform:translateY(-50%); font-size:1.3rem; font-weight:800; color:#34D399;">₹</span>
+                    <input type="number" id="customTopupInput" class="custom-amount-input" style="padding-left:38px;" value="5000" min="500" step="500" oninput="updateTopupCalculation()">
+                </div>
+
+                <!-- Balance Calculation Summary Box -->
+                <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:14px; padding:16px; margin-bottom:24px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.88rem;">
+                        <span style="color:var(--text-secondary);">Current Wallet Balance</span>
+                        <span style="color:#FFF; font-weight:700; font-family:var(--font-mono);">₹<?= number_format($wallet_balance, 2) ?></span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:0.88rem;">
+                        <span style="color:var(--text-secondary);">Top-Up Credit Amount</span>
+                        <span style="color:#34D399; font-weight:700; font-family:var(--font-mono);" id="modalAddAmount">+₹5,000.00</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1); font-size:1rem; font-weight:800;">
+                        <span style="color:#FFF;">New Wallet Balance</span>
+                        <span style="color:#34D399; font-family:var(--font-mono);" id="modalNewBalance">₹<?= number_format($wallet_balance + 5000, 2) ?></span>
+                    </div>
+                </div>
+
+                <!-- Pay Button -->
+                <button type="button" class="btn-pay-hero" id="btnCustomPay" onclick="payCustomAmountWithRazorpay()" style="width:100%;">
+                    <i class="fa-solid fa-bolt"></i> Pay ₹5,000 via Razorpay
+                </button>
+
+                <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-top:14px; font-size:0.78rem; color:var(--text-secondary);">
+                    <i class="fa-solid fa-shield-halved" style="color:#34D399;"></i>
+                    <span>Instant Auto-Credit Upon Payment Completion</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast-notification" id="toast"></div>
 
@@ -1106,6 +1235,92 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
             setTimeout(() => { t.style.display = 'none'; }, 4000);
         }
 
+        let currentWalletBal = <?= (float)$wallet_balance ?>;
+
+        function openTopUpModal() {
+            document.getElementById('topUpModal').classList.add('active');
+            updateTopupCalculation();
+        }
+
+        function closeTopUpModal() {
+            document.getElementById('topUpModal').classList.remove('active');
+        }
+
+        function selectChip(amount, btn) {
+            document.querySelectorAll('.preset-chip').forEach(c => c.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.getElementById('customTopupInput').value = amount;
+            updateTopupCalculation();
+        }
+
+        function updateTopupCalculation() {
+            const input = document.getElementById('customTopupInput');
+            let amt = parseFloat(input.value) || 0;
+            if (amt < 0) amt = 0;
+
+            document.getElementById('modalAddAmount').innerText = '+₹' + amt.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            let newBal = currentWalletBal + amt;
+            document.getElementById('modalNewBalance').innerText = '₹' + newBal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const btn = document.getElementById('btnCustomPay');
+            if (amt < 500) {
+                btn.disabled = true;
+                btn.style.opacity = '0.6';
+                btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Minimum Top-Up is ₹500';
+            } else {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Pay ₹' + amt.toLocaleString('en-IN') + ' via Razorpay';
+            }
+        }
+
+        function payCustomAmountWithRazorpay() {
+            const input = document.getElementById('customTopupInput');
+            const amt = parseFloat(input.value) || 0;
+            if (amt < 500) {
+                showToast("Minimum top-up amount is ₹500.", true);
+                return;
+            }
+
+            const btn = document.getElementById('btnCustomPay');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Opening Secure Checkout...';
+            }
+
+            const options = {
+                "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
+                "amount": Math.round(amt * 100),
+                "currency": "INR",
+                "name": "Rentox API Service",
+                "description": "Prepaid Wallet Top-Up (₹" + amt.toLocaleString('en-IN') + ")",
+                "handler": function (response) {
+                    if (response.razorpay_payment_id) {
+                        verifyPartnerPayment(response.razorpay_payment_id, amt);
+                    }
+                },
+                "modal": {
+                    "ondismiss": function() {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Pay ₹' + amt.toLocaleString('en-IN') + ' via Razorpay';
+                        }
+                    }
+                },
+                "prefill": {
+                    "name": "<?= htmlspecialchars($p['contact_person'] ?? $p['partner_name']) ?>",
+                    "email": "<?= htmlspecialchars($p['email']) ?>",
+                    "contact": "<?= htmlspecialchars($p['mobile_number']) ?>"
+                },
+                "theme": {
+                    "color": "#10B981"
+                }
+            };
+            const rzp = new Razorpay(options);
+            rzp.open();
+        }
+
         function payWithRazorpay() {
             const btn = document.getElementById('btnPayMain');
             if (btn) {
@@ -1121,7 +1336,7 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 "description": "B2B Partner API Integration & Activation Fee",
                 "handler": function (response) {
                     if (response.razorpay_payment_id) {
-                        verifyPartnerPayment(response.razorpay_payment_id);
+                        verifyPartnerPayment(response.razorpay_payment_id, <?= (float)$activation_deposit_required ?>);
                     }
                 },
                 "modal": {
@@ -1168,11 +1383,14 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
             });
         }
 
-        function verifyPartnerPayment(paymentId) {
-            showToast("Verifying payment with server...", false);
+        function verifyPartnerPayment(paymentId, topupAmt) {
+            showToast("Verifying payment & crediting wallet...", false);
             const formData = new FormData();
             formData.append('action', 'verify_payment');
             formData.append('razorpay_payment_id', paymentId);
+            if (topupAmt) {
+                formData.append('amount', topupAmt);
+            }
 
             fetch('payments.php', { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                 .then(r => r.json())
