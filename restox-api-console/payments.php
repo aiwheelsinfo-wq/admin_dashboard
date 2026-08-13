@@ -71,7 +71,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             echo json_encode([
                 'success' => true, 
-                'message' => 'Payment of ₹' . number_format($topup_amount, 2) . ' verified successfully! ₹' . number_format($topup_amount, 2) . ' credited to your wallet. New Balance: ₹' . number_format($new_balance, 2)
+                'message' => 'Payment of ₹' . number_format($topup_amount, 2) . ' verified successfully! ₹' . number_format($topup_amount, 2) . ' credited to your wallet balance.',
+                'new_balance' => $new_balance,
+                'topup_amount' => $topup_amount
             ]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Failed to record payment in database.']);
@@ -1182,6 +1184,65 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
         </div>
     </div>
 
+    <!-- Payment Success Modal -->
+    <div class="modal-overlay" id="paymentSuccessModal">
+        <div class="modal-content" style="max-width: 480px; text-align: center; padding: 36px 28px;">
+            <div style="width:76px; height:76px; border-radius:50%; background:rgba(16,185,129,0.15); border:2px solid #10B981; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; box-shadow:0 0 35px rgba(16,185,129,0.4);">
+                <i class="fa-solid fa-check" style="font-size:2.5rem; color:#34D399;"></i>
+            </div>
+            <h2 style="font-size:1.6rem; font-weight:800; color:#FFF; margin-bottom:6px;">Payment Successful!</h2>
+            <p style="color:var(--text-secondary); font-size:0.92rem; margin-bottom:24px;">Your prepaid API wallet has been credited automatically.</p>
+
+            <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-color); border-radius:16px; padding:18px; text-align:left; margin-bottom:24px; font-size:0.88rem;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span style="color:var(--text-secondary);">Transaction ID</span>
+                    <span style="color:#FFF; font-weight:700; font-family:var(--font-mono);" id="succTxnId">--</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <span style="color:var(--text-secondary);">Amount Paid</span>
+                    <span style="color:#34D399; font-weight:800; font-family:var(--font-mono); font-size:1.05rem;" id="succAmount">+₹0.00</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.1);">
+                    <span style="color:var(--text-secondary);">New Wallet Balance</span>
+                    <span style="color:#FFF; font-weight:800; font-family:var(--font-mono); font-size:1.1rem;" id="succNewBalance">₹0.00</span>
+                </div>
+            </div>
+
+            <button type="button" class="btn-pay-hero" onclick="location.reload()" style="width:100%; padding:14px;">
+                <i class="fa-solid fa-circle-check"></i> Great, Done!
+            </button>
+        </div>
+    </div>
+
+    <!-- Payment Failed & Retry Modal -->
+    <div class="modal-overlay" id="paymentFailedModal">
+        <div class="modal-content" style="max-width: 480px; text-align: center; padding: 36px 28px;">
+            <div style="width:76px; height:76px; border-radius:50%; background:rgba(239,68,68,0.15); border:2px solid #EF4444; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; box-shadow:0 0 35px rgba(239,68,68,0.4);">
+                <i class="fa-solid fa-xmark" style="font-size:2.5rem; color:#FCA5A5;"></i>
+            </div>
+            <h2 style="font-size:1.6rem; font-weight:800; color:#FFF; margin-bottom:6px;">Payment Failed</h2>
+            <p style="color:var(--text-secondary); font-size:0.92rem; margin-bottom:20px;">The transaction could not be processed.</p>
+
+            <div style="background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); border-radius:14px; padding:16px; text-align:left; margin-bottom:24px;">
+                <div style="font-size:0.75rem; font-weight:800; color:#FCA5A5; text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;">
+                    Failure Reason
+                </div>
+                <div style="font-size:0.9rem; color:#FFF; font-weight:600;" id="failedReasonText">
+                    Transaction was cancelled or declined.
+                </div>
+            </div>
+
+            <div style="display:flex; gap:12px;">
+                <button type="button" class="btn-pay-hero" id="btnRetryPayment" onclick="retryLastPayment()" style="flex:1; padding:13px; background:linear-gradient(135deg, #6366F1, #4F46E5); box-shadow:0 8px 25px rgba(99,102,241,0.35);">
+                    <i class="fa-solid fa-rotate-right"></i> Retry Payment
+                </button>
+                <button type="button" class="btn-print" onclick="closeFailedModal()" style="padding:13px 20px;">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast-notification" id="toast"></div>
 
@@ -1236,6 +1297,7 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
         }
 
         let currentWalletBal = <?= (float)$wallet_balance ?>;
+        let lastAttemptAmount = 5000;
 
         function openTopUpModal() {
             document.getElementById('topUpModal').classList.add('active');
@@ -1244,6 +1306,33 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
 
         function closeTopUpModal() {
             document.getElementById('topUpModal').classList.remove('active');
+        }
+
+        function showPaymentSuccessModal(data) {
+            closeTopUpModal();
+            closeFailedModal();
+            document.getElementById('succTxnId').innerText = data.payment_id || 'N/A';
+            document.getElementById('succAmount').innerText = '+₹' + parseFloat(data.amount || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('succNewBalance').innerText = '₹' + parseFloat(data.new_balance || 0).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            document.getElementById('paymentSuccessModal').classList.add('active');
+        }
+
+        function showPaymentFailedModal(reason, amt) {
+            if (amt) lastAttemptAmount = amt;
+            closeTopUpModal();
+            document.getElementById('failedReasonText').innerText = reason || 'Payment was cancelled or declined by user/bank.';
+            
+            document.getElementById('paymentFailedModal').classList.add('active');
+        }
+
+        function closeFailedModal() {
+            document.getElementById('paymentFailedModal').classList.remove('active');
+        }
+
+        function retryLastPayment() {
+            closeFailedModal();
+            openTopUpModal();
         }
 
         function selectChip(amount, btn) {
@@ -1257,6 +1346,7 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
             const input = document.getElementById('customTopupInput');
             let amt = parseFloat(input.value) || 0;
             if (amt < 0) amt = 0;
+            lastAttemptAmount = amt;
 
             document.getElementById('modalAddAmount').innerText = '+₹' + amt.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
@@ -1282,6 +1372,7 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 showToast("Minimum top-up amount is ₹500.", true);
                 return;
             }
+            lastAttemptAmount = amt;
 
             const btn = document.getElementById('btnCustomPay');
             if (btn) {
@@ -1318,6 +1409,13 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 }
             };
             const rzp = new Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                let failDesc = 'Payment failed or cancelled.';
+                if (response.error && response.error.description) {
+                    failDesc = response.error.description;
+                }
+                showPaymentFailedModal(failDesc, amt);
+            });
             rzp.open();
         }
 
@@ -1328,6 +1426,9 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Opening Secure Checkout...';
             }
 
+            const amt = <?= (float)$activation_deposit_required ?>;
+            lastAttemptAmount = amt;
+
             const options = {
                 "key": "<?= RAZORPAY_ACTIVE_KEY ?>",
                 "amount": <?= (int)($activation_deposit_required * 100) ?>,
@@ -1336,7 +1437,7 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 "description": "B2B Partner API Integration & Activation Fee",
                 "handler": function (response) {
                     if (response.razorpay_payment_id) {
-                        verifyPartnerPayment(response.razorpay_payment_id, <?= (float)$activation_deposit_required ?>);
+                        verifyPartnerPayment(response.razorpay_payment_id, amt);
                     }
                 },
                 "modal": {
@@ -1357,6 +1458,13 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 }
             };
             const rzp = new Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                let failDesc = 'Payment failed or cancelled.';
+                if (response.error && response.error.description) {
+                    failDesc = response.error.description;
+                }
+                showPaymentFailedModal(failDesc, amt);
+            });
             rzp.open();
         }
 
@@ -1396,13 +1504,18 @@ $invoice_no = 'INV-RENTOX-100' . $p['id'];
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showToast(data.message, false);
-                        setTimeout(() => location.reload(), 1500);
+                        showPaymentSuccessModal({
+                            payment_id: paymentId,
+                            amount: topupAmt,
+                            new_balance: data.new_balance || (currentWalletBal + topupAmt)
+                        });
                     } else {
-                        showToast(data.message || 'Payment verification failed', true);
+                        showPaymentFailedModal(data.message || 'Payment verification failed on server.', topupAmt);
                     }
                 })
-                .catch(err => showToast('Error: ' + err.message, true));
+                .catch(err => {
+                    showPaymentFailedModal('Network error during verification: ' + err.message, topupAmt);
+                });
         }
     </script>
 </body>
