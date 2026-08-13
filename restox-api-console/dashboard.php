@@ -866,7 +866,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
             position: relative;
             overflow: hidden;
         }
-        .activation-hero-card::before {
+        .activation-hero-card.active-state-card {
+            padding: 32px 36px;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 36px;
+            align-items: start;
+        }
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; height: 3px;
@@ -1839,17 +1844,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                         <!-- 7. Paid / Active State Hero Card -->
                         <div class="activation-hero-card active-state-card">
                             <div class="hero-card-left">
-                                <div class="access-type-tag tag-active">
-                                    <i class="fa-solid fa-circle-check" style="color:var(--success-color);"></i> Production API Active
+                                <div class="access-type-tag tag-active" style="margin-bottom:14px;">
+                                    <i class="fa-solid fa-circle" style="color:var(--success-color); font-size:0.5rem;"></i> Production API Active
                                 </div>
-                                <h2 class="hero-card-heading">API Access Activated</h2>
-                                <p class="hero-card-text">
+                                <h2 class="hero-card-heading" style="font-size:1.45rem; font-weight:800; color:#FFF; margin-bottom:6px;">API Access Activated</h2>
+                                <p class="hero-card-text" style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:20px;">
                                     Your production API access is now active.
                                 </p>
 
-                                <div style="margin:20px 0;">
-                                    <span class="info-label" style="display:block; margin-bottom:8px;">Production API Key</span>
-                                    <div class="key-input-wrapper" style="max-width:440px;">
+                                <div style="margin:0 0 6px;">
+                                    <span class="info-label" style="display:block; margin-bottom:6px; font-size:0.75rem; font-weight:700; letter-spacing:0.8px;">PRODUCTION API KEY</span>
+                                    <div class="key-input-wrapper" style="max-width:100%; border:1px solid rgba(255,255,255,0.12); background:rgba(7,11,20,0.6); padding:10px 14px; border-radius:10px;">
                                         <code class="key-content" id="overviewApiKeyPlain">••••••••••••••••••••••••••••••••••••••••</code>
                                         <div class="key-actions">
                                             <button class="btn-key-icon" onclick="toggleKeyVisibility('overviewApiKeyPlain', '<?= htmlspecialchars($p['api_key']) ?>', this)" title="Show/Hide">
@@ -1861,24 +1866,27 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
                                         </div>
                                     </div>
                                 </div>
+                                <p style="font-size:0.75rem; color:#64748B; margin-bottom:22px; line-height:1.4;">
+                                    Keep your production API key private and never expose it in client-side applications.
+                                </p>
 
-                                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:24px;">
-                                    <button class="btn-primary-action" onclick="switchTab('#keys')">
+                                <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px;">
+                                    <button class="btn-primary-action" onclick="switchTab('#keys')" style="padding:11px 22px; font-size:0.88rem;">
                                         <i class="fa-solid fa-key"></i> View API Keys
                                     </button>
-                                    <button class="btn-outline-action" onclick="switchTab('#docs')">
+                                    <button class="btn-outline-action" onclick="switchTab('#docs')" style="padding:11px 22px; font-size:0.88rem;">
                                         <i class="fa-solid fa-book"></i> View Documentation
                                     </button>
                                 </div>
 
-                                <div class="price-note" style="margin-top:20px; font-size:0.85rem; color:var(--text-secondary);">
-                                    Activated on: <strong><?= !empty($p['paid_at']) ? date('d M Y', strtotime($p['paid_at'])) : date('d M Y') ?></strong>
+                                <div class="price-note" style="font-size:0.82rem; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-clock-rotate-left" style="color:var(--primary-accent); font-size:0.8rem;"></i> Activated on: <strong><?= !empty($p['paid_at']) ? date('d M Y', strtotime($p['paid_at'])) : date('d M Y') ?></strong>
                                 </div>
                             </div>
 
                             <div class="hero-card-right">
-                                <h4 class="benefits-title">What's included:</h4>
-                                <ul class="benefits-list">
+                                <h3 class="benefits-title" style="font-size:1rem; font-weight:700; color:#FFF; margin-bottom:16px;">Production Access Includes</h3>
+                                <ul class="benefits-list" style="display:flex; flex-direction:column; gap:10px;">
                                     <li><i class="fa-solid fa-circle-check"></i> Production API access (Active)</li>
                                     <li><i class="fa-solid fa-circle-check"></i> Live API keys</li>
                                     <li><i class="fa-solid fa-circle-check"></i> API authentication</li>
