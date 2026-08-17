@@ -115,7 +115,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vehicle_type = isset($data['vehicle_type']) ? mysqli_real_escape_string($conn, $data['vehicle_type']) : null;
     $vehicle_name = isset($data['vehicle_name']) ? mysqli_real_escape_string($conn, $data['vehicle_name']) : null;
     $fuel_type = isset($data['fuel_type']) ? mysqli_real_escape_string($conn, $data['fuel_type']) : null;
-    $status = mysqli_real_escape_string($conn, $data['status']);
+    $status = isset($data['status']) && !empty($data['status']) ? mysqli_real_escape_string($conn, $data['status']) : 'active';
+    if ($status === 'filled' || $status === 'pending') {
+        $status = 'active';
+    }
     $rc_no = isset($data['rc_no']) ? mysqli_real_escape_string($conn, $data['rc_no']) : null;
     $rc_name = isset($data['rc_name']) ? mysqli_real_escape_string($conn, $data['rc_name']) : null;
     $rc_manufecture_date = isset($data['rc_manufecture_date']) ? validateDate($data['rc_manufecture_date']) : null;

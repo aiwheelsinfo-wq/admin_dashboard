@@ -132,17 +132,18 @@ try {
         sendJsonResponse("error", "Phone number is required");
     }
 
-    // Override status for Vendor
+    // Override status for Vendor & Driver (Auto Approve)
     if (strcasecmp($userType, 'Vendor') === 0) {
         $status = 'active';
         $userType = 'vendor';
     } elseif (strcasecmp($userType, 'Driver') === 0) {
-        $status = 'filled';
+        $status = 'active';
         $userType = 'driver';
     } elseif ($vendor_number) {
-        $status = 'filled';
+        $status = 'active';
         $userType = 'driver';
     } else {
+        $status = 'active';
         $userType = strtolower($userType);
     }
 
