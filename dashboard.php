@@ -96,6 +96,10 @@ if (!isset($_SESSION['admin_id'])) {
     <i class="fas fa-tags me-2"></i> Car Categories
   </a>
 </li>
+                <li><a href="oneway_fare_management.php" id="oneway_fare_menu">
+    <i class="fas fa-route me-2"></i> One-Way Fare Settings
+  </a>
+</li>
                 <li><a href="discount_management.php" id="discount_management_menu">
     <i class="fas fa-percent me-2"></i> Discount Management
   </a>
