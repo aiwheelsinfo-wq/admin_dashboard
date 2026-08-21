@@ -30,7 +30,42 @@ if (isset($_POST['ajax_action']) && $_POST['ajax_action'] === 'simulate_fare') {
         exit();
     }
 
-    $result = OneWayFareCalculator::calculate($conn, $carTypeId, $distance, $pickup, $drop);
+    $overrides = [];
+    if (isset($_POST['driver_allowance_active'])) {
+        $overrides['driver_allowance_active'] = (int)$_POST['driver_allowance_active'];
+    }
+    if (isset($_POST['gst_active'])) {
+        $overrides['gst_active'] = (int)$_POST['gst_active'];
+    }
+    if (isset($_POST['gst_mode'])) {
+        $overrides['gst_mode'] = $_POST['gst_mode'];
+    }
+    if (isset($_POST['gst_percent'])) {
+        $overrides['gst_percent'] = (float)$_POST['gst_percent'];
+    }
+    if (isset($_POST['discount_active'])) {
+        $overrides['discount_active'] = (int)$_POST['discount_active'];
+    }
+    if (isset($_POST['discount_type'])) {
+        $overrides['discount_type'] = $_POST['discount_type'];
+    }
+    if (isset($_POST['discount_value'])) {
+        $overrides['discount_value'] = (float)$_POST['discount_value'];
+    }
+    if (isset($_POST['parking_active'])) {
+        $overrides['parking_active'] = (int)$_POST['parking_active'];
+    }
+    if (isset($_POST['default_parking_amount'])) {
+        $overrides['default_parking_amount'] = (float)$_POST['default_parking_amount'];
+    }
+    if (isset($_POST['toll_auto_estimate'])) {
+        $overrides['toll_auto_estimate'] = (int)$_POST['toll_auto_estimate'];
+    }
+    if (isset($_POST['toll_per_km_rate'])) {
+        $overrides['toll_per_km_rate'] = (float)$_POST['toll_per_km_rate'];
+    }
+
+    $result = OneWayFareCalculator::calculate($conn, $carTypeId, $distance, $pickup, $drop, $overrides);
     echo json_encode(['success' => true, 'data' => $result]);
     exit();
 }
@@ -97,7 +132,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
         $parkingActive, $defaultParking, $tollActive, $tollRate, $adminId, $submittedVersion
     );
 
-    if ($stmt->execute() && $stmt->affected_rows > 0) {
+    if ($stmt->execute()) {
         FareCache::flushAll();
 
         // Fetch new values
@@ -107,7 +142,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
         OneWayAuditLogger::record($conn, (string)$adminId, 'global_settings_update', 1, $prevRow, $newRow);
         $_SESSION['success_msg'] = "One-Way Global Fare Settings updated successfully!";
     } else {
-        $_SESSION['error_msg'] = "Conflict detected! Settings were modified by another admin session. Please reload and try again.";
+        $_SESSION['error_msg'] = "Failed to update settings: " . $conn->error;
     }
     $stmt->close();
     header("Location: oneway_fare_management.php");
@@ -449,7 +484,7 @@ if ($auditRes) {
                             </div>
                             <p class="text-muted small mb-2">When OFF, quotes automatically fallback to legacy tripCostTable with zero downtime.</p>
                         </div>
-                        <span class="badge <?= $settings['master_engine_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center">
+                        <span class="badge <?= $settings['master_engine_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="masterBadge">
                             <?= $settings['master_engine_active'] ? 'New Engine Enabled' : 'Fallback Active' ?>
                         </span>
                     </div>
@@ -467,7 +502,7 @@ if ($auditRes) {
                             </div>
                             <p class="text-muted small mb-2">Toggle driver allowance inclusion. Short & Long rates are customized per vehicle below.</p>
                         </div>
-                        <span class="badge <?= $settings['driver_allowance_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center">
+                        <span class="badge <?= $settings['driver_allowance_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="allowanceBadge">
                             <?= $settings['driver_allowance_active'] ? 'Allowance Enabled' : 'Allowance Excluded' ?>
                         </span>
                     </div>
@@ -490,11 +525,11 @@ if ($auditRes) {
                                 </select>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text">Rate %</span>
-                                    <input type="number" step="0.1" min="0" max="28" name="gst_percent" class="form-control" value="<?= htmlspecialchars($settings['gst_percent']) ?>">
+                                    <input type="number" step="0.1" min="0" max="28" name="gst_percent" id="gstPercentInput" class="form-control" value="<?= htmlspecialchars($settings['gst_percent']) ?>">
                                 </div>
                             </div>
                         </div>
-                        <span class="badge <?= $settings['gst_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center">
+                        <span class="badge <?= $settings['gst_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="gstBadge">
                             <?= $settings['gst_active'] ? 'GST Active (' . $settings['gst_percent'] . '%)' : 'Tax Exempt (0%)' ?>
                         </span>
                     </div>
@@ -512,17 +547,17 @@ if ($auditRes) {
                             </div>
                             <div class="input-group input-group-sm mb-2">
                                 <span class="input-group-text">Parking ₹</span>
-                                <input type="number" step="10" min="0" name="default_parking_amount" class="form-control" value="<?= htmlspecialchars($settings['default_parking_amount']) ?>">
+                                <input type="number" step="10" min="0" name="default_parking_amount" id="parkingAmountInput" class="form-control" value="<?= htmlspecialchars($settings['default_parking_amount']) ?>">
                             </div>
                             <div class="input-group input-group-sm">
                                 <span class="input-group-text">Toll/KM ₹</span>
-                                <input type="number" step="0.25" min="0" name="toll_per_km_rate" class="form-control" value="<?= htmlspecialchars($settings['toll_per_km_rate']) ?>">
+                                <input type="number" step="0.25" min="0" name="toll_per_km_rate" id="tollRateInput" class="form-control" value="<?= htmlspecialchars($settings['toll_per_km_rate']) ?>">
                                 <div class="input-group-text bg-white">
-                                    <input class="form-check-input mt-0" type="checkbox" name="toll_auto_estimate" title="Auto Toll" <?= $settings['toll_auto_estimate'] ? 'checked' : '' ?>>
+                                    <input class="form-check-input mt-0" type="checkbox" name="toll_auto_estimate" id="tollSwitch" title="Auto Toll" <?= $settings['toll_auto_estimate'] ? 'checked' : '' ?>>
                                 </div>
                             </div>
                         </div>
-                        <span class="badge <?= $settings['parking_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center mt-2">
+                        <span class="badge <?= $settings['parking_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center mt-2" id="parkingBadge">
                             <?= $settings['parking_active'] ? 'Parking ₹' . $settings['default_parking_amount'] : 'No Default Parking' ?>
                         </span>
                     </div>
@@ -818,6 +853,43 @@ if ($auditRes) {
             new bootstrap.Modal(document.getElementById('vehicleModal')).show();
         }
 
+        function updateUIBadges() {
+            const allowanceOn = document.getElementById('allowanceSwitch').checked;
+            const allowBadge = document.getElementById('allowanceBadge');
+            if (allowBadge) {
+                allowBadge.className = 'badge ' + (allowanceOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
+                allowBadge.innerText = allowanceOn ? 'Allowance Enabled' : 'Allowance Excluded';
+            }
+
+            const masterOn = document.getElementById('masterSwitch').checked;
+            const masterBadge = document.getElementById('masterBadge');
+            if (masterBadge) {
+                masterBadge.className = 'badge ' + (masterOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
+                masterBadge.innerText = masterOn ? 'New Engine Enabled' : 'Fallback Active';
+            }
+
+            const gstOn = document.getElementById('gstSwitch').checked;
+            const gstBadge = document.getElementById('gstBadge');
+            const gstPercent = document.getElementById('gstPercentInput') ? document.getElementById('gstPercentInput').value : '5';
+            if (gstBadge) {
+                gstBadge.className = 'badge ' + (gstOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
+                gstBadge.innerText = gstOn ? `GST Active (${gstPercent}%)` : 'Tax Exempt (0%)';
+            }
+
+            const parkingOn = document.getElementById('parkingSwitch').checked;
+            const parkBadge = document.getElementById('parkingBadge');
+            const parkAmount = document.getElementById('parkingAmountInput') ? document.getElementById('parkingAmountInput').value : '0';
+            if (parkBadge) {
+                parkBadge.className = 'badge ' + (parkingOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center mt-2';
+                parkBadge.innerText = parkingOn ? `Parking ₹${parkAmount}` : 'No Default Parking';
+            }
+        }
+
+        document.querySelectorAll('.form-check-input, .form-select, input[type="number"]').forEach(el => {
+            el.addEventListener('change', updateUIBadges);
+            el.addEventListener('input', updateUIBadges);
+        });
+
         function runSimulation() {
             const carTypeId = document.getElementById('simCarType').value;
             const distance = document.getElementById('simDistance').value;
@@ -833,6 +905,17 @@ if ($auditRes) {
             formData.append('distance_km', distance);
             formData.append('pickup_address', pickup);
             formData.append('drop_address', drop);
+
+            // Pass current on-screen switch states live
+            formData.append('driver_allowance_active', document.getElementById('allowanceSwitch').checked ? 1 : 0);
+            formData.append('gst_active', document.getElementById('gstSwitch').checked ? 1 : 0);
+            formData.append('gst_mode', document.getElementById('gstModeSelect').value);
+            formData.append('gst_percent', document.getElementById('gstPercentInput') ? document.getElementById('gstPercentInput').value : 5.0);
+            formData.append('discount_active', document.getElementById('discountSwitch').checked ? 1 : 0);
+            formData.append('parking_active', document.getElementById('parkingSwitch').checked ? 1 : 0);
+            formData.append('default_parking_amount', document.getElementById('parkingAmountInput') ? document.getElementById('parkingAmountInput').value : 0.0);
+            formData.append('toll_auto_estimate', document.getElementById('tollSwitch').checked ? 1 : 0);
+            formData.append('toll_per_km_rate', document.getElementById('tollRateInput') ? document.getElementById('tollRateInput').value : 2.25);
 
             fetch('oneway_fare_management.php', {
                 method: 'POST',
@@ -853,7 +936,7 @@ if ($auditRes) {
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Driver Allowance (${d.driver_allowance_active ? 'Active' : 'Disabled'}):</span>
-                            <span class="fw-semibold">₹${d.driver_allowance.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold ${d.driver_allowance_active ? '' : 'text-muted text-decoration-line-through'}">₹${d.driver_allowance.toLocaleString('en-IN')}</span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Estimated Toll (${d.chargeable_km} KM):</span>
