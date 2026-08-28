@@ -10,13 +10,13 @@ require_once __DIR__ . '/../2025/FareCache.php';
 require_once __DIR__ . '/../2025/OneWayAuditLogger.php';
 require_once __DIR__ . '/../2025/OneWayFareCalculator.php';
 
-// Auto-run migrations to ensure isolated tables exist
+// Auto-run migrations to ensure isolated tables & columns exist
 MigrationRunner::run($conn);
 
 $adminId = $_SESSION['admin_id'] ?? 'admin';
 
 // -------------------------------------------------------------
-// AJAX: Live Simulator API
+// AJAX: Live Simulator API with One-Way Dynamic Pricing
 // -------------------------------------------------------------
 if (isset($_POST['ajax_action']) && $_POST['ajax_action'] === 'simulate_fare') {
     header('Content-Type: application/json');
@@ -65,6 +65,20 @@ if (isset($_POST['ajax_action']) && $_POST['ajax_action'] === 'simulate_fare') {
         $overrides['toll_per_km_rate'] = (float)$_POST['toll_per_km_rate'];
     }
 
+    // Dynamic Pricing Overrides
+    if (isset($_POST['dynamic_pricing_active'])) {
+        $overrides['dynamic_pricing_active'] = (int)$_POST['dynamic_pricing_active'];
+    }
+    if (isset($_POST['oneway_pricing_sensitivity'])) {
+        $overrides['oneway_pricing_sensitivity'] = (float)$_POST['oneway_pricing_sensitivity'];
+    }
+    if (isset($_POST['simulated_reference_demand']) && $_POST['simulated_reference_demand'] !== '') {
+        $overrides['simulated_reference_demand'] = (float)$_POST['simulated_reference_demand'];
+    }
+    if (isset($_POST['simulated_today_demand']) && $_POST['simulated_today_demand'] !== '') {
+        $overrides['simulated_today_demand'] = (float)$_POST['simulated_today_demand'];
+    }
+
     $result = OneWayFareCalculator::calculate($conn, $carTypeId, $distance, $pickup, $drop, $overrides);
     echo json_encode(['success' => true, 'data' => $result]);
     exit();
@@ -96,8 +110,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
     $tollActive = isset($_POST['toll_auto_estimate']) ? 1 : 0;
     $tollRate = (float)($_POST['toll_per_km_rate'] ?? 2.25);
 
+    // Dynamic Pricing Controls
+    $dynamicPricingActive = isset($_POST['dynamic_pricing_active']) ? 1 : 0;
+    $sensitivity = (float)($_POST['oneway_pricing_sensitivity'] ?? 50.0);
+    $outlierThreshold = (float)($_POST['outlier_threshold_pct'] ?? 50.0);
+    $lookbackDays = (int)($_POST['historical_lookback_days'] ?? 14);
+
     // Validation
-    if ($gstPercent < 0 || $gstPercent > 28 || $discountValue < 0 || $tollRate < 0 || $defaultParking < 0) {
+    if ($gstPercent < 0 || $gstPercent > 28 || $discountValue < 0 || $tollRate < 0 || $defaultParking < 0 || $sensitivity < 0 || $sensitivity > 100) {
         $_SESSION['error_msg'] = "Invalid input values. Please ensure all rates are within standard bounds.";
         header("Location: oneway_fare_management.php");
         exit();
@@ -120,16 +140,22 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
             `default_parking_amount` = ?,
             `toll_auto_estimate` = ?,
             `toll_per_km_rate` = ?,
+            `dynamic_pricing_active` = ?,
+            `oneway_pricing_sensitivity` = ?,
+            `outlier_threshold_pct` = ?,
+            `historical_lookback_days` = ?,
             `row_version` = `row_version` + 1,
             `updated_by` = ?
         WHERE `id` = 1 AND `row_version` = ?"
     );
 
     $stmt->bind_param(
-        "iiisdsddddsididsi",
+        "iiisdsddddsididdddisi",
         $masterActive, $allowanceActive, $discountActive, $discountType, $discountValue,
         $gstActive, $gstMode, $gstPercent, $cgstPercent, $sgstPercent, $igstPercent,
-        $parkingActive, $defaultParking, $tollActive, $tollRate, $adminId, $submittedVersion
+        $parkingActive, $defaultParking, $tollActive, $tollRate,
+        $dynamicPricingActive, $sensitivity, $outlierThreshold, $lookbackDays,
+        $adminId, $submittedVersion
     );
 
     if ($stmt->execute()) {
@@ -140,7 +166,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
         $newRow = $newRes ? mysqli_fetch_assoc($newRes) : [];
 
         OneWayAuditLogger::record($conn, (string)$adminId, 'global_settings_update', 1, $prevRow, $newRow);
-        $_SESSION['success_msg'] = "One-Way Global Fare Settings updated successfully!";
+        $_SESSION['success_msg'] = "One-Way Global Fare & Dynamic Pricing Settings updated successfully!";
     } else {
         $_SESSION['error_msg'] = "Failed to update settings: " . $conn->error;
     }
@@ -160,6 +186,8 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['add_vehicle_rule', '
     $allowShort = (float)($_POST['driver_allowance_short'] ?? 300.0);
     $allowLong = (float)($_POST['driver_allowance_long'] ?? 400.0);
     $threshold = (float)($_POST['distance_threshold_km'] ?? 200.0);
+    $minRate = (float)($_POST['min_rate'] ?? 0.0);
+    $maxRate = (float)($_POST['max_rate'] ?? 0.0);
     $displayOrder = (int)($_POST['display_order'] ?? 1);
     $submittedVersion = (int)($_POST['row_version'] ?? 1);
 
@@ -184,11 +212,13 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['add_vehicle_rule', '
                     `driver_allowance_short` = ?,
                     `driver_allowance_long` = ?,
                     `distance_threshold_km` = ?,
+                    `min_rate` = ?,
+                    `max_rate` = ?,
                     `display_order` = ?,
                     `row_version` = `row_version` + 1
                 WHERE `id` = ? AND `row_version` = ?"
             );
-            $stmt->bind_param("isdddddiii", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $displayOrder, $ruleId, $submittedVersion);
+            $stmt->bind_param("isdddddddiii", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $minRate, $maxRate, $displayOrder, $ruleId, $submittedVersion);
             if ($stmt->execute() && $stmt->affected_rows > 0) {
                 FareCache::flushAll();
                 $newRes = mysqli_query($conn, "SELECT * FROM `one_way_vehicle_rules` WHERE `id` = $ruleId LIMIT 1");
@@ -202,19 +232,17 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['add_vehicle_rule', '
         } else {
             $stmt = $conn->prepare(
                 "INSERT INTO `one_way_vehicle_rules` 
-                (`car_type_id`, `car_type_label`, `km_rate`, `min_distance_km`, `driver_allowance_short`, `driver_allowance_long`, `distance_threshold_km`, `is_active`, `display_order`, `row_version`)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, 1)
-                ON DUPLICATE KEY UPDATE 
-                `km_rate` = VALUES(`km_rate`), `min_distance_km` = VALUES(`min_distance_km`), `driver_allowance_short` = VALUES(`driver_allowance_short`), `driver_allowance_long` = VALUES(`driver_allowance_long`)"
+                    (`car_type_id`, `car_type_label`, `km_rate`, `min_distance_km`, `driver_allowance_short`, `driver_allowance_long`, `distance_threshold_km`, `min_rate`, `max_rate`, `display_order`, `is_active`, `row_version`) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)"
             );
-            $stmt->bind_param("isdddddi", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $displayOrder);
+            $stmt->bind_param("isdddddddi", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $minRate, $maxRate, $displayOrder);
             if ($stmt->execute()) {
                 FareCache::flushAll();
-                $newId = $stmt->insert_id ?: $carTypeId;
-                OneWayAuditLogger::record($conn, (string)$adminId, 'vehicle_rule_create', (int)$newId, [], ['car_type' => $catLabel, 'km_rate' => $kmRate]);
-                $_SESSION['success_msg'] = "Vehicle rate rule for {$catLabel} saved successfully!";
+                $newId = $stmt->insert_id;
+                OneWayAuditLogger::record($conn, (string)$adminId, 'vehicle_rule_create', $newId, [], ['car_type_id' => $carTypeId, 'km_rate' => $kmRate]);
+                $_SESSION['success_msg'] = "New vehicle rule for {$catLabel} created successfully!";
             } else {
-                $_SESSION['error_msg'] = "Database error: " . $conn->error;
+                $_SESSION['error_msg'] = "Error creating rule: " . $conn->error;
             }
             $stmt->close();
         }
@@ -226,10 +254,10 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['add_vehicle_rule', '
 // -------------------------------------------------------------
 // 3. Action: Toggle Vehicle Rule Status (Active / Inactive)
 // -------------------------------------------------------------
-if (isset($_GET['action']) && in_array($_GET['action'], ['activate_vehicle', 'deactivate_vehicle']) && isset($_GET['id'])) {
-    $ruleId = (int)$_GET['id'];
-    $newStatus = ($_GET['action'] === 'activate_vehicle') ? 1 : 0;
-    
+if (isset($_GET['action']) && in_array($_GET['action'], ['activate_vehicle', 'deactivate_vehicle'])) {
+    $ruleId = (int)($_GET['id'] ?? 0);
+    $newStatus = $_GET['action'] === 'activate_vehicle' ? 1 : 0;
+
     $prevRes = mysqli_query($conn, "SELECT * FROM `one_way_vehicle_rules` WHERE `id` = $ruleId LIMIT 1");
     $prevRow = $prevRes ? mysqli_fetch_assoc($prevRes) : [];
 
@@ -272,16 +300,19 @@ if ($auditRes) {
         $auditLogs[] = $row;
     }
 }
+
+// Live Dynamic Pricing Baseline Calculation for Admin Display
+$liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $settings, $rules[0] ?? [], 1500.0);
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>One-Way Fare Management | Rentox Admin</title>
+    <title>One-Way Dynamic Fare Management | Rentox Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #1E3A8A;
@@ -313,7 +344,7 @@ if ($auditRes) {
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: 14px;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             transition: all 0.2s ease;
         }
@@ -326,10 +357,10 @@ if ($auditRes) {
         }
 
         .engine-banner {
-            background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
+            background: linear-gradient(135deg, #0F172A 0%, #1E3A8A 50%, #3B82F6 100%);
             color: white;
-            border-radius: 12px;
-            padding: 1.5rem;
+            border-radius: 14px;
+            padding: 1.6rem;
         }
 
         .toggle-card {
@@ -356,7 +387,7 @@ if ($auditRes) {
         .badge-active {
             background-color: #DCFCE7;
             color: #166534;
-            font-weight: 600;
+            font-weight: 700;
             padding: 0.35rem 0.65rem;
             border-radius: 20px;
         }
@@ -371,6 +402,19 @@ if ($auditRes) {
         .table > :not(caption) > * > * {
             padding: 0.9rem 1rem;
             vertical-align: middle;
+        }
+
+        .metric-box {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+        }
+        .metric-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary);
         }
 
         .simulator-box {
@@ -390,9 +434,19 @@ if ($auditRes) {
             display: flex;
             justify-content: space-between;
             padding: 0.8rem 0 0 0;
-            font-size: 1.15rem;
+            font-size: 1.2rem;
             font-weight: 800;
             color: var(--primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .explain-card {
+            background: #EFF6FF;
+            border-left: 4px solid #3B82F6;
+            border-radius: 0 10px 10px 0;
+            padding: 1rem 1.25rem;
+            font-size: 0.88rem;
+            color: #1E3A8A;
         }
     </style>
 </head>
@@ -439,13 +493,16 @@ if ($auditRes) {
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div>
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <h4 class="fw-bold mb-0 text-white">One-Way Dynamic Fare Engine (v2)</h4>
+                        <h4 class="fw-bold mb-0 text-white">One-Way Dynamic Pricing & Fare Engine (v2.1)</h4>
                         <span class="badge <?= $settings['master_engine_active'] ? 'bg-success' : 'bg-secondary' ?> px-3 py-1">
-                            <?= $settings['master_engine_active'] ? 'ACTIVE (V2 ENGINE)' : 'DISABLED (FALLBACK)' ?>
+                            <?= $settings['master_engine_active'] ? 'ENGINE ACTIVE' : 'DISABLED (FALLBACK)' ?>
+                        </span>
+                        <span class="badge <?= !empty($settings['dynamic_pricing_active']) ? 'bg-warning text-dark' : 'bg-light text-muted' ?> px-3 py-1">
+                            <i class="fa-solid fa-chart-line me-1"></i><?= !empty($settings['dynamic_pricing_active']) ? 'DYNAMIC PRICING ON' : 'DYNAMIC OFF' ?>
                         </span>
                     </div>
                     <p class="mb-0 text-white-50 fs-6">
-                        Isolated pricing rules for one-way trips with granular control over driver allowances, taxes, discounts, and parking.
+                        Supply-demand elastic pricing exclusively for <strong>One-Way trips</strong>. Round-Trip, Local Taxi & Local Duty remain 100% isolated.
                     </p>
                 </div>
                 <div class="d-flex gap-2">
@@ -453,8 +510,64 @@ if ($auditRes) {
                         <i class="fa-solid fa-clock-rotate-left me-1"></i> Audit Logs
                     </button>
                     <a href="#simulatorSection" class="btn btn-warning fw-bold px-3 text-dark">
-                        <i class="fa-solid fa-bolt me-1"></i> Test Live Simulator
+                        <i class="fa-solid fa-bolt me-1"></i> Live Simulator
                     </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🌟 ONE-WAY LIVE DEMAND & DYNAMIC RATE MONITOR WIDGET -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Live One-Way Demand & Dynamic Calculation Breakdown</h5>
+                    <small class="text-muted">Real-time supply vs demand metrics calculated from historical non-outlier One-Way bookings</small>
+                </div>
+                <span class="badge bg-primary px-3 py-1.5"><i class="fa-solid fa-clock me-1"></i> Live Metrics</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="metric-box">
+                            <small class="text-muted text-uppercase fw-bold d-block">Reference Demand</small>
+                            <span class="metric-val"><?= number_format($liveDemandMetrics['reference_demand'], 4) ?></span>
+                            <small class="text-muted d-block mt-0.5">Historical clean avg</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-box">
+                            <small class="text-muted text-uppercase fw-bold d-block">Today's Demand</small>
+                            <span class="metric-val text-info"><?= number_format($liveDemandMetrics['today_demand'], 4) ?></span>
+                            <small class="text-muted d-block mt-0.5">Bookings / Cabs ratio</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-box">
+                            <small class="text-muted text-uppercase fw-bold d-block">Demand Change %</small>
+                            <span class="metric-val <?= $liveDemandMetrics['demand_change_pct'] >= 0 ? 'text-success' : 'text-danger' ?>">
+                                <?= ($liveDemandMetrics['demand_change_pct'] >= 0 ? '+' : '') . number_format($liveDemandMetrics['demand_change_pct'], 2) ?>%
+                            </span>
+                            <small class="text-muted d-block mt-0.5">Ratio: <?= number_format($liveDemandMetrics['demand_ratio'], 4) ?></small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-box">
+                            <small class="text-muted text-uppercase fw-bold d-block">Price Adjustment %</small>
+                            <span class="metric-val <?= $liveDemandMetrics['price_adjustment_pct'] >= 0 ? 'text-success' : 'text-danger' ?>">
+                                <?= ($liveDemandMetrics['price_adjustment_pct'] >= 0 ? '+' : '') . number_format($liveDemandMetrics['price_adjustment_pct'], 2) ?>%
+                            </span>
+                            <small class="text-muted d-block mt-0.5">At <?= $liveDemandMetrics['pricing_sensitivity'] ?>% Sensitivity</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plain-English Explainability Box -->
+                <div class="explain-card">
+                    <div class="d-flex align-items-center gap-2 mb-1 fw-bold">
+                        <i class="fa-solid fa-circle-info text-primary"></i>
+                        <span>Why did the One-Way price change?</span>
+                    </div>
+                    <div><?= htmlspecialchars($liveDemandMetrics['explanation_text']) ?></div>
                 </div>
             </div>
         </div>
@@ -465,10 +578,49 @@ if ($auditRes) {
             <input type="hidden" name="row_version" value="<?= (int)($settings['row_version'] ?? 1) ?>">
 
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-sliders me-2 text-primary"></i>Global Control Toggles</h5>
+                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-sliders me-2 text-primary"></i>Global Control Toggles & Dynamic Pricing Settings</h5>
                 <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4">
                     <i class="fa-solid fa-floppy-disk me-1"></i> Save All Settings
                 </button>
+            </div>
+
+            <!-- Dynamic Pricing Configuration Card -->
+            <div class="card mb-4 p-3 shadow-sm bg-white border-primary">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-chart-line fs-3 text-primary"></i>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">One-Way Dynamic Pricing</h6>
+                                <small class="text-muted">Supply-Demand Automatic Elasticity</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="dynamic_pricing_active" id="dynamicPricingSwitch" <?= !empty($settings['dynamic_pricing_active']) ? 'checked' : '' ?>>
+                            <label class="form-check-label fw-bold small text-dark" for="dynamicPricingSwitch">Enable Engine</label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Pricing Sensitivity: <span class="text-primary fw-bold" id="sensValDisplay"><?= htmlspecialchars($settings['oneway_pricing_sensitivity'] ?? 50) ?>%</span></label>
+                        <input type="range" class="form-range" min="0" max="100" step="5" name="oneway_pricing_sensitivity" id="sensitivityRange" value="<?= htmlspecialchars($settings['oneway_pricing_sensitivity'] ?? 50) ?>" oninput="document.getElementById('sensValDisplay').innerText = this.value + '%'">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">Outlier Threshold (%)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="5" min="10" max="100" name="outlier_threshold_pct" id="outlierInput" class="form-control" value="<?= htmlspecialchars($settings['outlier_threshold_pct'] ?? 50) ?>">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">Lookback (Days)</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" min="3" max="60" name="historical_lookback_days" id="lookbackInput" class="form-control" value="<?= htmlspecialchars($settings['historical_lookback_days'] ?? 14) ?>">
+                            <span class="input-group-text">Days</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="row g-3 mb-4">
@@ -602,8 +754,8 @@ if ($auditRes) {
         <div class="card shadow-sm mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-taxi me-2 text-primary"></i>Per-Vehicle Rate Configuration</h5>
-                    <small class="text-muted">Custom KM rate and driver allowance thresholds per car category</small>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-taxi me-2 text-primary"></i>Per-Vehicle Rate & Boundary Configuration</h5>
+                    <small class="text-muted">Custom Base KM rate, minimum floor, maximum ceiling & driver allowances per car category</small>
                 </div>
                 <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#vehicleModal" onclick="openAddModal()">
                     <i class="fa-solid fa-plus me-1"></i> Add Vehicle Rate
@@ -614,8 +766,9 @@ if ($auditRes) {
                     <thead class="table-light">
                         <tr class="text-uppercase small text-muted">
                             <th>Vehicle Category</th>
-                            <th>Rate / KM</th>
-                            <th>Min Distance</th>
+                            <th>Base Rate / KM</th>
+                            <th>Min Floor (₹)</th>
+                            <th>Max Ceiling (₹)</th>
                             <th>Short Allowance (< 200 KM)</th>
                             <th>Long Allowance (≥ 200 KM)</th>
                             <th>Status</th>
@@ -624,7 +777,7 @@ if ($auditRes) {
                     </thead>
                     <tbody>
                         <?php if (empty($rules)): ?>
-                            <tr><td colspan="7" class="text-center py-4 text-muted">No vehicle rules configured yet.</td></tr>
+                            <tr><td colspan="8" class="text-center py-4 text-muted">No vehicle rules configured yet.</td></tr>
                         <?php else: ?>
                             <?php foreach ($rules as $r): ?>
                                 <tr>
@@ -635,7 +788,16 @@ if ($auditRes) {
                                     <td>
                                         <span class="fw-bold text-primary fs-6">₹<?= number_format($r['km_rate'], 2) ?></span> <span class="text-muted small">/ KM</span>
                                     </td>
-                                    <td><?= number_format($r['min_distance_km'], 0) ?> KM</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            <?= $r['min_rate'] > 0 ? '₹' . number_format($r['min_rate'], 2) : 'Auto (-20%)' ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            <?= $r['max_rate'] > 0 ? '₹' . number_format($r['max_rate'], 2) : 'Auto (+40%)' ?>
+                                        </span>
+                                    </td>
                                     <td><span class="badge bg-light text-dark border">₹<?= number_format($r['driver_allowance_short'], 0) ?></span></td>
                                     <td><span class="badge bg-light text-dark border">₹<?= number_format($r['driver_allowance_long'], 0) ?></span></td>
                                     <td>
@@ -667,15 +829,25 @@ if ($auditRes) {
             </div>
         </div>
 
-        <!-- ⚡ LIVE INTERACTIVE FARE SIMULATOR -->
+        <!-- ⚡ LIVE INTERACTIVE FARE & DYNAMIC DEMAND SIMULATOR -->
         <div class="card shadow-sm mb-4" id="simulatorSection">
-            <div class="card-header bg-light">
-                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bolt me-2 text-warning"></i>⚡ Live Interactive Fare Simulator</h5>
-                <small class="text-muted">Test real-time calculation and verify breakdowns before customer requests</small>
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bolt me-2 text-warning"></i>⚡ Live Interactive Dynamic Fare Simulator</h5>
+                    <small class="text-muted">Test real-time calculation and verify breakdowns with custom simulated demand and test presets</small>
+                </div>
+                <!-- Preset Test Case Quick Buttons -->
+                <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadTestPreset(1, 1.0, 1.0, 50)">Test 1 (Normal)</button>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="loadTestPreset(2, 1.0, 1.5, 50)">Test 2 (High +50%)</button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="loadTestPreset(3, 1.0, 0.7, 50)">Test 3 (Low -30%)</button>
+                    <button type="button" class="btn btn-outline-warning btn-sm text-dark" onclick="loadTestPreset(4, 1.0, 2.5, 50)">Test 4 (Max Cap)</button>
+                    <button type="button" class="btn btn-outline-info btn-sm text-dark" onclick="loadTestPreset(5, 1.0, 0.1, 50)">Test 5 (Min Floor)</button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="row g-3 mb-3">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <label class="form-label small fw-bold">Select Vehicle</label>
                         <select id="simCarType" class="form-select">
                             <?php foreach ($rules as $r): ?>
@@ -683,23 +855,31 @@ if ($auditRes) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Trip Distance (KM)</label>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Distance (KM)</label>
                         <input type="number" id="simDistance" class="form-control" value="250" min="1" step="1">
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label small fw-bold">Pickup Location</label>
-                        <input type="text" id="simPickup" class="form-control" value="Kochi, Kerala, India">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Simulated Ref Demand</label>
+                        <input type="number" step="0.05" id="simRefDemand" class="form-control" value="1.00">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Simulated Today Demand</label>
+                        <input type="number" step="0.05" id="simTodayDemand" class="form-control" value="1.50">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold">Pickup Location</label>
+                        <input type="text" id="simPickup" class="form-control" value="Mumbai, Maharashtra, India">
+                    </div>
+                    <div class="col-md-2">
                         <label class="form-label small fw-bold">Drop Location</label>
-                        <input type="text" id="simDrop" class="form-control" value="Trivandrum, Kerala, India">
+                        <input type="text" id="simDrop" class="form-control" value="Pune, Maharashtra, India">
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-end mb-3">
                     <button type="button" class="btn btn-warning fw-bold text-dark px-4 shadow-sm" onclick="runSimulation()">
-                        <i class="fa-solid fa-calculator me-1"></i> Calculate Test Fare
+                        <i class="fa-solid fa-calculator me-1"></i> Calculate Dynamic Fare
                     </button>
                 </div>
 
@@ -707,7 +887,7 @@ if ($auditRes) {
                 <div class="simulator-box" id="simResultBox">
                     <div class="text-center text-muted py-3">
                         <i class="fa-solid fa-arrow-pointer fs-3 mb-2"></i>
-                        <div>Click <strong>"Calculate Test Fare"</strong> above to see instant breakdown.</div>
+                        <div>Click <strong>"Calculate Dynamic Fare"</strong> or any test preset above to see instant breakdown.</div>
                     </div>
                 </div>
             </div>
@@ -745,6 +925,16 @@ if ($auditRes) {
                             <div class="col-6">
                                 <label class="form-label fw-semibold small">Min Distance (KM)</label>
                                 <input type="number" step="10" min="0" name="min_distance_km" id="modalMinDist" class="form-control" required value="100">
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Min Floor Rate ₹ (0 = Auto)</label>
+                                <input type="number" step="50" min="0" name="min_rate" id="modalMinRate" class="form-control" value="0">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold small">Max Ceiling Rate ₹ (0 = Auto)</label>
+                                <input type="number" step="50" min="0" name="max_rate" id="modalMaxRate" class="form-control" value="0">
                             </div>
                         </div>
                         <div class="row g-2 mb-3">
@@ -830,6 +1020,8 @@ if ($auditRes) {
             document.getElementById('modalTitle').innerText = 'Add New Vehicle Rate Rule';
             document.getElementById('modalKmRate').value = '13.0';
             document.getElementById('modalMinDist').value = '100';
+            document.getElementById('modalMinRate').value = '0';
+            document.getElementById('modalMaxRate').value = '0';
             document.getElementById('modalAllowShort').value = '300';
             document.getElementById('modalAllowLong').value = '400';
             document.getElementById('modalThreshold').value = '200';
@@ -844,6 +1036,8 @@ if ($auditRes) {
             document.getElementById('modalCarTypeId').value = rule.car_type_id;
             document.getElementById('modalKmRate').value = rule.km_rate;
             document.getElementById('modalMinDist').value = rule.min_distance_km;
+            document.getElementById('modalMinRate').value = rule.min_rate || '0';
+            document.getElementById('modalMaxRate').value = rule.max_rate || '0';
             document.getElementById('modalAllowShort').value = rule.driver_allowance_short;
             document.getElementById('modalAllowLong').value = rule.driver_allowance_long;
             document.getElementById('modalThreshold').value = rule.distance_threshold_km;
@@ -890,14 +1084,25 @@ if ($auditRes) {
             el.addEventListener('input', updateUIBadges);
         });
 
+        function loadTestPreset(testNum, refDemand, todayDemand, sens) {
+            document.getElementById('simRefDemand').value = refDemand;
+            document.getElementById('simTodayDemand').value = todayDemand;
+            document.getElementById('sensitivityRange').value = sens;
+            document.getElementById('sensValDisplay').innerText = sens + '%';
+            runSimulation();
+        }
+
         function runSimulation() {
             const carTypeId = document.getElementById('simCarType').value;
             const distance = document.getElementById('simDistance').value;
             const pickup = document.getElementById('simPickup').value;
             const drop = document.getElementById('simDrop').value;
+            const refDemand = document.getElementById('simRefDemand').value;
+            const todayDemand = document.getElementById('simTodayDemand').value;
+            const sensitivity = document.getElementById('sensitivityRange').value;
             const resBox = document.getElementById('simResultBox');
 
-            resBox.innerHTML = '<div class="text-center py-3 text-primary"><i class="fa-solid fa-spinner fa-spin fs-4 mb-2"></i><div>Calculating live breakdown...</div></div>';
+            resBox.innerHTML = '<div class="text-center py-3 text-primary"><i class="fa-solid fa-spinner fa-spin fs-4 mb-2"></i><div>Calculating dynamic rate & breakdown...</div></div>';
 
             const formData = new FormData();
             formData.append('ajax_action', 'simulate_fare');
@@ -905,6 +1110,12 @@ if ($auditRes) {
             formData.append('distance_km', distance);
             formData.append('pickup_address', pickup);
             formData.append('drop_address', drop);
+
+            // Pass dynamic pricing simulation overrides
+            formData.append('dynamic_pricing_active', document.getElementById('dynamicPricingSwitch').checked ? 1 : 0);
+            formData.append('oneway_pricing_sensitivity', sensitivity);
+            formData.append('simulated_reference_demand', refDemand);
+            formData.append('simulated_today_demand', todayDemand);
 
             // Pass current on-screen switch states live
             formData.append('driver_allowance_active', document.getElementById('allowanceSwitch').checked ? 1 : 0);
@@ -925,43 +1136,98 @@ if ($auditRes) {
             .then(res => {
                 if (res.success && res.data) {
                     const d = res.data;
+                    const dp = d.dynamic_pricing || {};
                     resBox.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-file-invoice-dollar me-2 text-primary"></i>Live Simulation: ${d.car_type} (${d.distance_km} KM)</h6>
-                            <span class="badge ${d.master_engine_active ? 'bg-success' : 'bg-secondary'}">${d.master_engine_active ? 'Engine v2 Active' : 'Fallback'}</span>
+                            <div>
+                                <span class="badge ${dp.is_active ? 'bg-warning text-dark' : 'bg-secondary'} me-1">${dp.is_active ? 'Dynamic Demand Active' : 'Static Base'}</span>
+                                <span class="badge ${d.master_engine_active ? 'bg-success' : 'bg-secondary'}">${d.master_engine_active ? 'Engine v2 Active' : 'Fallback'}</span>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Rate Breakdown Strip -->
+                        <div class="bg-white border rounded-3 p-3 mb-3">
+                            <div class="row g-2 text-center">
+                                <div class="col-4 col-md-2">
+                                    <small class="text-muted d-block small">Ref Demand</small>
+                                    <span class="fw-bold font-monospace">${dp.reference_demand || '1.0000'}</span>
+                                </div>
+                                <div class="col-4 col-md-2">
+                                    <small class="text-muted d-block small">Today's Demand</small>
+                                    <span class="fw-bold font-monospace text-primary">${dp.today_demand || '1.0000'}</span>
+                                </div>
+                                <div class="col-4 col-md-2">
+                                    <small class="text-muted d-block small">Demand Ratio</small>
+                                    <span class="fw-bold font-monospace">${dp.demand_ratio || '1.0000'}</span>
+                                </div>
+                                <div class="col-4 col-md-2">
+                                    <small class="text-muted d-block small">Demand Change</small>
+                                    <span class="fw-bold font-monospace ${(dp.demand_change_pct || 0) >= 0 ? 'text-success' : 'text-danger'}">${(dp.demand_change_pct || 0) >= 0 ? '+' : ''}${dp.demand_change_pct || 0}%</span>
+                                </div>
+                                <div class="col-4 col-md-2">
+                                    <small class="text-muted d-block small">Sensitivity</small>
+                                    <span class="fw-bold font-monospace">${dp.pricing_sensitivity || 50}%</span>
+                                </div>
+                                <div class="col-4 col-md-2">
+                                    <small class="text-muted d-block small">Price Adj %</small>
+                                    <span class="fw-bold font-monospace ${(dp.price_adjustment_pct || 0) >= 0 ? 'text-success' : 'text-danger'}">${(dp.price_adjustment_pct || 0) >= 0 ? '+' : ''}${dp.price_adjustment_pct || 0}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="sim-result-row">
+                            <span class="text-muted">Base Rate (Raw KM Charge ${d.chargeable_km} KM @ ₹${d.km_rate}/KM):</span>
+                            <span class="fw-semibold font-monospace">₹${(dp.base_one_way_rate || d.raw_base_km_charge).toLocaleString('en-IN')}</span>
                         </div>
                         <div class="sim-result-row">
-                            <span class="text-muted">Base KM Charge (${d.chargeable_km} KM @ ₹${d.km_rate}/KM):</span>
-                            <span class="fw-semibold">₹${d.base_km_charge.toLocaleString('en-IN')}</span>
+                            <span class="text-muted">Dynamic Calculated Rate (Pre-bounds):</span>
+                            <span class="fw-semibold font-monospace">₹${(dp.dynamic_one_way_rate || d.base_km_charge).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div class="sim-result-row bg-light px-2 py-1.5 rounded">
+                            <span class="fw-bold text-dark">Final Effective Base KM Charge:</span>
+                            <span class="fw-bold text-primary font-monospace">₹${d.base_km_charge.toLocaleString('en-IN')}
+                                ${dp.is_floor_capped ? '<span class="badge bg-danger ms-1">Min Floor Capped</span>' : ''}
+                                ${dp.is_ceiling_capped ? '<span class="badge bg-warning text-dark ms-1">Max Ceiling Capped</span>' : ''}
+                            </span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Driver Allowance (${d.driver_allowance_active ? 'Active' : 'Disabled'}):</span>
-                            <span class="fw-semibold ${d.driver_allowance_active ? '' : 'text-muted text-decoration-line-through'}">₹${d.driver_allowance.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold font-monospace ${d.driver_allowance_active ? '' : 'text-muted text-decoration-line-through'}">₹${d.driver_allowance.toLocaleString('en-IN')}</span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Estimated Toll (${d.chargeable_km} KM):</span>
-                            <span class="fw-semibold">₹${d.toll_charge.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold font-monospace">₹${d.toll_charge.toLocaleString('en-IN')}</span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Parking Surcharge:</span>
-                            <span class="fw-semibold">₹${d.parking_charge.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold font-monospace">₹${d.parking_charge.toLocaleString('en-IN')}</span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Subtotal (Pre-Tax):</span>
-                            <span class="fw-bold">₹${d.subtotal.toLocaleString('en-IN')}</span>
+                            <span class="fw-bold font-monospace">₹${d.subtotal.toLocaleString('en-IN')}</span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">GST / Tax (${d.gst_breakdown.mode || 'Active'} - ${d.gst_breakdown.rate}%):</span>
-                            <span class="fw-semibold text-danger">+ ₹${d.gst_amount.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold text-danger font-monospace">+ ₹${d.gst_amount.toLocaleString('en-IN')}</span>
                         </div>
                         ${d.discount_amount > 0 ? `
                         <div class="sim-result-row">
                             <span class="text-muted">Promotional Discount:</span>
-                            <span class="fw-semibold text-success">- ₹${d.discount_amount.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold text-success font-monospace">- ₹${d.discount_amount.toLocaleString('en-IN')}</span>
                         </div>` : ''}
                         <div class="sim-result-total">
                             <span>TOTAL ESTIMATED FARE:</span>
                             <span>₹${d.final_fare.toLocaleString('en-IN')}</span>
+                        </div>
+
+                        <!-- Explainability Snippet -->
+                        <div class="explain-card mt-3">
+                            <div class="d-flex align-items-center gap-1.5 fw-bold mb-0.5">
+                                <i class="fa-solid fa-lightbulb text-warning"></i>
+                                <span>Calculation Explanation</span>
+                            </div>
+                            <div class="small">${dp.explanation_text || 'Standard calculation.'}</div>
                         </div>
                     `;
                 } else {
