@@ -174,7 +174,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
     );
 
     $stmt->bind_param(
-        "iiisdsddddsididdddiisdsisi",
+        "iiisdisddddidididdiisdssi",
         $masterActive, $allowanceActive, $discountActive, $discountType, $discountValue,
         $gstActive, $gstMode, $gstPercent, $cgstPercent, $sgstPercent, $igstPercent,
         $parkingActive, $defaultParking, $tollActive, $tollRate,
