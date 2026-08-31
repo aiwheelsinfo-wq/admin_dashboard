@@ -16,7 +16,7 @@ MigrationRunner::run($conn);
 $adminId = $_SESSION['admin_id'] ?? 'admin';
 
 // -------------------------------------------------------------
-// AJAX: Live Simulator API with One-Way Dynamic Pricing
+// AJAX: Live Simulator API with One-Way Dynamic Pricing & Company Share
 // -------------------------------------------------------------
 if (isset($_POST['ajax_action']) && $_POST['ajax_action'] === 'simulate_fare') {
     header('Content-Type: application/json');
@@ -79,6 +79,20 @@ if (isset($_POST['ajax_action']) && $_POST['ajax_action'] === 'simulate_fare') {
         $overrides['simulated_today_demand'] = (float)$_POST['simulated_today_demand'];
     }
 
+    // Company Share Overrides
+    if (isset($_POST['company_share_active'])) {
+        $overrides['company_share_active'] = (int)$_POST['company_share_active'];
+    }
+    if (isset($_POST['company_share_type'])) {
+        $overrides['company_share_type'] = $_POST['company_share_type'];
+    }
+    if (isset($_POST['company_share_value'])) {
+        $overrides['company_share_value'] = (float)$_POST['company_share_value'];
+    }
+    if (isset($_POST['company_share_basis'])) {
+        $overrides['company_share_basis'] = $_POST['company_share_basis'];
+    }
+
     $result = OneWayFareCalculator::calculate($conn, $carTypeId, $distance, $pickup, $drop, $overrides);
     echo json_encode(['success' => true, 'data' => $result]);
     exit();
@@ -116,8 +130,14 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
     $outlierThreshold = (float)($_POST['outlier_threshold_pct'] ?? 50.0);
     $lookbackDays = (int)($_POST['historical_lookback_days'] ?? 14);
 
+    // Company Share Controls
+    $companyShareActive = isset($_POST['company_share_active']) ? 1 : 0;
+    $companyShareType = $_POST['company_share_type'] ?? 'percentage';
+    $companyShareValue = (float)($_POST['company_share_value'] ?? 15.0);
+    $companyShareBasis = $_POST['company_share_basis'] ?? 'subtotal';
+
     // Validation
-    if ($gstPercent < 0 || $gstPercent > 28 || $discountValue < 0 || $tollRate < 0 || $defaultParking < 0 || $sensitivity < 0 || $sensitivity > 100) {
+    if ($gstPercent < 0 || $gstPercent > 28 || $discountValue < 0 || $tollRate < 0 || $defaultParking < 0 || $sensitivity < 0 || $sensitivity > 100 || $companyShareValue < 0) {
         $_SESSION['error_msg'] = "Invalid input values. Please ensure all rates are within standard bounds.";
         header("Location: oneway_fare_management.php");
         exit();
@@ -144,17 +164,22 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
             `oneway_pricing_sensitivity` = ?,
             `outlier_threshold_pct` = ?,
             `historical_lookback_days` = ?,
+            `company_share_active` = ?,
+            `company_share_type` = ?,
+            `company_share_value` = ?,
+            `company_share_basis` = ?,
             `row_version` = `row_version` + 1,
             `updated_by` = ?
         WHERE `id` = 1 AND `row_version` = ?"
     );
 
     $stmt->bind_param(
-        "iiisdsddddsididdddisi",
+        "iiisdsddddsididdddiisdsisi",
         $masterActive, $allowanceActive, $discountActive, $discountType, $discountValue,
         $gstActive, $gstMode, $gstPercent, $cgstPercent, $sgstPercent, $igstPercent,
         $parkingActive, $defaultParking, $tollActive, $tollRate,
         $dynamicPricingActive, $sensitivity, $outlierThreshold, $lookbackDays,
+        $companyShareActive, $companyShareType, $companyShareValue, $companyShareBasis,
         $adminId, $submittedVersion
     );
 
@@ -166,7 +191,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
         $newRow = $newRes ? mysqli_fetch_assoc($newRes) : [];
 
         OneWayAuditLogger::record($conn, (string)$adminId, 'global_settings_update', 1, $prevRow, $newRow);
-        $_SESSION['success_msg'] = "One-Way Global Fare & Dynamic Pricing Settings updated successfully!";
+        $_SESSION['success_msg'] = "One-Way Global Fare, Dynamic Pricing & Company Share Settings updated successfully!";
     } else {
         $_SESSION['error_msg'] = "Failed to update settings: " . $conn->error;
     }
@@ -188,6 +213,7 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['add_vehicle_rule', '
     $threshold = (float)($_POST['distance_threshold_km'] ?? 200.0);
     $minRate = (float)($_POST['min_rate'] ?? 0.0);
     $maxRate = (float)($_POST['max_rate'] ?? 0.0);
+    $companySharePercent = (float)($_POST['company_share_percent'] ?? 0.0);
     $displayOrder = (int)($_POST['display_order'] ?? 1);
     $submittedVersion = (int)($_POST['row_version'] ?? 1);
 
@@ -214,11 +240,12 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['add_vehicle_rule', '
                     `distance_threshold_km` = ?,
                     `min_rate` = ?,
                     `max_rate` = ?,
+                    `company_share_percent` = ?,
                     `display_order` = ?,
                     `row_version` = `row_version` + 1
                 WHERE `id` = ? AND `row_version` = ?"
             );
-            $stmt->bind_param("isdddddddiii", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $minRate, $maxRate, $displayOrder, $ruleId, $submittedVersion);
+            $stmt->bind_param("isddddddddiii", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $minRate, $maxRate, $companySharePercent, $displayOrder, $ruleId, $submittedVersion);
             if ($stmt->execute() && $stmt->affected_rows > 0) {
                 FareCache::flushAll();
                 $newRes = mysqli_query($conn, "SELECT * FROM `one_way_vehicle_rules` WHERE `id` = $ruleId LIMIT 1");
@@ -232,10 +259,10 @@ if (isset($_POST['action']) && in_array($_POST['action'], ['add_vehicle_rule', '
         } else {
             $stmt = $conn->prepare(
                 "INSERT INTO `one_way_vehicle_rules` 
-                    (`car_type_id`, `car_type_label`, `km_rate`, `min_distance_km`, `driver_allowance_short`, `driver_allowance_long`, `distance_threshold_km`, `min_rate`, `max_rate`, `display_order`, `is_active`, `row_version`) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)"
+                    (`car_type_id`, `car_type_label`, `km_rate`, `min_distance_km`, `driver_allowance_short`, `driver_allowance_long`, `distance_threshold_km`, `min_rate`, `max_rate`, `company_share_percent`, `display_order`, `is_active`, `row_version`) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 1)"
             );
-            $stmt->bind_param("isdddddddi", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $minRate, $maxRate, $displayOrder);
+            $stmt->bind_param("isddddddddi", $carTypeId, $catLabel, $kmRate, $minDist, $allowShort, $allowLong, $threshold, $minRate, $maxRate, $companySharePercent, $displayOrder);
             if ($stmt->execute()) {
                 FareCache::flushAll();
                 $newId = $stmt->insert_id;
@@ -309,7 +336,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>One-Way Dynamic Fare Management | Rentox Admin</title>
+    <title>One-Way Dynamic Fare & Commission Management | Rentox Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -448,6 +475,13 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             font-size: 0.88rem;
             color: #1E3A8A;
         }
+
+        .split-card {
+            background: #F0FDF4;
+            border: 1px solid #BBF7D0;
+            border-radius: 10px;
+            padding: 0.85rem 1.1rem;
+        }
     </style>
 </head>
 <body>
@@ -493,16 +527,19 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div>
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <h4 class="fw-bold mb-0 text-white">One-Way Dynamic Pricing & Fare Engine (v2.1)</h4>
+                        <h4 class="fw-bold mb-0 text-white">One-Way Dynamic Pricing & Company Share Engine (v2.2)</h4>
                         <span class="badge <?= $settings['master_engine_active'] ? 'bg-success' : 'bg-secondary' ?> px-3 py-1">
                             <?= $settings['master_engine_active'] ? 'ENGINE ACTIVE' : 'DISABLED (FALLBACK)' ?>
                         </span>
                         <span class="badge <?= !empty($settings['dynamic_pricing_active']) ? 'bg-warning text-dark' : 'bg-light text-muted' ?> px-3 py-1">
                             <i class="fa-solid fa-chart-line me-1"></i><?= !empty($settings['dynamic_pricing_active']) ? 'DYNAMIC PRICING ON' : 'DYNAMIC OFF' ?>
                         </span>
+                        <span class="badge <?= !empty($settings['company_share_active']) ? 'bg-info text-dark' : 'bg-light text-muted' ?> px-3 py-1">
+                            <i class="fa-solid fa-building me-1"></i><?= !empty($settings['company_share_active']) ? 'COMPANY SHARE ' . ($settings['company_share_value'] ?? 15) . '%' : 'SHARE OFF' ?>
+                        </span>
                     </div>
                     <p class="mb-0 text-white-50 fs-6">
-                        Supply-demand elastic pricing exclusively for <strong>One-Way trips</strong>. Round-Trip, Local Taxi & Local Duty remain 100% isolated.
+                        Supply-demand elastic pricing and automated <strong>Company Share vs Driver Payout</strong> split exclusively for One-Way trips.
                     </p>
                 </div>
                 <div class="d-flex gap-2">
@@ -578,14 +615,14 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             <input type="hidden" name="row_version" value="<?= (int)($settings['row_version'] ?? 1) ?>">
 
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-sliders me-2 text-primary"></i>Global Control Toggles & Dynamic Pricing Settings</h5>
+                <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-sliders me-2 text-primary"></i>Global Control Toggles, Dynamic Pricing & Company Share</h5>
                 <button type="submit" class="btn btn-primary fw-bold shadow-sm px-4">
                     <i class="fa-solid fa-floppy-disk me-1"></i> Save All Settings
                 </button>
             </div>
 
             <!-- Dynamic Pricing Configuration Card -->
-            <div class="card mb-4 p-3 shadow-sm bg-white border-primary">
+            <div class="card mb-3 p-3 shadow-sm bg-white border-primary">
                 <div class="row align-items-center g-3">
                     <div class="col-md-3">
                         <div class="d-flex align-items-center gap-2">
@@ -619,6 +656,48 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                             <input type="number" min="3" max="60" name="historical_lookback_days" id="lookbackInput" class="form-control" value="<?= htmlspecialchars($settings['historical_lookback_days'] ?? 14) ?>">
                             <span class="input-group-text">Days</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🏢 Company Share & Platform Commission Card -->
+            <div class="card mb-4 p-3 shadow-sm bg-white border-success">
+                <div class="row align-items-center g-3">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-building fs-3 text-success"></i>
+                            <div>
+                                <h6 class="fw-bold mb-0 text-dark">One-Way Company Share</h6>
+                                <small class="text-muted">Platform Commission & Net Payout</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="company_share_active" id="companyShareSwitch" <?= !empty($settings['company_share_active']) ? 'checked' : '' ?>>
+                            <label class="form-check-label fw-bold small text-dark" for="companyShareSwitch">Enable Share</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">Commission Type</label>
+                        <select name="company_share_type" id="companyShareTypeSelect" class="form-select form-select-sm">
+                            <option value="percentage" <?= ($settings['company_share_type'] ?? '') === 'percentage' ? 'selected' : '' ?>>Percentage (%)</option>
+                            <option value="fixed" <?= ($settings['company_share_type'] ?? '') === 'fixed' ? 'selected' : '' ?>>Fixed Flat (₹)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-bold mb-1">Share Value</label>
+                        <div class="input-group input-group-sm">
+                            <input type="number" step="0.5" min="0" name="company_share_value" id="companyShareValueInput" class="form-control" value="<?= htmlspecialchars($settings['company_share_value'] ?? 15.0) ?>">
+                            <span class="input-group-text" id="shareUnitLabel"><?= ($settings['company_share_type'] ?? '') === 'fixed' ? '₹' : '%' ?></span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold mb-1">Calculation Basis</label>
+                        <select name="company_share_basis" id="companyShareBasisSelect" class="form-select form-select-sm">
+                            <option value="subtotal" <?= ($settings['company_share_basis'] ?? '') === 'subtotal' ? 'selected' : '' ?>>Pre-Tax Subtotal (KM + Allowance + Toll)</option>
+                            <option value="base_km" <?= ($settings['company_share_basis'] ?? '') === 'base_km' ? 'selected' : '' ?>>Base KM Charge Only</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -754,8 +833,8 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
         <div class="card shadow-sm mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-taxi me-2 text-primary"></i>Per-Vehicle Rate & Boundary Configuration</h5>
-                    <small class="text-muted">Custom Base KM rate, minimum floor, maximum ceiling & driver allowances per car category</small>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-taxi me-2 text-primary"></i>Per-Vehicle Rate & Commission Configuration</h5>
+                    <small class="text-muted">Custom Base KM rate, minimum floor, maximum ceiling, driver allowances & vehicle commission per car category</small>
                 </div>
                 <button class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#vehicleModal" onclick="openAddModal()">
                     <i class="fa-solid fa-plus me-1"></i> Add Vehicle Rate
@@ -769,15 +848,16 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                             <th>Base Rate / KM</th>
                             <th>Min Floor (₹)</th>
                             <th>Max Ceiling (₹)</th>
-                            <th>Short Allowance (< 200 KM)</th>
-                            <th>Long Allowance (≥ 200 KM)</th>
+                            <th>Allowance (< 200 KM)</th>
+                            <th>Allowance (≥ 200 KM)</th>
+                            <th>Company Share</th>
                             <th>Status</th>
                             <th class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($rules)): ?>
-                            <tr><td colspan="8" class="text-center py-4 text-muted">No vehicle rules configured yet.</td></tr>
+                            <tr><td colspan="9" class="text-center py-4 text-muted">No vehicle rules configured yet.</td></tr>
                         <?php else: ?>
                             <?php foreach ($rules as $r): ?>
                                 <tr>
@@ -800,6 +880,11 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                                     </td>
                                     <td><span class="badge bg-light text-dark border">₹<?= number_format($r['driver_allowance_short'], 0) ?></span></td>
                                     <td><span class="badge bg-light text-dark border">₹<?= number_format($r['driver_allowance_long'], 0) ?></span></td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            <?= ($r['company_share_percent'] ?? 0) > 0 ? number_format($r['company_share_percent'], 1) . '% (Custom)' : 'Global (' . ($settings['company_share_value'] ?? 15) . '%)' ?>
+                                        </span>
+                                    </td>
                                     <td>
                                         <?php if ($r['is_active']): ?>
                                             <span class="badge badge-active"><i class="fa-solid fa-circle-check me-1"></i>Active</span>
@@ -833,7 +918,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
         <div class="card shadow-sm mb-4" id="simulatorSection">
             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bolt me-2 text-warning"></i>⚡ Live Interactive Dynamic Fare Simulator</h5>
+                    <h5 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-bolt me-2 text-warning"></i>⚡ Live Interactive Dynamic Fare & Commission Simulator</h5>
                     <small class="text-muted">Test real-time calculation and verify breakdowns with custom simulated demand and test presets</small>
                 </div>
                 <!-- Preset Test Case Quick Buttons -->
@@ -857,7 +942,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Distance (KM)</label>
-                        <input type="number" id="simDistance" class="form-control" value="250" min="1" step="1">
+                        <input type="number" id="simDistance" class="form-control" value="200" min="1" step="1">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Simulated Ref Demand</label>
@@ -865,7 +950,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Simulated Today Demand</label>
-                        <input type="number" step="0.05" id="simTodayDemand" class="form-control" value="1.50">
+                        <input type="number" step="0.05" id="simTodayDemand" class="form-control" value="1.00">
                     </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-bold">Pickup Location</label>
@@ -879,7 +964,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
 
                 <div class="d-flex justify-content-end mb-3">
                     <button type="button" class="btn btn-warning fw-bold text-dark px-4 shadow-sm" onclick="runSimulation()">
-                        <i class="fa-solid fa-calculator me-1"></i> Calculate Dynamic Fare
+                        <i class="fa-solid fa-calculator me-1"></i> Calculate Fare & Commission Split
                     </button>
                 </div>
 
@@ -887,7 +972,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                 <div class="simulator-box" id="simResultBox">
                     <div class="text-center text-muted py-3">
                         <i class="fa-solid fa-arrow-pointer fs-3 mb-2"></i>
-                        <div>Click <strong>"Calculate Dynamic Fare"</strong> or any test preset above to see instant breakdown.</div>
+                        <div>Click <strong>"Calculate Fare & Commission Split"</strong> or any test preset above to see instant breakdown.</div>
                     </div>
                 </div>
             </div>
@@ -953,9 +1038,13 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                                 <input type="number" step="10" min="0" name="distance_threshold_km" id="modalThreshold" class="form-control" required value="200">
                             </div>
                             <div class="col-6">
-                                <label class="form-label fw-semibold small">Display Order</label>
-                                <input type="number" min="1" name="display_order" id="modalOrder" class="form-control" value="1">
+                                <label class="form-label fw-semibold small">Company Share % (0 = Global)</label>
+                                <input type="number" step="0.5" min="0" max="100" name="company_share_percent" id="modalCompanyShare" class="form-control" value="0">
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold small">Display Order</label>
+                            <input type="number" min="1" name="display_order" id="modalOrder" class="form-control" value="1">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -969,7 +1058,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
 
     <!-- MODAL: Audit Logs History -->
     <div class="modal fade" id="auditModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-dialog modal-dialog-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Audit Log History</h5>
@@ -1025,6 +1114,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             document.getElementById('modalAllowShort').value = '300';
             document.getElementById('modalAllowLong').value = '400';
             document.getElementById('modalThreshold').value = '200';
+            document.getElementById('modalCompanyShare').value = '0';
             document.getElementById('modalOrder').value = '1';
             document.getElementById('modalRowVersion').value = '1';
         }
@@ -1041,6 +1131,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             document.getElementById('modalAllowShort').value = rule.driver_allowance_short;
             document.getElementById('modalAllowLong').value = rule.driver_allowance_long;
             document.getElementById('modalThreshold').value = rule.distance_threshold_km;
+            document.getElementById('modalCompanyShare').value = rule.company_share_percent || '0';
             document.getElementById('modalOrder').value = rule.display_order;
             document.getElementById('modalRowVersion').value = rule.row_version || 1;
             
@@ -1077,6 +1168,12 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                 parkBadge.className = 'badge ' + (parkingOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center mt-2';
                 parkBadge.innerText = parkingOn ? `Parking ₹${parkAmount}` : 'No Default Parking';
             }
+
+            const shareType = document.getElementById('companyShareTypeSelect').value;
+            const shareUnit = document.getElementById('shareUnitLabel');
+            if (shareUnit) {
+                shareUnit.innerText = (shareType === 'fixed') ? '₹' : '%';
+            }
         }
 
         document.querySelectorAll('.form-check-input, .form-select, input[type="number"]').forEach(el => {
@@ -1102,7 +1199,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             const sensitivity = document.getElementById('sensitivityRange').value;
             const resBox = document.getElementById('simResultBox');
 
-            resBox.innerHTML = '<div class="text-center py-3 text-primary"><i class="fa-solid fa-spinner fa-spin fs-4 mb-2"></i><div>Calculating dynamic rate & breakdown...</div></div>';
+            resBox.innerHTML = '<div class="text-center py-3 text-primary"><i class="fa-solid fa-spinner fa-spin fs-4 mb-2"></i><div>Calculating fare & commission split...</div></div>';
 
             const formData = new FormData();
             formData.append('ajax_action', 'simulate_fare');
@@ -1116,6 +1213,12 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             formData.append('oneway_pricing_sensitivity', sensitivity);
             formData.append('simulated_reference_demand', refDemand);
             formData.append('simulated_today_demand', todayDemand);
+
+            // Pass company share simulation overrides
+            formData.append('company_share_active', document.getElementById('companyShareSwitch').checked ? 1 : 0);
+            formData.append('company_share_type', document.getElementById('companyShareTypeSelect').value);
+            formData.append('company_share_value', document.getElementById('companyShareValueInput').value);
+            formData.append('company_share_basis', document.getElementById('companyShareBasisSelect').value);
 
             // Pass current on-screen switch states live
             formData.append('driver_allowance_active', document.getElementById('allowanceSwitch').checked ? 1 : 0);
@@ -1137,11 +1240,13 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                 if (res.success && res.data) {
                     const d = res.data;
                     const dp = d.dynamic_pricing || {};
+                    const cs = d.company_share_breakdown || {};
                     resBox.innerHTML = `
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="fw-bold mb-0 text-dark"><i class="fa-solid fa-file-invoice-dollar me-2 text-primary"></i>Live Simulation: ${d.car_type} (${d.distance_km} KM)</h6>
                             <div>
                                 <span class="badge ${dp.is_active ? 'bg-warning text-dark' : 'bg-secondary'} me-1">${dp.is_active ? 'Dynamic Demand Active' : 'Static Base'}</span>
+                                <span class="badge ${cs.is_active ? 'bg-info text-dark' : 'bg-secondary'} me-1">${cs.is_active ? 'Share Active' : 'No Share'}</span>
                                 <span class="badge ${d.master_engine_active ? 'bg-success' : 'bg-secondary'}">${d.master_engine_active ? 'Engine v2 Active' : 'Fallback'}</span>
                             </div>
                         </div>
@@ -1177,19 +1282,8 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                         </div>
 
                         <div class="sim-result-row">
-                            <span class="text-muted">Base Rate (Raw KM Charge ${d.chargeable_km} KM @ ₹${d.km_rate}/KM):</span>
-                            <span class="fw-semibold font-monospace">₹${(dp.base_one_way_rate || d.raw_base_km_charge).toLocaleString('en-IN')}</span>
-                        </div>
-                        <div class="sim-result-row">
-                            <span class="text-muted">Dynamic Calculated Rate (Pre-bounds):</span>
-                            <span class="fw-semibold font-monospace">₹${(dp.dynamic_one_way_rate || d.base_km_charge).toLocaleString('en-IN')}</span>
-                        </div>
-                        <div class="sim-result-row bg-light px-2 py-1.5 rounded">
-                            <span class="fw-bold text-dark">Final Effective Base KM Charge:</span>
-                            <span class="fw-bold text-primary font-monospace">₹${d.base_km_charge.toLocaleString('en-IN')}
-                                ${dp.is_floor_capped ? '<span class="badge bg-danger ms-1">Min Floor Capped</span>' : ''}
-                                ${dp.is_ceiling_capped ? '<span class="badge bg-warning text-dark ms-1">Max Ceiling Capped</span>' : ''}
-                            </span>
+                            <span class="text-muted">Base KM Charge (${d.chargeable_km} KM @ ₹${d.km_rate}/KM):</span>
+                            <span class="fw-semibold font-monospace">₹${d.base_km_charge.toLocaleString('en-IN')}</span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Driver Allowance (${d.driver_allowance_active ? 'Active' : 'Disabled'}):</span>
@@ -1203,10 +1297,27 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                             <span class="text-muted">Parking Surcharge:</span>
                             <span class="fw-semibold font-monospace">₹${d.parking_charge.toLocaleString('en-IN')}</span>
                         </div>
-                        <div class="sim-result-row">
-                            <span class="text-muted">Subtotal (Pre-Tax):</span>
-                            <span class="fw-bold font-monospace">₹${d.subtotal.toLocaleString('en-IN')}</span>
+                        <div class="sim-result-row bg-light px-2 py-1 rounded">
+                            <span class="fw-bold text-dark">Pre-Tax Subtotal:</span>
+                            <span class="fw-bold text-dark font-monospace">₹${d.subtotal.toLocaleString('en-IN')}</span>
                         </div>
+
+                        <!-- 🏢 COMPANY SHARE & DRIVER PAYOUT SPLIT CARD -->
+                        <div class="split-card my-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-success"><i class="fa-solid fa-handshake me-1"></i>Revenue Split & Driver Settlement:</span>
+                                <span class="badge bg-success text-white">${cs.type === 'fixed' ? 'Fixed ₹' + cs.value : cs.value + '% ' + (cs.basis === 'base_km' ? 'Base KM' : 'Subtotal')}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1 small">
+                                <span class="text-muted">🏢 Rentox Company Share:</span>
+                                <span class="fw-bold text-primary font-monospace">₹${(d.company_share_amount || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span class="text-muted">🚖 Driver / Partner Net Payout:</span>
+                                <span class="fw-bold text-success font-monospace">₹${(d.driver_payout_amount || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+
                         <div class="sim-result-row">
                             <span class="text-muted">GST / Tax (${d.gst_breakdown.mode || 'Active'} - ${d.gst_breakdown.rate}%):</span>
                             <span class="fw-semibold text-danger font-monospace">+ ₹${d.gst_amount.toLocaleString('en-IN')}</span>
@@ -1217,7 +1328,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                             <span class="fw-semibold text-success font-monospace">- ₹${d.discount_amount.toLocaleString('en-IN')}</span>
                         </div>` : ''}
                         <div class="sim-result-total">
-                            <span>TOTAL ESTIMATED FARE:</span>
+                            <span>TOTAL CUSTOMER FARE:</span>
                             <span>₹${d.final_fare.toLocaleString('en-IN')}</span>
                         </div>
 
