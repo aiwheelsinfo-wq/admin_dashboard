@@ -704,7 +704,7 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
 
             <div class="row g-3 mb-4">
                 <!-- 1. Master Engine Switch -->
-                <div class="col-md-6 col-xl-3">
+                <div class="col-md-6 col-xl">
                     <div class="toggle-card">
                         <div>
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -713,16 +713,16 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                                     <input class="form-check-input" type="checkbox" name="master_engine_active" id="masterSwitch" <?= $settings['master_engine_active'] ? 'checked' : '' ?>>
                                 </div>
                             </div>
-                            <p class="text-muted small mb-2">When OFF, quotes automatically fallback to legacy tripCostTable with zero downtime.</p>
+                            <p class="text-muted small mb-2">When OFF, quotes automatically fallback to legacy tripCostTable.</p>
                         </div>
                         <span class="badge <?= $settings['master_engine_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="masterBadge">
-                            <?= $settings['master_engine_active'] ? 'New Engine Enabled' : 'Fallback Active' ?>
+                            <?= $settings['master_engine_active'] ? 'Engine Active' : 'Fallback Mode' ?>
                         </span>
                     </div>
                 </div>
 
                 <!-- 2. Driver Allowance Switch -->
-                <div class="col-md-6 col-xl-3">
+                <div class="col-md-6 col-xl">
                     <div class="toggle-card">
                         <div>
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -731,27 +731,69 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                                     <input class="form-check-input" type="checkbox" name="driver_allowance_active" id="allowanceSwitch" <?= $settings['driver_allowance_active'] ? 'checked' : '' ?>>
                                 </div>
                             </div>
-                            <p class="text-muted small mb-2">Toggle driver allowance inclusion. Short & Long rates are customized per vehicle below.</p>
+                            <p class="text-muted small mb-2">Short & Long allowance customized per vehicle below.</p>
                         </div>
                         <span class="badge <?= $settings['driver_allowance_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="allowanceBadge">
-                            <?= $settings['driver_allowance_active'] ? 'Allowance Enabled' : 'Allowance Excluded' ?>
+                            <?= $settings['driver_allowance_active'] ? 'Allowance Active' : 'Allowance Excluded' ?>
                         </span>
                     </div>
                 </div>
 
-                <!-- 3. Tax / GST Switch -->
-                <div class="col-md-6 col-xl-3">
+                <!-- 3. Estimated Toll Switch -->
+                <div class="col-md-6 col-xl">
                     <div class="toggle-card">
                         <div>
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-dark"><i class="fa-solid fa-receipt text-success me-2"></i>Tax / GST Control</span>
+                                <span class="fw-bold text-dark"><i class="fa-solid fa-road text-primary me-2"></i>Estimated Toll</span>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" name="toll_auto_estimate" id="tollSwitch" <?= $settings['toll_auto_estimate'] ? 'checked' : '' ?>>
+                                </div>
+                            </div>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">Rate/KM ₹</span>
+                                <input type="number" step="0.25" min="0" name="toll_per_km_rate" id="tollRateInput" class="form-control" value="<?= htmlspecialchars($settings['toll_per_km_rate']) ?>">
+                            </div>
+                        </div>
+                        <span class="badge <?= $settings['toll_auto_estimate'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="tollBadge">
+                            <?= $settings['toll_auto_estimate'] ? 'Toll Active (₹' . $settings['toll_per_km_rate'] . '/KM)' : 'Toll Excluded (₹0)' ?>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 4. Parking Surcharge Switch -->
+                <div class="col-md-6 col-xl">
+                    <div class="toggle-card">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark"><i class="fa-solid fa-square-parking text-info me-2"></i>Parking Charge</span>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" name="parking_active" id="parkingSwitch" <?= $settings['parking_active'] ? 'checked' : '' ?>>
+                                </div>
+                            </div>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text">Amount ₹</span>
+                                <input type="number" step="10" min="0" name="default_parking_amount" id="parkingAmountInput" class="form-control" value="<?= htmlspecialchars($settings['default_parking_amount']) ?>">
+                            </div>
+                        </div>
+                        <span class="badge <?= $settings['parking_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="parkingBadge">
+                            <?= $settings['parking_active'] ? 'Parking ₹' . $settings['default_parking_amount'] : 'No Parking (₹0)' ?>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- 5. Tax / GST Switch -->
+                <div class="col-md-6 col-xl">
+                    <div class="toggle-card">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-dark"><i class="fa-solid fa-receipt text-success me-2"></i>Tax / GST</span>
                                 <div class="form-check form-switch mb-0">
                                     <input class="form-check-input" type="checkbox" name="gst_active" id="gstSwitch" <?= $settings['gst_active'] ? 'checked' : '' ?>>
                                 </div>
                             </div>
                             <div class="mb-2">
-                                <select name="gst_mode" class="form-select form-select-sm mb-2" id="gstModeSelect">
-                                    <option value="split" <?= ($settings['gst_mode'] ?? '') === 'split' ? 'selected' : '' ?>>Intra/Inter-State Split (CGST/SGST/IGST)</option>
+                                <select name="gst_mode" class="form-select form-select-sm mb-1" id="gstModeSelect">
+                                    <option value="split" <?= ($settings['gst_mode'] ?? '') === 'split' ? 'selected' : '' ?>>Intra/Inter-State Split</option>
                                     <option value="flat" <?= ($settings['gst_mode'] ?? '') === 'flat' ? 'selected' : '' ?>>Flat Rate (%)</option>
                                 </select>
                                 <div class="input-group input-group-sm">
@@ -762,34 +804,6 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                         </div>
                         <span class="badge <?= $settings['gst_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="gstBadge">
                             <?= $settings['gst_active'] ? 'GST Active (' . $settings['gst_percent'] . '%)' : 'Tax Exempt (0%)' ?>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- 4. Parking & Toll Switch -->
-                <div class="col-md-6 col-xl-3">
-                    <div class="toggle-card">
-                        <div>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-dark"><i class="fa-solid fa-square-parking text-info me-2"></i>Parking & Toll</span>
-                                <div class="form-check form-switch mb-0">
-                                    <input class="form-check-input" type="checkbox" name="parking_active" id="parkingSwitch" <?= $settings['parking_active'] ? 'checked' : '' ?>>
-                                </div>
-                            </div>
-                            <div class="input-group input-group-sm mb-2">
-                                <span class="input-group-text">Parking ₹</span>
-                                <input type="number" step="10" min="0" name="default_parking_amount" id="parkingAmountInput" class="form-control" value="<?= htmlspecialchars($settings['default_parking_amount']) ?>">
-                            </div>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text">Toll/KM ₹</span>
-                                <input type="number" step="0.25" min="0" name="toll_per_km_rate" id="tollRateInput" class="form-control" value="<?= htmlspecialchars($settings['toll_per_km_rate']) ?>">
-                                <div class="input-group-text bg-white">
-                                    <input class="form-check-input mt-0" type="checkbox" name="toll_auto_estimate" id="tollSwitch" title="Auto Toll" <?= $settings['toll_auto_estimate'] ? 'checked' : '' ?>>
-                                </div>
-                            </div>
-                        </div>
-                        <span class="badge <?= $settings['parking_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center mt-2" id="parkingBadge">
-                            <?= $settings['parking_active'] ? 'Parking ₹' . $settings['default_parking_amount'] : 'No Default Parking' ?>
                         </span>
                     </div>
                 </div>
@@ -1143,14 +1157,30 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             const allowBadge = document.getElementById('allowanceBadge');
             if (allowBadge) {
                 allowBadge.className = 'badge ' + (allowanceOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
-                allowBadge.innerText = allowanceOn ? 'Allowance Enabled' : 'Allowance Excluded';
+                allowBadge.innerText = allowanceOn ? 'Allowance Active' : 'Allowance Excluded';
             }
 
             const masterOn = document.getElementById('masterSwitch').checked;
             const masterBadge = document.getElementById('masterBadge');
             if (masterBadge) {
                 masterBadge.className = 'badge ' + (masterOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
-                masterBadge.innerText = masterOn ? 'New Engine Enabled' : 'Fallback Active';
+                masterBadge.innerText = masterOn ? 'Engine Active' : 'Fallback Mode';
+            }
+
+            const tollOn = document.getElementById('tollSwitch').checked;
+            const tollBadge = document.getElementById('tollBadge');
+            const tollRate = document.getElementById('tollRateInput') ? document.getElementById('tollRateInput').value : '2.25';
+            if (tollBadge) {
+                tollBadge.className = 'badge ' + (tollOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
+                tollBadge.innerText = tollOn ? `Toll Active (₹${tollRate}/KM)` : 'Toll Excluded (₹0)';
+            }
+
+            const parkingOn = document.getElementById('parkingSwitch').checked;
+            const parkBadge = document.getElementById('parkingBadge');
+            const parkAmount = document.getElementById('parkingAmountInput') ? document.getElementById('parkingAmountInput').value : '0';
+            if (parkBadge) {
+                parkBadge.className = 'badge ' + (parkingOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
+                parkBadge.innerText = parkingOn ? `Parking ₹${parkAmount}` : 'No Parking (₹0)';
             }
 
             const gstOn = document.getElementById('gstSwitch').checked;
@@ -1159,14 +1189,6 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
             if (gstBadge) {
                 gstBadge.className = 'badge ' + (gstOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center';
                 gstBadge.innerText = gstOn ? `GST Active (${gstPercent}%)` : 'Tax Exempt (0%)';
-            }
-
-            const parkingOn = document.getElementById('parkingSwitch').checked;
-            const parkBadge = document.getElementById('parkingBadge');
-            const parkAmount = document.getElementById('parkingAmountInput') ? document.getElementById('parkingAmountInput').value : '0';
-            if (parkBadge) {
-                parkBadge.className = 'badge ' + (parkingOn ? 'badge-active' : 'badge-inactive') + ' w-100 text-center mt-2';
-                parkBadge.innerText = parkingOn ? `Parking ₹${parkAmount}` : 'No Default Parking';
             }
 
             const shareType = document.getElementById('companyShareTypeSelect').value;
@@ -1291,11 +1313,15 @@ $liveDemandMetrics = OneWayFareCalculator::calculateOneWayDynamicDemand($conn, $
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Estimated Toll (${d.chargeable_km} KM):</span>
-                            <span class="fw-semibold font-monospace">₹${d.toll_charge.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold font-monospace ${d.toll_charge > 0 ? '' : 'text-muted text-decoration-line-through'}">
+                                ${d.toll_charge > 0 ? '₹' + d.toll_charge.toLocaleString('en-IN') : '₹0.00 (Toll Excluded)'}
+                            </span>
                         </div>
                         <div class="sim-result-row">
                             <span class="text-muted">Parking Surcharge:</span>
-                            <span class="fw-semibold font-monospace">₹${d.parking_charge.toLocaleString('en-IN')}</span>
+                            <span class="fw-semibold font-monospace ${d.parking_charge > 0 ? '' : 'text-muted text-decoration-line-through'}">
+                                ${d.parking_charge > 0 ? '₹' + d.parking_charge.toLocaleString('en-IN') : '₹0.00 (No Parking)'}
+                            </span>
                         </div>
                         <div class="sim-result-row bg-light px-2 py-1 rounded">
                             <span class="fw-bold text-dark">Pre-Tax Subtotal:</span>
