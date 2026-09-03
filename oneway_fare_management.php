@@ -121,30 +121,30 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
     $prevRes = mysqli_query($conn, "SELECT * FROM `one_way_global_settings` WHERE `id` = 1 LIMIT 1");
     $prevRow = $prevRes ? mysqli_fetch_assoc($prevRes) : [];
 
-    $masterActive = isset($_POST['master_engine_active']) ? 1 : 0;
-    $allowanceActive = isset($_POST['driver_allowance_active']) ? 1 : 0;
-    $discountActive = isset($_POST['discount_active']) ? 1 : 0;
+    $masterActive = (!empty($_POST['master_engine_active']) && $_POST['master_engine_active'] !== '0' && $_POST['master_engine_active'] !== 0) ? 1 : 0;
+    $allowanceActive = (!empty($_POST['driver_allowance_active']) && $_POST['driver_allowance_active'] !== '0' && $_POST['driver_allowance_active'] !== 0) ? 1 : 0;
+    $discountActive = (!empty($_POST['discount_active']) && $_POST['discount_active'] !== '0' && $_POST['discount_active'] !== 0) ? 1 : 0;
     $discountType = $_POST['discount_type'] ?? 'percentage';
     $discountValue = (float)($_POST['discount_value'] ?? 0);
-    $gstActive = isset($_POST['gst_active']) ? 1 : 0;
+    $gstActive = (!empty($_POST['gst_active']) && $_POST['gst_active'] !== '0' && $_POST['gst_active'] !== 0) ? 1 : 0;
     $gstMode = $_POST['gst_mode'] ?? 'split';
     $gstPercent = (float)($_POST['gst_percent'] ?? 5.0);
     $cgstPercent = (float)($_POST['cgst_percent'] ?? 2.5);
     $sgstPercent = (float)($_POST['sgst_percent'] ?? 2.5);
     $igstPercent = (float)($_POST['igst_percent'] ?? 5.0);
-    $parkingActive = isset($_POST['parking_active']) ? 1 : 0;
+    $parkingActive = (!empty($_POST['parking_active']) && $_POST['parking_active'] !== '0' && $_POST['parking_active'] !== 0) ? 1 : 0;
     $defaultParking = (float)($_POST['default_parking_amount'] ?? 0.0);
-    $tollActive = isset($_POST['toll_auto_estimate']) ? 1 : 0;
+    $tollActive = (!empty($_POST['toll_auto_estimate']) && $_POST['toll_auto_estimate'] !== '0' && $_POST['toll_auto_estimate'] !== 0) ? 1 : 0;
     $tollRate = (float)($_POST['toll_per_km_rate'] ?? 2.25);
 
     // Dynamic Pricing Controls
-    $dynamicPricingActive = isset($_POST['dynamic_pricing_active']) ? 1 : 0;
+    $dynamicPricingActive = (!empty($_POST['dynamic_pricing_active']) && $_POST['dynamic_pricing_active'] !== '0' && $_POST['dynamic_pricing_active'] !== 0) ? 1 : 0;
     $sensitivity = (float)($_POST['oneway_pricing_sensitivity'] ?? 50.0);
     $outlierThreshold = (float)($_POST['outlier_threshold_pct'] ?? 50.0);
     $lookbackDays = (int)($_POST['historical_lookback_days'] ?? 14);
 
     // Company Share Controls
-    $companyShareActive = isset($_POST['company_share_active']) ? 1 : 0;
+    $companyShareActive = (!empty($_POST['company_share_active']) && $_POST['company_share_active'] !== '0' && $_POST['company_share_active'] !== 0) ? 1 : 0;
     $companyShareType = $_POST['company_share_type'] ?? 'percentage';
     $companyShareValue = (float)($_POST['company_share_value'] ?? 15.0);
     $companyShareBasis = $_POST['company_share_basis'] ?? 'subtotal';
@@ -213,7 +213,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
         header('Content-Type: application/json');
         echo json_encode([
             'success' => !isset($_SESSION['error_msg']),
-            'message' => $_SESSION['success_msg'] ?? $_SESSION['error_msg'] ?? 'Settings updated'
+            'message' => $_SESSION['success_msg'] ?? $_SESSION['error_msg'] ?? 'Settings updated',
+            'settings' => $newRow ?? null
         ]);
         exit();
     }
