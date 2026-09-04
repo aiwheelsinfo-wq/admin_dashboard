@@ -19,6 +19,43 @@ $params = array_merge($_GET, $_POST, $inputData);
 
 $action = $params['action'] ?? 'get_profile';
 
+// 0. VERIFY LOGIN (Used by Login page with live DB verification)
+if ($action === 'verify_login') {
+    $email = trim($params['email'] ?? '');
+    $password = trim($params['password'] ?? '');
+
+    if (!$email || !$password) {
+        echo json_encode(["status" => "error", "message" => "Email and password are required."]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("SELECT id, userName, email, password FROM admins WHERE email = ? LIMIT 1");
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($row = $result->fetch_assoc()) {
+        if ($password === $row['password']) {
+            echo json_encode([
+                "status" => "success",
+                "message" => "Login successful",
+                "data" => [
+                    "id" => (int)$row['id'],
+                    "userName" => $row['userName'] ?: "Agni Car Rental",
+                    "email" => $row['email'],
+                    "role" => "SuperAdmin"
+                ]
+            ]);
+        } else {
+            echo json_encode(["status" => "error", "message" => "Invalid password. Please check your credentials."]);
+        }
+    } else {
+        echo json_encode(["status" => "error", "message" => "Admin account with this email not found."]);
+    }
+    $stmt->close();
+    exit;
+}
+
 // 1. GET PROFILE (id = 1 default superadmin)
 if ($action === 'get_profile') {
     $stmt = $conn->prepare("SELECT id, userName, email, created_at FROM admins ORDER BY id ASC LIMIT 1");
