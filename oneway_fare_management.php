@@ -121,7 +121,7 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
     $prevRes = mysqli_query($conn, "SELECT * FROM `one_way_global_settings` WHERE `id` = 1 LIMIT 1");
     $prevRow = $prevRes ? mysqli_fetch_assoc($prevRes) : [];
 
-    $masterActive = (!empty($_POST['master_engine_active']) && $_POST['master_engine_active'] !== '0' && $_POST['master_engine_active'] !== 0) ? 1 : 0;
+    $masterActive = 1;
     $allowanceActive = (!empty($_POST['driver_allowance_active']) && $_POST['driver_allowance_active'] !== '0' && $_POST['driver_allowance_active'] !== 0) ? 1 : 0;
     $discountActive = (!empty($_POST['discount_active']) && $_POST['discount_active'] !== '0' && $_POST['discount_active'] !== 0) ? 1 : 0;
     $discountType = $_POST['discount_type'] ?? 'percentage';
@@ -580,8 +580,8 @@ if (isset($_REQUEST['api']) && (!isset($_POST['action']) && !isset($_GET['action
                 <div>
                     <div class="d-flex align-items-center gap-2 mb-1">
                         <h4 class="fw-bold mb-0 text-white">One-Way Dynamic Pricing & Company Share Engine (v2.2)</h4>
-                        <span class="badge <?= $settings['master_engine_active'] ? 'bg-success' : 'bg-secondary' ?> px-3 py-1">
-                            <?= $settings['master_engine_active'] ? 'ENGINE ACTIVE' : 'DISABLED (FALLBACK)' ?>
+                        <span class="badge bg-success px-3 py-1">
+                            ENGINE ACTIVE
                         </span>
                         <span class="badge <?= !empty($settings['dynamic_pricing_active']) ? 'bg-warning text-dark' : 'bg-light text-muted' ?> px-3 py-1">
                             <i class="fa-solid fa-chart-line me-1"></i><?= !empty($settings['dynamic_pricing_active']) ? 'DYNAMIC PRICING ON' : 'DYNAMIC OFF' ?>
@@ -755,25 +755,7 @@ if (isset($_REQUEST['api']) && (!isset($_POST['action']) && !isset($_GET['action
             </div>
 
             <div class="row g-3 mb-4">
-                <!-- 1. Master Engine Switch -->
-                <div class="col-md-6 col-xl">
-                    <div class="toggle-card">
-                        <div>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="fw-bold text-dark"><i class="fa-solid fa-power-off text-primary me-2"></i>Master Engine</span>
-                                <div class="form-check form-switch mb-0">
-                                    <input class="form-check-input" type="checkbox" name="master_engine_active" id="masterSwitch" <?= $settings['master_engine_active'] ? 'checked' : '' ?>>
-                                </div>
-                            </div>
-                            <p class="text-muted small mb-2">When OFF, quotes automatically fallback to legacy tripCostTable.</p>
-                        </div>
-                        <span class="badge <?= $settings['master_engine_active'] ? 'badge-active' : 'badge-inactive' ?> w-100 text-center" id="masterBadge">
-                            <?= $settings['master_engine_active'] ? 'Engine Active' : 'Fallback Mode' ?>
-                        </span>
-                    </div>
-                </div>
-
-                <!-- 2. Driver Allowance Switch -->
+                <!-- 1. Driver Allowance Switch -->
                 <div class="col-md-6 col-xl">
                     <div class="toggle-card">
                         <div>
