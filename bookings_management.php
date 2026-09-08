@@ -157,7 +157,15 @@ if ($action === 'get_booking_stats') {
                     SUM(CASE WHEN LOWER(booking_status) = 'completed' THEN 1 ELSE 0 END) AS completed_count,
                     SUM(CASE WHEN LOWER(booking_status) IN ('pending', 'confirmed', 'in-transit', 'driver assigned') THEN 1 ELSE 0 END) AS active_count,
                     SUM(CASE WHEN LOWER(booking_status) = 'cancelled' THEN 1 ELSE 0 END) AS cancelled_count,
-                    COALESCE(SUM(total_amount), 0) AS total_revenue
+                    COALESCE(SUM(total_amount), 0) AS total_revenue,
+                    COALESCE(SUM(agni_amount), 0) AS total_company_earnings,
+                    COALESCE(SUM(vendor_amount), 0) AS total_vendor_payout,
+                    SUM(CASE WHEN LOWER(trip_type) LIKE '%one%' THEN 1 ELSE 0 END) AS oneway_count,
+                    COALESCE(SUM(CASE WHEN LOWER(trip_type) LIKE '%one%' THEN total_amount ELSE 0 END), 0) AS oneway_total_revenue,
+                    COALESCE(SUM(CASE WHEN LOWER(trip_type) LIKE '%one%' THEN agni_amount ELSE 0 END), 0) AS oneway_company_earnings,
+                    SUM(CASE WHEN LOWER(trip_type) LIKE '%round%' THEN 1 ELSE 0 END) AS roundtrip_count,
+                    COALESCE(SUM(CASE WHEN LOWER(trip_type) LIKE '%round%' THEN total_amount ELSE 0 END), 0) AS roundtrip_total_revenue,
+                    COALESCE(SUM(CASE WHEN LOWER(trip_type) LIKE '%round%' THEN agni_amount ELSE 0 END), 0) AS roundtrip_company_earnings
                  FROM bookings";
     $res = $conn->query($statsSql);
     $stats = $res ? $res->fetch_assoc() : [];
@@ -169,7 +177,15 @@ if ($action === 'get_booking_stats') {
             "completed_count" => (int)($stats['completed_count'] ?? 0),
             "active_count" => (int)($stats['active_count'] ?? 0),
             "cancelled_count" => (int)($stats['cancelled_count'] ?? 0),
-            "total_revenue" => (float)($stats['total_revenue'] ?? 0)
+            "total_revenue" => (float)($stats['total_revenue'] ?? 0),
+            "total_company_earnings" => (float)($stats['total_company_earnings'] ?? 0),
+            "total_vendor_payout" => (float)($stats['total_vendor_payout'] ?? 0),
+            "oneway_count" => (int)($stats['oneway_count'] ?? 0),
+            "oneway_total_revenue" => (float)($stats['oneway_total_revenue'] ?? 0),
+            "oneway_company_earnings" => (float)($stats['oneway_company_earnings'] ?? 0),
+            "roundtrip_count" => (int)($stats['roundtrip_count'] ?? 0),
+            "roundtrip_total_revenue" => (float)($stats['roundtrip_total_revenue'] ?? 0),
+            "roundtrip_company_earnings" => (float)($stats['roundtrip_company_earnings'] ?? 0)
         ]
     ]);
     exit;
