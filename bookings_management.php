@@ -191,6 +191,108 @@ if ($action === 'get_booking_stats') {
     exit;
 }
 
+// 2.5 GET SALES ANALYTICS & REVENUE STATISTICS
+if ($action === 'get_sales_analytics') {
+    // 1. Daily sales timeline
+    $dailySql = "SELECT 
+                    CASE 
+                        WHEN date IS NOT NULL AND LENGTH(date) >= 8 THEN date 
+                        WHEN booked_at IS NOT NULL AND booked_at > '1970-01-01' THEN SUBSTRING(booked_at, 1, 10) 
+                        ELSE CURDATE() 
+                    END AS sale_date,
+                    COUNT(*) AS trip_count,
+                    COALESCE(SUM(total_amount), 0) AS gross_revenue,
+                    COALESCE(SUM(agni_amount), 0) AS company_profit,
+                    COALESCE(SUM(vendor_amount), 0) AS driver_payout
+                 FROM bookings
+                 GROUP BY sale_date
+                 ORDER BY sale_date ASC";
+    $dailyRes = $conn->query($dailySql);
+    $dailySales = [];
+    while ($r = $dailyRes ? $dailyRes->fetch_assoc() : null) {
+        $dailySales[] = [
+            'date' => $r['sale_date'],
+            'trips' => (int)$r['trip_count'],
+            'gross_revenue' => (float)$r['gross_revenue'],
+            'company_profit' => (float)$r['company_profit'],
+            'driver_payout' => (float)$r['driver_payout']
+        ];
+    }
+
+    // 2. Trip Type Breakdown
+    $tripSql = "SELECT 
+                    CASE 
+                        WHEN LOWER(trip_type) LIKE '%one%' THEN 'One-way'
+                        WHEN LOWER(trip_type) LIKE '%round%' THEN 'Round-trip'
+                        WHEN LOWER(trip_type) LIKE '%local%taxi%' THEN 'Local-taxi'
+                        WHEN LOWER(trip_type) LIKE '%local%duty%' THEN 'Local-duty'
+                        ELSE COALESCE(trip_type, 'Other')
+                    END AS category,
+                    COUNT(*) AS trip_count,
+                    COALESCE(SUM(total_amount), 0) AS gross_revenue,
+                    COALESCE(SUM(agni_amount), 0) AS company_profit,
+                    COALESCE(SUM(vendor_amount), 0) AS driver_payout
+                FROM bookings
+                GROUP BY category";
+    $tripRes = $conn->query($tripSql);
+    $tripBreakdown = [];
+    while ($r = $tripRes ? $tripRes->fetch_assoc() : null) {
+        $tripBreakdown[] = [
+            'category' => $r['category'],
+            'trips' => (int)$r['trip_count'],
+            'gross_revenue' => (float)$r['gross_revenue'],
+            'company_profit' => (float)$r['company_profit'],
+            'driver_payout' => (float)$r['driver_payout']
+        ];
+    }
+
+    // 3. Vehicle Breakdown
+    $vehSql = "SELECT 
+                    COALESCE(NULLIF(car_type, ''), 'Standard') AS vehicle,
+                    COUNT(*) AS trip_count,
+                    COALESCE(SUM(total_amount), 0) AS gross_revenue,
+                    COALESCE(SUM(agni_amount), 0) AS company_profit
+               FROM bookings
+               GROUP BY vehicle
+               ORDER BY gross_revenue DESC";
+    $vehRes = $conn->query($vehSql);
+    $vehBreakdown = [];
+    while ($r = $vehRes ? $vehRes->fetch_assoc() : null) {
+        $vehBreakdown[] = [
+            'vehicle' => $r['vehicle'],
+            'trips' => (int)$r['trip_count'],
+            'gross_revenue' => (float)$r['gross_revenue'],
+            'company_profit' => (float)$r['company_profit']
+        ];
+    }
+
+    // 4. Status Breakdown
+    $statusSql = "SELECT 
+                    COALESCE(NULLIF(booking_status, ''), 'Pending') AS status_name,
+                    COUNT(*) AS trip_count,
+                    COALESCE(SUM(total_amount), 0) AS gross_revenue
+                  FROM bookings
+                  GROUP BY status_name";
+    $statusRes = $conn->query($statusSql);
+    $statusBreakdown = [];
+    while ($r = $statusRes ? $statusRes->fetch_assoc() : null) {
+        $statusBreakdown[] = [
+            'status' => $r['status_name'],
+            'trips' => (int)$r['trip_count'],
+            'gross_revenue' => (float)$r['gross_revenue']
+        ];
+    }
+
+    echo json_encode([
+        "status" => "success",
+        "daily_sales" => $dailySales,
+        "trip_breakdown" => $tripBreakdown,
+        "vehicle_breakdown" => $vehBreakdown,
+        "status_breakdown" => $statusBreakdown
+    ]);
+    exit;
+}
+
 // 3. DELETE SINGLE BOOKING
 if ($action === 'delete_single') {
     $bookingId = isset($params['id']) ? intval($params['id']) : 0;
