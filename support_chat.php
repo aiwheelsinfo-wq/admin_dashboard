@@ -27,7 +27,7 @@ if ($checkTable && $checkTable->num_rows === 0) {
         user_phone VARCHAR(20) DEFAULT NULL,
         user_name VARCHAR(100) DEFAULT NULL,
         vendor_phone VARCHAR(20) NOT NULL,
-        sender_type ENUM('vendor', 'customer', 'admin') NOT NULL,
+        sender_type ENUM('vendor', 'customer', 'admin') NOT NULL DEFAULT 'vendor',
         sender_name VARCHAR(100) DEFAULT NULL,
         message TEXT NOT NULL,
         attachment_url VARCHAR(500) DEFAULT NULL,
@@ -39,6 +39,10 @@ if ($checkTable && $checkTable->num_rows === 0) {
         INDEX idx_created_at (created_at),
         INDEX idx_is_read (is_read)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+} else {
+    // Self-heal columns if table pre-existed with old ENUMs
+    @$conn->query("ALTER TABLE support_messages MODIFY COLUMN sender_type ENUM('vendor', 'customer', 'admin') NOT NULL DEFAULT 'vendor'");
+    @$conn->query("ALTER TABLE support_messages MODIFY COLUMN user_type ENUM('vendor', 'customer') DEFAULT 'vendor'");
 }
 
 // Ensure uploads directory exists
@@ -211,11 +215,15 @@ switch ($action) {
 
         $messages = [];
         while ($row = $res->fetch_assoc()) {
+            $s_type = $row["sender_type"];
+            if ($s_type !== 'admin') {
+                $s_type = ($user_type === 'customer') ? 'customer' : 'vendor';
+            }
             $messages[] = [
                 "id" => (int)$row["id"],
                 "user_type" => $row["user_type"],
                 "user_phone" => $row["user_phone"] ?: $row["vendor_phone"],
-                "sender_type" => $row["sender_type"],
+                "sender_type" => $s_type,
                 "sender_name" => $row["sender_name"],
                 "message" => $row["message"],
                 "attachment_url" => $row["attachment_url"],
