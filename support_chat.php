@@ -23,8 +23,11 @@ $checkTable = $conn->query("SHOW TABLES LIKE 'support_messages'");
 if ($checkTable && $checkTable->num_rows === 0) {
     $conn->query("CREATE TABLE IF NOT EXISTS support_messages (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        user_type ENUM('vendor', 'customer') DEFAULT 'vendor',
+        user_phone VARCHAR(20) DEFAULT NULL,
+        user_name VARCHAR(100) DEFAULT NULL,
         vendor_phone VARCHAR(20) NOT NULL,
-        sender_type ENUM('vendor', 'admin') NOT NULL,
+        sender_type ENUM('vendor', 'customer', 'admin') NOT NULL,
         sender_name VARCHAR(100) DEFAULT NULL,
         message TEXT NOT NULL,
         attachment_url VARCHAR(500) DEFAULT NULL,
@@ -32,6 +35,7 @@ if ($checkTable && $checkTable->num_rows === 0) {
         is_read TINYINT(1) DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_vendor_phone (vendor_phone),
+        INDEX idx_user_type_phone (user_type, user_phone),
         INDEX idx_created_at (created_at),
         INDEX idx_is_read (is_read)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
@@ -52,18 +56,19 @@ $action = $_GET['action'] ?? $_POST['action'] ?? $jsonData['action'] ?? '';
 
 switch ($action) {
     // ==========================================
-    // 1. SEND MESSAGE (Vendor or Admin)
+    // 1. SEND MESSAGE (Vendor, Customer, or Admin)
     // ==========================================
     case 'send_message':
-        $vendor_phone = trim($_POST['vendor_phone'] ?? $jsonData['vendor_phone'] ?? '');
-        $sender_type = trim($_POST['sender_type'] ?? $jsonData['sender_type'] ?? 'vendor');
+        $user_type = trim($_POST['user_type'] ?? $jsonData['user_type'] ?? 'vendor');
+        $phone = trim($_POST['user_phone'] ?? $jsonData['user_phone'] ?? $_POST['vendor_phone'] ?? $jsonData['vendor_phone'] ?? '');
+        $sender_type = trim($_POST['sender_type'] ?? $jsonData['sender_type'] ?? $user_type);
         $sender_name = trim($_POST['sender_name'] ?? $jsonData['sender_name'] ?? '');
         $message = trim($_POST['message'] ?? $jsonData['message'] ?? '');
         $attachment_url = null;
         $attachment_type = null;
 
-        if (empty($vendor_phone)) {
-            echo json_encode(["status" => "error", "message" => "vendor_phone is required."]);
+        if (empty($phone)) {
+            echo json_encode(["status" => "error", "message" => "Phone number is required."]);
             exit;
         }
 
@@ -106,13 +111,13 @@ switch ($action) {
             exit;
         }
 
-        $stmt = $conn->prepare("INSERT INTO support_messages (vendor_phone, sender_type, sender_name, message, attachment_url, attachment_type, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, 0, NOW())");
+        $stmt = $conn->prepare("INSERT INTO support_messages (user_type, user_phone, user_name, vendor_phone, sender_type, sender_name, message, attachment_url, attachment_type, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())");
         if (!$stmt) {
             echo json_encode(["status" => "error", "message" => "DB prepare error: " . $conn->error]);
             exit;
         }
 
-        $stmt->bind_param("ssssss", $vendor_phone, $sender_type, $sender_name, $message, $attachment_url, $attachment_type);
+        $stmt->bind_param("sssssssss", $user_type, $phone, $sender_name, $phone, $sender_type, $sender_name, $message, $attachment_url, $attachment_type);
         if ($stmt->execute()) {
             $newId = $stmt->insert_id;
             $stmt->close();
@@ -122,7 +127,9 @@ switch ($action) {
                 "message" => "Message sent successfully",
                 "data" => [
                     "id" => $newId,
-                    "vendor_phone" => $vendor_phone,
+                    "user_type" => $user_type,
+                    "user_phone" => $phone,
+                    "user_name" => $sender_name,
                     "sender_type" => $sender_type,
                     "sender_name" => $sender_name,
                     "message" => $message,
@@ -141,49 +148,64 @@ switch ($action) {
     // 2. GET MESSAGES (Conversation thread)
     // ==========================================
     case 'get_messages':
-        $vendor_phone = trim($_GET['vendor_phone'] ?? $_POST['vendor_phone'] ?? $jsonData['vendor_phone'] ?? '');
-        $reader = trim($_GET['reader'] ?? $_POST['reader'] ?? $jsonData['reader'] ?? 'vendor'); // 'vendor' or 'admin'
+        $user_type = trim($_GET['user_type'] ?? $_POST['user_type'] ?? $jsonData['user_type'] ?? 'vendor');
+        $phone = trim($_GET['user_phone'] ?? $_POST['user_phone'] ?? $_GET['vendor_phone'] ?? $_POST['vendor_phone'] ?? $jsonData['vendor_phone'] ?? '');
+        $reader = trim($_GET['reader'] ?? $_POST['reader'] ?? $jsonData['reader'] ?? $user_type);
 
-        if (empty($vendor_phone)) {
-            echo json_encode(["status" => "error", "message" => "vendor_phone is required."]);
+        if (empty($phone)) {
+            echo json_encode(["status" => "error", "message" => "Phone number is required."]);
             exit;
         }
 
-        // Mark incoming messages as read based on who is viewing
+        // Mark incoming messages as read based on who is reading
         if ($reader === 'admin') {
-            $conn->query("UPDATE support_messages SET is_read = 1 WHERE vendor_phone = '$vendor_phone' AND sender_type = 'vendor' AND is_read = 0");
+            $conn->query("UPDATE support_messages SET is_read = 1 WHERE (user_phone = '$phone' OR vendor_phone = '$phone') AND user_type = '$user_type' AND sender_type != 'admin' AND is_read = 0");
         } else {
-            $conn->query("UPDATE support_messages SET is_read = 1 WHERE vendor_phone = '$vendor_phone' AND sender_type = 'admin' AND is_read = 0");
+            $conn->query("UPDATE support_messages SET is_read = 1 WHERE (user_phone = '$phone' OR vendor_phone = '$phone') AND user_type = '$user_type' AND sender_type = 'admin' AND is_read = 0");
         }
 
-        // Fetch vendor profile details (status, agency, name, block reason)
-        $vendorInfo = [
-            "phone" => $vendor_phone,
-            "name" => "Transport Partner",
+        $userInfo = [
+            "phone" => $phone,
+            "name" => ($user_type === 'customer') ? "Customer $phone" : "Transport Partner",
             "agency_name" => "",
             "status" => "active",
             "block_reason" => "",
             "blocked_at" => null
         ];
 
-        $vQuery = $conn->prepare("SELECT full_name, agency_name, status, block_reason, blocked_at FROM drivers WHERE phone_number = ? LIMIT 1");
-        if ($vQuery) {
-            $vQuery->bind_param("s", $vendor_phone);
-            $vQuery->execute();
-            $vRes = $vQuery->get_result();
-            if ($row = $vRes->fetch_assoc()) {
-                $vendorInfo["name"] = $row["full_name"] ?? $vendorInfo["name"];
-                $vendorInfo["agency_name"] = $row["agency_name"] ?? "";
-                $vendorInfo["status"] = $row["status"] ?? "active";
-                $vendorInfo["block_reason"] = $row["block_reason"] ?? "";
-                $vendorInfo["blocked_at"] = $row["blocked_at"] ?? null;
+        if ($user_type === 'vendor') {
+            $vQuery = $conn->prepare("SELECT full_name, agency_name, status, block_reason, blocked_at FROM drivers WHERE phone_number = ? LIMIT 1");
+            if ($vQuery) {
+                $vQuery->bind_param("s", $phone);
+                $vQuery->execute();
+                $vRes = $vQuery->get_result();
+                if ($row = $vRes->fetch_assoc()) {
+                    $userInfo["name"] = $row["full_name"] ?? $userInfo["name"];
+                    $userInfo["agency_name"] = $row["agency_name"] ?? "";
+                    $userInfo["status"] = $row["status"] ?? "active";
+                    $userInfo["block_reason"] = $row["block_reason"] ?? "";
+                    $userInfo["blocked_at"] = $row["blocked_at"] ?? null;
+                }
+                $vQuery->close();
             }
-            $vQuery->close();
+        } else {
+            // For customer, try finding profile in users table
+            $bQuery = $conn->prepare("SELECT name, email, city FROM users WHERE phone_number = ? LIMIT 1");
+            if ($bQuery) {
+                $bQuery->bind_param("s", $phone);
+                $bQuery->execute();
+                $bRes = $bQuery->get_result();
+                if ($bRow = $bRes->fetch_assoc()) {
+                    if (!empty($bRow["name"])) $userInfo["name"] = $bRow["name"];
+                    $userInfo["agency_name"] = $bRow["city"] ? "City: " . $bRow["city"] : "";
+                }
+                $bQuery->close();
+            }
         }
 
         // Fetch conversation messages
-        $stmt = $conn->prepare("SELECT id, vendor_phone, sender_type, sender_name, message, attachment_url, attachment_type, is_read, created_at FROM support_messages WHERE vendor_phone = ? ORDER BY created_at ASC");
-        $stmt->bind_param("s", $vendor_phone);
+        $stmt = $conn->prepare("SELECT id, user_type, user_phone, user_name, vendor_phone, sender_type, sender_name, message, attachment_url, attachment_type, is_read, created_at FROM support_messages WHERE (user_phone = ? OR vendor_phone = ?) AND user_type = ? ORDER BY created_at ASC");
+        $stmt->bind_param("sss", $phone, $phone, $user_type);
         $stmt->execute();
         $res = $stmt->get_result();
 
@@ -191,7 +213,8 @@ switch ($action) {
         while ($row = $res->fetch_assoc()) {
             $messages[] = [
                 "id" => (int)$row["id"],
-                "vendor_phone" => $row["vendor_phone"],
+                "user_type" => $row["user_type"],
+                "user_phone" => $row["user_phone"] ?: $row["vendor_phone"],
                 "sender_type" => $row["sender_type"],
                 "sender_name" => $row["sender_name"],
                 "message" => $row["message"],
@@ -205,82 +228,114 @@ switch ($action) {
 
         echo json_encode([
             "status" => "success",
-            "vendor" => $vendorInfo,
+            "vendor" => $userInfo,
+            "user" => $userInfo,
             "messages" => $messages
         ]);
         exit;
 
     // ==========================================
-    // 3. GET THREADS (For Admin Helpdesk Sidebar)
+    // 3. GET THREADS (Filtered by user_type)
     // ==========================================
     case 'get_threads':
-        $sql = "
-            SELECT 
-                sm.vendor_phone,
-                d.full_name AS vendor_name,
-                d.agency_name,
-                COALESCE(d.status, v.status, 'active') AS vendor_status,
-                COALESCE(d.block_reason, v.block_reason, '') AS block_reason,
-                COALESCE(d.blocked_at, v.blocked_at) AS blocked_at,
-                latest.last_message,
-                latest.last_sender_type,
-                latest.last_created_at,
-                latest.has_attachment,
-                COALESCE(unread.unread_count, 0) AS unread_count
-            FROM (
-                SELECT DISTINCT vendor_phone FROM support_messages
-            ) sm
-            LEFT JOIN drivers d ON sm.vendor_phone = d.phone_number
-            LEFT JOIN vendors v ON sm.vendor_phone = v.phone_number
-            LEFT JOIN (
-                SELECT 
-                    m1.vendor_phone,
-                    m1.message AS last_message,
-                    m1.sender_type AS last_sender_type,
-                    m1.created_at AS last_created_at,
-                    IF(m1.attachment_url IS NOT NULL AND m1.attachment_url != '', 1, 0) AS has_attachment
-                FROM support_messages m1
-                INNER JOIN (
-                    SELECT vendor_phone, MAX(id) AS max_id
-                    FROM support_messages
-                    GROUP BY vendor_phone
-                ) m2 ON m1.id = m2.max_id
-            ) latest ON sm.vendor_phone = latest.vendor_phone
-            LEFT JOIN (
-                SELECT vendor_phone, COUNT(*) AS unread_count
-                FROM support_messages
-                WHERE sender_type = 'vendor' AND is_read = 0
-                GROUP BY vendor_phone
-            ) unread ON sm.vendor_phone = unread.vendor_phone
-            ORDER BY latest.last_created_at DESC
+        $user_type = trim($_GET['user_type'] ?? $_POST['user_type'] ?? $jsonData['user_type'] ?? 'vendor');
+        $safeType = ($user_type === 'customer') ? 'customer' : 'vendor';
+
+        // 1. Get distinct users for this user_type
+        $distinctUsersSql = "
+            SELECT DISTINCT COALESCE(NULLIF(user_phone, ''), vendor_phone) AS phone 
+            FROM support_messages 
+            WHERE user_type = '$safeType' AND COALESCE(NULLIF(user_phone, ''), vendor_phone) IS NOT NULL AND COALESCE(NULLIF(user_phone, ''), vendor_phone) != ''
         ";
-
-        $res = $conn->query($sql);
-        $threads = [];
-        $totalUnread = 0;
-
-        if ($res) {
-            while ($row = $res->fetch_assoc()) {
-                $unread = (int)($row['unread_count'] ?? 0);
-                $totalUnread += $unread;
-                $threads[] = [
-                    "vendor_phone" => $row["vendor_phone"],
-                    "vendor_name" => !empty($row["vendor_name"]) ? $row["vendor_name"] : "Partner " . $row["vendor_phone"],
-                    "agency_name" => $row["agency_name"] ?? "",
-                    "vendor_status" => $row["vendor_status"] ?? "active",
-                    "block_reason" => $row["block_reason"] ?? "",
-                    "blocked_at" => $row["blocked_at"] ?? null,
-                    "last_message" => $row["last_message"] ?? "",
-                    "last_sender_type" => $row["last_sender_type"] ?? "vendor",
-                    "last_created_at" => $row["last_created_at"] ?? "",
-                    "has_attachment" => (bool)($row["has_attachment"] ?? false),
-                    "unread_count" => $unread
-                ];
+        $uRes = $conn->query($distinctUsersSql);
+        $phones = [];
+        if ($uRes) {
+            while ($uRow = $uRes->fetch_assoc()) {
+                $phones[] = $uRow['phone'];
             }
         }
 
+        $threads = [];
+        $totalUnread = 0;
+
+        foreach ($phones as $phone) {
+            $escapedPhone = $conn->real_escape_string($phone);
+
+            // Latest message for this user
+            $latestSql = "
+                SELECT message, sender_type, sender_name, user_name, created_at, attachment_url 
+                FROM support_messages 
+                WHERE (user_phone = '$escapedPhone' OR vendor_phone = '$escapedPhone') AND user_type = '$safeType' 
+                ORDER BY id DESC LIMIT 1
+            ";
+            $lRes = $conn->query($latestSql);
+            $latest = $lRes ? $lRes->fetch_assoc() : null;
+
+            // Unread count
+            $targetSender = ($safeType === 'customer') ? 'customer' : 'vendor';
+            $unreadSql = "
+                SELECT COUNT(*) AS cnt 
+                FROM support_messages 
+                WHERE (user_phone = '$escapedPhone' OR vendor_phone = '$escapedPhone') 
+                  AND user_type = '$safeType' 
+                  AND sender_type = '$targetSender' 
+                  AND is_read = 0
+            ";
+            $unRes = $conn->query($unreadSql);
+            $unreadCount = ($unRes && $unRow = $unRes->fetch_assoc()) ? (int)$unRow['cnt'] : 0;
+            $totalUnread += $unreadCount;
+
+            // Metadata resolution
+            $name = $latest['user_name'] ?? ($safeType === 'customer' ? "Passenger $phone" : "Partner $phone");
+            $agency = "";
+            $status = "active";
+            $blockReason = "";
+            $blockedAt = null;
+
+            if ($safeType === 'vendor') {
+                $dRes = $conn->query("SELECT full_name, agency_name, status, block_reason, blocked_at FROM drivers WHERE phone_number = '$escapedPhone' LIMIT 1");
+                if ($dRes && $dRow = $dRes->fetch_assoc()) {
+                    if (!empty($dRow['full_name'])) $name = $dRow['full_name'];
+                    $agency = $dRow['agency_name'] ?? '';
+                    $status = $dRow['status'] ?? 'active';
+                    $blockReason = $dRow['block_reason'] ?? '';
+                    $blockedAt = $dRow['blocked_at'] ?? null;
+                }
+            } else {
+                $bRes = $conn->query("SELECT name, city FROM users WHERE phone_number = '$escapedPhone' LIMIT 1");
+                if ($bRes && $bRow = $bRes->fetch_assoc()) {
+                    if (!empty($bRow['name'])) $name = $bRow['name'];
+                    if (!empty($bRow['city'])) {
+                        $agency = "City: " . $bRow['city'];
+                    }
+                }
+            }
+
+            $threads[] = [
+                "vendor_phone" => $phone,
+                "user_phone" => $phone,
+                "vendor_name" => $name,
+                "user_name" => $name,
+                "agency_name" => $agency ?: ($safeType === 'customer' ? 'Online Booking Passenger' : ''),
+                "vendor_status" => $status,
+                "block_reason" => $blockReason,
+                "blocked_at" => $blockedAt,
+                "last_message" => $latest['message'] ?? '',
+                "last_sender_type" => $latest['sender_type'] ?? $safeType,
+                "last_created_at" => $latest['created_at'] ?? '',
+                "has_attachment" => !empty($latest['attachment_url']),
+                "unread_count" => $unreadCount
+            ];
+        }
+
+        // Sort threads by latest message descending
+        usort($threads, function($a, $b) {
+            return strcmp($b['last_created_at'], $a['last_created_at']);
+        });
+
         echo json_encode([
             "status" => "success",
+            "user_type" => $safeType,
             "total_threads" => count($threads),
             "total_unread" => $totalUnread,
             "threads" => $threads
@@ -291,12 +346,13 @@ switch ($action) {
     // 4. MARK AS READ
     // ==========================================
     case 'mark_read':
-        $vendor_phone = trim($_POST['vendor_phone'] ?? $jsonData['vendor_phone'] ?? '');
+        $phone = trim($_POST['user_phone'] ?? $_POST['vendor_phone'] ?? $jsonData['user_phone'] ?? $jsonData['vendor_phone'] ?? '');
         $reader = trim($_POST['reader'] ?? $jsonData['reader'] ?? 'admin');
+        $user_type = trim($_POST['user_type'] ?? $jsonData['user_type'] ?? 'vendor');
 
-        if (!empty($vendor_phone)) {
-            $sender = ($reader === 'admin') ? 'vendor' : 'admin';
-            $conn->query("UPDATE support_messages SET is_read = 1 WHERE vendor_phone = '$vendor_phone' AND sender_type = '$sender'");
+        if (!empty($phone)) {
+            $sender = ($reader === 'admin') ? $user_type : 'admin';
+            $conn->query("UPDATE support_messages SET is_read = 1 WHERE (user_phone = '$phone' OR vendor_phone = '$phone') AND user_type = '$user_type' AND sender_type = '$sender'");
         }
 
         echo json_encode(["status" => "success", "message" => "Marked as read"]);
