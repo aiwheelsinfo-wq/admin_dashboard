@@ -17,6 +17,16 @@ $inputJSON = file_get_contents('php://input');
 $inputData = json_decode($inputJSON, true) ?? [];
 $params = array_merge($_GET, $_POST, $inputData);
 
+// Auto-ensure block_reason and blocked_at columns exist
+$colCheck = $conn->query("SHOW COLUMNS FROM drivers LIKE 'block_reason'");
+if ($colCheck && $colCheck->num_rows == 0) {
+    @$conn->query("ALTER TABLE drivers ADD COLUMN block_reason VARCHAR(255) DEFAULT NULL, ADD COLUMN blocked_at DATETIME DEFAULT NULL");
+}
+$colCheck2 = $conn->query("SHOW COLUMNS FROM vendors LIKE 'block_reason'");
+if ($colCheck2 && $colCheck2->num_rows == 0) {
+    @$conn->query("ALTER TABLE vendors ADD COLUMN block_reason VARCHAR(255) DEFAULT NULL, ADD COLUMN blocked_at DATETIME DEFAULT NULL");
+}
+
 $action = $params['action'] ?? 'get_vendors';
 
 // 1. GET VENDOR SUMMARY STATS
@@ -60,6 +70,8 @@ if ($action === 'get_vendors') {
                 COALESCE(NULLIF(d.driver_city, ''), NULLIF(vnd.driver_city, ''), '') AS city,
                 COALESCE(NULLIF(d.email, ''), NULLIF(vnd.email, ''), '') AS email,
                 COALESCE(NULLIF(d.status, ''), NULLIF(vnd.status, ''), 'active') AS status,
+                COALESCE(NULLIF(d.block_reason, ''), NULLIF(vnd.block_reason, ''), '') AS block_reason,
+                COALESCE(d.blocked_at, vnd.blocked_at) AS blocked_at,
                 COALESCE(d.created_at, vnd.created_at) AS created_at,
                 (SELECT COUNT(DISTINCT j.driver_id) FROM driver_vendor_join_Table j WHERE j.vendor_id = v.vendor_phone) AS driver_count,
                 (SELECT COUNT(*) FROM cars c WHERE c.owner_id = v.vendor_phone) AS vehicle_count
@@ -95,6 +107,8 @@ if ($action === 'get_vendors') {
             'city' => trim($row['city']),
             'email' => trim($row['email']),
             'status' => $row['status'] ?: 'active',
+            'block_reason' => trim($row['block_reason'] ?? ''),
+            'blocked_at' => $row['blocked_at'] ?? null,
             'created_at' => $row['created_at'],
             'driver_count' => (int)$row['driver_count'],
             'vehicle_count' => (int)$row['vehicle_count']
@@ -127,6 +141,8 @@ if ($action === 'get_vendor_details') {
                     COALESCE(NULLIF(d.email, ''), NULLIF(vnd.email, ''), '') AS email,
                     COALESCE(NULLIF(d.driver_address, ''), NULLIF(vnd.driver_address, ''), '') AS address,
                     COALESCE(NULLIF(d.status, ''), NULLIF(vnd.status, ''), 'active') AS status,
+                    COALESCE(NULLIF(d.block_reason, ''), NULLIF(vnd.block_reason, ''), '') AS block_reason,
+                    COALESCE(d.blocked_at, vnd.blocked_at) AS blocked_at,
                     COALESCE(d.created_at, vnd.created_at) AS created_at
                   FROM (SELECT ? AS vendor_phone) v
                   LEFT JOIN drivers d ON v.vendor_phone = d.phone_number
@@ -228,6 +244,57 @@ if ($action === 'get_vendor_details') {
         "vehicle_count" => count($vehicles),
         "drivers" => $drivers,
         "vehicles" => $vehicles
+    ]);
+    exit;
+}
+
+// 4. BLOCK / UNBLOCK VENDOR
+if ($action === 'toggle_vendor_block') {
+    $vendor_phone = trim($params['vendor_phone'] ?? '');
+    $target_status = strtolower(trim($params['status'] ?? ''));
+    $block_reason = trim($params['block_reason'] ?? '');
+
+    if (empty($vendor_phone)) {
+        echo json_encode(["status" => "error", "message" => "Vendor phone number is required."]);
+        exit;
+    }
+
+    $is_block = ($target_status === 'blocked');
+    $new_status = $is_block ? 'blocked' : 'active';
+    $reason_val = $is_block ? ($block_reason ?: 'Blocked by Administrator') : null;
+    $blocked_at_val = $is_block ? date('Y-m-d H:i:s') : null;
+
+    // A. Update drivers table
+    $dStmt = $conn->prepare("UPDATE drivers SET status = ?, block_reason = ?, blocked_at = ? WHERE phone_number = ?");
+    if ($dStmt) {
+        $dStmt->bind_param("ssss", $new_status, $reason_val, $blocked_at_val, $vendor_phone);
+        $dStmt->execute();
+        $dStmt->close();
+    }
+
+    // B. Update vendors table
+    $vStmt = $conn->prepare("UPDATE vendors SET status = ?, block_reason = ?, blocked_at = ? WHERE phone_number = ?");
+    if ($vStmt) {
+        $vStmt->bind_param("ssss", $new_status, $reason_val, $blocked_at_val, $vendor_phone);
+        $vStmt->execute();
+        $vStmt->close();
+    }
+
+    // C. When blocking, take all attached fleet drivers offline for dispatch safety
+    if ($is_block) {
+        $safePhone = $conn->real_escape_string($vendor_phone);
+        @$conn->query("UPDATE drivers SET is_online = 0 WHERE phone_number IN (
+            SELECT driver_id FROM driver_vendor_join_Table WHERE vendor_id = '$safePhone'
+        )");
+    }
+
+    echo json_encode([
+        "status" => "success",
+        "message" => $is_block ? "Vendor has been successfully blocked." : "Vendor has been successfully unblocked.",
+        "vendor_phone" => $vendor_phone,
+        "new_status" => $new_status,
+        "block_reason" => $reason_val,
+        "blocked_at" => $blocked_at_val
     ]);
     exit;
 }
