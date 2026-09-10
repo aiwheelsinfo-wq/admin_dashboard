@@ -72,6 +72,7 @@ if ($action === 'get_vendors') {
                 COALESCE(NULLIF(d.status, ''), NULLIF(vnd.status, ''), 'active') AS status,
                 COALESCE(NULLIF(d.block_reason, ''), NULLIF(vnd.block_reason, ''), '') AS block_reason,
                 COALESCE(d.blocked_at, vnd.blocked_at) AS blocked_at,
+                COALESCE(d.wallet_balance, vnd.wallet_balance, 0.00) AS wallet_balance,
                 COALESCE(d.created_at, vnd.created_at) AS created_at,
                 (SELECT COUNT(DISTINCT j.driver_id) FROM driver_vendor_join_Table j WHERE j.vendor_id = v.vendor_phone) AS driver_count,
                 (SELECT COUNT(*) FROM cars c WHERE c.owner_id = v.vendor_phone) AS vehicle_count
@@ -107,6 +108,7 @@ if ($action === 'get_vendors') {
             'city' => trim($row['city']),
             'email' => trim($row['email']),
             'status' => $row['status'] ?: 'active',
+            'wallet_balance' => (float)($row['wallet_balance'] ?? 0.00),
             'block_reason' => trim($row['block_reason'] ?? ''),
             'blocked_at' => $row['blocked_at'] ?? null,
             'created_at' => $row['created_at'],
@@ -295,6 +297,63 @@ if ($action === 'toggle_vendor_block') {
         "new_status" => $new_status,
         "block_reason" => $reason_val,
         "blocked_at" => $blocked_at_val
+    ]);
+    exit;
+}
+
+// 5. ADJUST VENDOR WALLET BALANCE (Admin Credit / Debit)
+if ($action === 'adjust_wallet_balance') {
+    $vendor_phone = trim($params['vendor_phone'] ?? '');
+    $amount = (float)($params['amount'] ?? 0);
+    $reason = trim($params['reason'] ?? 'Admin adjustment');
+
+    if (empty($vendor_phone) || $amount == 0) {
+        echo json_encode(["status" => "error", "message" => "Vendor phone and non-zero adjustment amount are required."]);
+        exit;
+    }
+
+    $balBefore = 0.00;
+    $chkStmt = $conn->prepare("SELECT wallet_balance FROM drivers WHERE phone_number = ? LIMIT 1");
+    if ($chkStmt) {
+        $chkStmt->bind_param("s", $vendor_phone);
+        $chkStmt->execute();
+        $chkStmt->bind_result($curBal);
+        if ($chkStmt->fetch()) {
+            $balBefore = (float)$curBal;
+        }
+        $chkStmt->close();
+    }
+    $balAfter = $balBefore + $amount;
+
+    // Update drivers & vendors
+    $u1 = $conn->prepare("UPDATE drivers SET wallet_balance = wallet_balance + ? WHERE phone_number = ?");
+    if ($u1) {
+        $u1->bind_param("ds", $amount, $vendor_phone);
+        $u1->execute();
+        $u1->close();
+    }
+    $u2 = $conn->prepare("UPDATE vendors SET wallet_balance = wallet_balance + ? WHERE phone_number = ?");
+    if ($u2) {
+        $u2->bind_param("ds", $amount, $vendor_phone);
+        $u2->execute();
+        $u2->close();
+    }
+
+    // Insert transaction
+    $tType = 'admin_adjustment';
+    $logStmt = $conn->prepare("INSERT INTO vendor_wallet_transactions (vendor_phone, transaction_type, amount, balance_before, balance_after, description) VALUES (?, ?, ?, ?, ?, ?)");
+    if ($logStmt) {
+        $logStmt->bind_param("ssddds", $vendor_phone, $tType, $amount, $balBefore, $balAfter, $reason);
+        $logStmt->execute();
+        $logStmt->close();
+    }
+
+    echo json_encode([
+        "status" => "success",
+        "message" => "Vendor wallet balance updated successfully.",
+        "vendor_phone" => $vendor_phone,
+        "adjusted_amount" => $amount,
+        "wallet_balance" => $balAfter
     ]);
     exit;
 }
