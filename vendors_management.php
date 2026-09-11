@@ -145,6 +145,7 @@ if ($action === 'get_vendor_details') {
                     COALESCE(NULLIF(d.status, ''), NULLIF(vnd.status, ''), 'active') AS status,
                     COALESCE(NULLIF(d.block_reason, ''), NULLIF(vnd.block_reason, ''), '') AS block_reason,
                     COALESCE(d.blocked_at, vnd.blocked_at) AS blocked_at,
+                    COALESCE(d.wallet_balance, vnd.wallet_balance, 0.00) AS wallet_balance,
                     COALESCE(d.created_at, vnd.created_at) AS created_at
                   FROM (SELECT ? AS vendor_phone) v
                   LEFT JOIN drivers d ON v.vendor_phone = d.phone_number
