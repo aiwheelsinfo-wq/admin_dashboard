@@ -359,5 +359,46 @@ if ($action === 'adjust_wallet_balance') {
     exit;
 }
 
+// 6. GET GLOBAL WALLET SETTINGS
+if ($action === 'get_wallet_settings') {
+    $minBalance = 0.00;
+    $commissionRate = 10.00;
+    $res = $conn->query("SELECT min_wallet_balance, company_share_value FROM local_taxi_global_settings WHERE id = 1 LIMIT 1");
+    if ($res && $row = $res->fetch_assoc()) {
+        $minBalance = (float)($row['min_wallet_balance'] ?? 0.00);
+        $commissionRate = (float)($row['company_share_value'] ?? 10.00);
+    }
+    echo json_encode([
+        "status" => "success",
+        "min_wallet_balance" => $minBalance,
+        "commission_rate" => $commissionRate
+    ]);
+    exit;
+}
+
+// 7. UPDATE MINIMUM WALLET BALANCE (Admin)
+if ($action === 'update_min_wallet_balance') {
+    $minBalance = isset($params['min_wallet_balance']) ? (float)$params['min_wallet_balance'] : null;
+
+    if ($minBalance === null || $minBalance < 0) {
+        echo json_encode(["status" => "error", "message" => "Valid non-negative minimum wallet balance is required."]);
+        exit;
+    }
+
+    $uStmt = $conn->prepare("UPDATE local_taxi_global_settings SET min_wallet_balance = ? WHERE id = 1");
+    if ($uStmt) {
+        $uStmt->bind_param("d", $minBalance);
+        $uStmt->execute();
+        $uStmt->close();
+    }
+
+    echo json_encode([
+        "status" => "success",
+        "message" => "Minimum required wallet balance updated successfully to ₹" . number_format($minBalance, 2),
+        "min_wallet_balance" => $minBalance
+    ]);
+    exit;
+}
+
 echo json_encode(["status" => "error", "message" => "Invalid action specified."]);
 ?>
