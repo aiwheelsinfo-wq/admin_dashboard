@@ -148,6 +148,8 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
     $companyShareType = $_POST['company_share_type'] ?? 'percentage';
     $companyShareValue = (float)($_POST['company_share_value'] ?? 15.0);
     $companyShareBasis = $_POST['company_share_basis'] ?? 'subtotal';
+    $minAdvanceHours = isset($_POST['min_advance_booking_hours']) ? (float)$_POST['min_advance_booking_hours'] : 5.0;
+    if ($minAdvanceHours < 0) $minAdvanceHours = 0.0;
 
     // Validation
     if ($gstPercent < 0 || $gstPercent > 28 || $discountValue < 0 || $tollRate < 0 || $defaultParking < 0 || $sensitivity < 0 || $sensitivity > 100 || $companyShareValue < 0) {
@@ -181,18 +183,20 @@ if (isset($_POST['action']) && $_POST['action'] === 'update_global_settings') {
             `company_share_type` = ?,
             `company_share_value` = ?,
             `company_share_basis` = ?,
+            `min_advance_booking_hours` = ?,
             `row_version` = `row_version` + 1,
             `updated_by` = ?
         WHERE `id` = 1 AND `row_version` = ?"
     );
 
     $stmt->bind_param(
-        "iiisdisddddidididdiisdssi",
+        "iiisdisddddidididdiisdsdsi",
         $masterActive, $allowanceActive, $discountActive, $discountType, $discountValue,
         $gstActive, $gstMode, $gstPercent, $cgstPercent, $sgstPercent, $igstPercent,
         $parkingActive, $defaultParking, $tollActive, $tollRate,
         $dynamicPricingActive, $sensitivity, $outlierThreshold, $lookbackDays,
         $companyShareActive, $companyShareType, $companyShareValue, $companyShareBasis,
+        $minAdvanceHours,
         $adminId, $submittedVersion
     );
 
