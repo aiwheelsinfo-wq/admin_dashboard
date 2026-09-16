@@ -53,11 +53,29 @@ if (isset($_REQUEST['api']) || isset($_GET['api']) || $_SERVER['REQUEST_METHOD']
             }
         }
 
+        // Fetch Local-Duty dedicated platform commission and wallet settings
+        $globalSettings = [
+            'company_share_active' => true,
+            'company_share_type' => 'percent',
+            'company_share_value' => 10.00,
+            'min_wallet_balance' => 0.00
+        ];
+        $gRes = $conn->query("SELECT company_share_active, company_share_type, company_share_value, min_wallet_balance FROM `local_duty_global_settings` WHERE `id` = 1 LIMIT 1");
+        if ($gRes && $gRow = $gRes->fetch_assoc()) {
+            $globalSettings = [
+                'company_share_active' => (bool)$gRow['company_share_active'],
+                'company_share_type' => $gRow['company_share_type'] ?? 'percent',
+                'company_share_value' => (float)$gRow['company_share_value'],
+                'min_wallet_balance' => (float)($gRow['min_wallet_balance'] ?? 0.00)
+            ];
+        }
+
         echo json_encode([
             'status' => 'success',
             'tripType' => 'Local-Duty',
             'packageSummary' => '80 KM / 8 Hours Standard Duty Package',
-            'vehicles' => $vehicles
+            'vehicles' => $vehicles,
+            'globalSettings' => $globalSettings
         ]);
         exit;
     }
@@ -150,6 +168,34 @@ if (isset($_REQUEST['api']) || isset($_GET['api']) || $_SERVER['REQUEST_METHOD']
             'message' => "Successfully updated {$successCount} Local-Duty vehicle rates and driver allowances.",
             'count' => $successCount
         ]);
+        exit;
+    }
+
+    // 4. Update Dedicated Local-Duty Global Settings (Platform Commission & Wallet Threshold)
+    if ($action === 'update_global_settings') {
+        $active = !empty($params['company_share_active']) ? 1 : 0;
+        $type = in_array($params['company_share_type'] ?? '', ['percent', 'flat']) ? $params['company_share_type'] : 'percent';
+        $val = floatval($params['company_share_value'] ?? 10.00);
+        $minWallet = floatval($params['min_wallet_balance'] ?? 0.00);
+
+        $stmt = $conn->prepare("UPDATE `local_duty_global_settings` SET `company_share_active` = ?, `company_share_type` = ?, `company_share_value` = ?, `min_wallet_balance` = ? WHERE `id` = 1");
+        $stmt->bind_param("isdd", $active, $type, $val, $minWallet);
+
+        if ($stmt->execute()) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Local Duty platform commission and wallet settings updated successfully.',
+                'globalSettings' => [
+                    'company_share_active' => (bool)$active,
+                    'company_share_type' => $type,
+                    'company_share_value' => $val,
+                    'min_wallet_balance' => $minWallet
+                ]
+            ]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update global settings: ' . $conn->error]);
+        }
+        $stmt->close();
         exit;
     }
 
