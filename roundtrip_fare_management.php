@@ -15,9 +15,14 @@ require_once __DIR__ . '/db_connect.php';
 if (isset($_REQUEST['api']) || isset($_GET['api']) || $_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json; charset=utf-8');
 
-    $action = $_REQUEST['action'] ?? 'get_fares';
+    // Parse JSON payload or form post
+    $rawPayload = file_get_contents('php://input');
+    $jsonPayload = json_decode($rawPayload, true) ?? [];
+    $params = array_merge($_GET, $_POST, $jsonPayload);
 
-    // 1. Fetch Round-Trip Vehicle Rates and Driver Allowance
+    $action = $params['action'] ?? 'get_fares';
+
+    // 1. Fetch Round-Trip Vehicle Rates, Driver Allowance, and Dedicated Global Settings
     if ($action === 'get_fares') {
         $sql = "SELECT id, carType, kmRate, driver_allowance, daily_limit AS kmPerDay, gstPercent, agni_share 
                 FROM `tripCostTable` 
@@ -40,10 +45,28 @@ if (isset($_REQUEST['api']) || isset($_GET['api']) || $_SERVER['REQUEST_METHOD']
             }
         }
 
+        // Fetch Round-Trip dedicated platform commission and wallet settings
+        $globalSettings = [
+            'company_share_active' => true,
+            'company_share_type' => 'percent',
+            'company_share_value' => 10.00,
+            'min_wallet_balance' => 1000.00
+        ];
+        $gRes = $conn->query("SELECT company_share_active, company_share_type, company_share_value, min_wallet_balance FROM `round_trip_global_settings` WHERE `id` = 1 LIMIT 1");
+        if ($gRes && $gRow = $gRes->fetch_assoc()) {
+            $globalSettings = [
+                'company_share_active' => (bool)$gRow['company_share_active'],
+                'company_share_type' => $gRow['company_share_type'] ?? 'percent',
+                'company_share_value' => (float)$gRow['company_share_value'],
+                'min_wallet_balance' => (float)($gRow['min_wallet_balance'] ?? 1000.00)
+            ];
+        }
+
         echo json_encode([
             'status' => 'success',
             'tripType' => 'Round-trip',
-            'vehicles' => $vehicles
+            'vehicles' => $vehicles,
+            'globalSettings' => $globalSettings
         ]);
         exit;
     }
@@ -120,6 +143,34 @@ if (isset($_REQUEST['api']) || isset($_GET['api']) || $_SERVER['REQUEST_METHOD']
             'status' => 'success',
             'message' => "Updated {$updatedCount} Round-Trip vehicle configurations successfully."
         ]);
+        exit;
+    }
+
+    // 4. Update Dedicated Round-Trip Global Settings (Platform Commission & Wallet Threshold)
+    if ($action === 'update_global_settings') {
+        $active = !empty($params['company_share_active']) ? 1 : 0;
+        $type = in_array($params['company_share_type'] ?? '', ['percent', 'flat']) ? $params['company_share_type'] : 'percent';
+        $val = floatval($params['company_share_value'] ?? 10.00);
+        $minWallet = floatval($params['min_wallet_balance'] ?? 1000.00);
+
+        $stmt = $conn->prepare("UPDATE `round_trip_global_settings` SET `company_share_active` = ?, `company_share_type` = ?, `company_share_value` = ?, `min_wallet_balance` = ? WHERE `id` = 1");
+        $stmt->bind_param("isdd", $active, $type, $val, $minWallet);
+
+        if ($stmt->execute()) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Round-Trip platform commission and wallet settings updated successfully.',
+                'globalSettings' => [
+                    'company_share_active' => (bool)$active,
+                    'company_share_type' => $type,
+                    'company_share_value' => $val,
+                    'min_wallet_balance' => $minWallet
+                ]
+            ]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Failed to update global settings: ' . $conn->error]);
+        }
+        $stmt->close();
         exit;
     }
 
